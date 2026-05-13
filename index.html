@@ -14,42 +14,40 @@
             padding: 10px;
             display: flex; 
             flex-direction: column; 
-            min-height: 100vh;
+            height: 100vh;
+            box-sizing: border-box;
         }
 
-        /* En-tête avec titre et boutons alignés */
+        /* En-tête : Capture (gauche) | Titre (centre) | Analyse (droite) */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            width: 95%;
-            margin: 0 auto 15px auto;
-            padding: 10px 0;
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 5px 10px;
         }
 
         h1 { 
             margin: 0; 
             color: #2962ff; 
-            font-size: 24px;
-        }
-
-        .nav-buttons { 
-            display: flex; 
-            gap: 10px; 
+            font-size: 22px;
+            text-align: center;
+            flex: 1; /* Permet de centrer le titre par rapport aux boutons */
         }
 
         /* Style des boutons */
         button, .btn-secondary { 
-            padding: 8px 18px; 
+            padding: 10px 20px; 
             font-size: 14px; 
             font-weight: bold;
             cursor: pointer; 
             border: none; 
             border-radius: 4px; 
             transition: all 0.2s ease;
-            display: inline-block;
+            white-space: nowrap;
             text-decoration: none;
-            line-height: 1.4;
+            display: inline-block;
         }
 
         button { background-color: #2962ff; color: white; }
@@ -58,12 +56,10 @@
         .btn-secondary { background-color: #363c4e; color: white; }
         .btn-secondary:hover { background-color: #4a5163; }
 
-        /* Le graphique occupe le reste de l'espace */
+        /* Conteneur du graphique */
         #chart-container { 
-            width: 95%; 
-            flex-grow: 1; /* Remplit l'espace vertical disponible */
-            min-height: 75vh;
-            margin: 0 auto; 
+            width: 100%; 
+            flex-grow: 1; /* Prend tout l'espace sous l'en-tête */
             border: 1px solid #363c4e; 
             border-radius: 4px;
             background-color: #131722;
@@ -73,23 +69,20 @@
 <body>
 
     <div class="header">
+        <button onclick="takeScreenshot()">📷 Capture le setup</button>
+        
         <h1>Expert Trading v2.0</h1>
-        <div class="nav-buttons">
-            <button onclick="takeScreenshot()">📷 Capture</button>
-            <a href="analyse.html" class="btn-secondary">📊 Analyse</a>
-        </div>
+        
+        <a href="analyse.html" class="btn-secondary">Voir les analyses 📊</a>
     </div>
 
     <div id="chart-container"></div>
 
     <script>
-        console.log("Démarrage du moteur graphique...");
-
         let chart;
         let candleSeries;
 
         try {
-            // 1. Initialisation du graphique
             const container = document.getElementById('chart-container');
             chart = LightweightCharts.createChart(container, {
                 layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
@@ -102,7 +95,7 @@
                 wickUpColor: '#26a69a', wickDownColor: '#ef5350'
             });
 
-            // 2. Génération de données dynamiques
+            // Génération de données factices pour le rendu
             const data = [];
             const now = new Date();
             for (let i = 30; i >= 0; i--) {
@@ -121,10 +114,9 @@
             chart.timeScale().fitContent();
             
         } catch (error) {
-            console.error("Erreur d'initialisation :", error);
+            console.error("Erreur graphique :", error);
         }
 
-        // 3. Fonction de Capture
         async function takeScreenshot() {
             const canvas = document.querySelector('#chart-container canvas');
             if (!canvas) return;
@@ -147,11 +139,11 @@
                 const result = await response.json();
                 if (result.success) alert("✅ Capture enregistrée !");
             } catch (err) {
-                alert("❌ Erreur de sauvegarde.");
+                alert("❌ Erreur lors de l'enregistrement.");
             }
         }
 
-        // Redimensionnement automatique
+        // Gestion du redimensionnement
         window.addEventListener('resize', () => {
             const container = document.getElementById('chart-container');
             chart.applyOptions({ 
