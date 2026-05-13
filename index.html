@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading - Station de Capture</title>
+    <title>Expert Trading - Station Avancée</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: 'Segoe UI', sans-serif; 
             background-color: #131722; 
             color: #d1d4dc; 
             margin: 0; 
@@ -18,33 +18,32 @@
             box-sizing: border-box;
         }
 
-        /* En-tête : Capture (gauche) | Titre (centre) | Analyse (droite) */
+        /* En-tête : Capture | Titre | Analyse */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             padding: 5px 10px;
         }
 
         h1 { 
             margin: 0; 
             color: #2962ff; 
-            font-size: 22px;
+            font-size: 20px;
             text-align: center;
-            flex: 1; /* Permet de centrer le titre par rapport aux boutons */
+            flex: 1;
         }
 
-        /* Style des boutons */
         button, .btn-secondary { 
-            padding: 10px 20px; 
-            font-size: 14px; 
+            padding: 10px 18px; 
+            font-size: 13px; 
             font-weight: bold;
             cursor: pointer; 
             border: none; 
             border-radius: 4px; 
-            transition: all 0.2s ease;
+            transition: 0.2s;
             white-space: nowrap;
             text-decoration: none;
             display: inline-block;
@@ -56,10 +55,9 @@
         .btn-secondary { background-color: #363c4e; color: white; }
         .btn-secondary:hover { background-color: #4a5163; }
 
-        /* Conteneur du graphique */
         #chart-container { 
             width: 100%; 
-            flex-grow: 1; /* Prend tout l'espace sous l'en-tête */
+            flex-grow: 1; 
             border: 1px solid #363c4e; 
             border-radius: 4px;
             background-color: #131722;
@@ -70,9 +68,7 @@
 
     <div class="header">
         <button onclick="takeScreenshot()">📷 Capture le setup</button>
-        
         <h1>Expert Trading v2.0</h1>
-        
         <a href="analyse.html" class="btn-secondary">Voir les analyses 📊</a>
     </div>
 
@@ -81,36 +77,79 @@
     <script>
         let chart;
         let candleSeries;
+        let volumeSeries;
+        let smaSeries;
 
         try {
             const container = document.getElementById('chart-container');
+            
+            // 1. Création du graphique
             chart = LightweightCharts.createChart(container, {
                 layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
                 grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
-                timeScale: { timeVisible: true, secondsVisible: false }
+                timeScale: { timeVisible: true, secondsVisible: false },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             });
 
+            // 2. Ajout des séries (Bougies, Volume, Moyenne Mobile)
             candleSeries = chart.addCandlestickSeries({
                 upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
                 wickUpColor: '#26a69a', wickDownColor: '#ef5350'
             });
 
-            // Génération de données factices pour le rendu
+            smaSeries = chart.addLineSeries({
+                color: '#2962ff',
+                lineWidth: 2,
+                title: 'EMA 20'
+            });
+
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: { type: 'volume' },
+                priceScaleId: '', // Affichage sur une échelle séparée
+            });
+
+            // Configuration de l'échelle de volume pour qu'elle soit en bas
+            chart.priceScale('').applyOptions({
+                scaleMargins: { top: 0.8, bottom: 0 },
+            });
+
+            // 3. Génération de données réalistes
             const data = [];
+            const volumeData = [];
+            const smaData = [];
             const now = new Date();
-            for (let i = 30; i >= 0; i--) {
+            
+            let lastClose = 60000;
+            for (let i = 100; i >= 0; i--) {
                 const date = new Date();
                 date.setDate(now.getDate() - i);
-                data.push({
-                    time: date.toISOString().split('T')[0],
-                    open: 60000 + Math.random() * 2000,
-                    high: 62500 + Math.random() * 2000,
-                    low: 58000 + Math.random() * 2000,
-                    close: 61000 + Math.random() * 2000
+                const time = date.toISOString().split('T')[0];
+                
+                const open = lastClose;
+                const close = open + (Math.random() - 0.5) * 1000;
+                const high = Math.max(open, close) + Math.random() * 200;
+                const low = Math.min(open, close) - Math.random() * 200;
+                
+                data.push({ time, open, high, low, close });
+                
+                // Volume
+                volumeData.push({
+                    time,
+                    value: Math.random() * 1000,
+                    color: close >= open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
                 });
+
+                // Calcul simplifié d'une moyenne
+                smaData.push({ time, value: open - 200 });
+
+                lastClose = close;
             }
 
             candleSeries.setData(data);
+            volumeSeries.setData(volumeData);
+            smaSeries.setData(smaData);
+            
             chart.timeScale().fitContent();
             
         } catch (error) {
@@ -131,25 +170,22 @@
                         image: dataURL,
                         metadata: { 
                             date: new Date().toLocaleString(), 
-                            symbol: "BTC/USDT"
+                            symbol: "BTC/USDT",
+                            indicators: ["EMA20", "Volume"]
                         }
                     })
                 });
 
                 const result = await response.json();
-                if (result.success) alert("✅ Capture enregistrée !");
+                if (result.success) alert("✅ Setup et indicateurs enregistrés !");
             } catch (err) {
-                alert("❌ Erreur lors de l'enregistrement.");
+                alert("❌ Erreur de communication.");
             }
         }
 
-        // Gestion du redimensionnement
         window.addEventListener('resize', () => {
             const container = document.getElementById('chart-container');
-            chart.applyOptions({ 
-                width: container.clientWidth,
-                height: container.clientHeight 
-            });
+            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
         });
     </script>
 </body>
