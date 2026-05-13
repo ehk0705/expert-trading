@@ -2,59 +2,62 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Capture TradingView - Live</title>
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <title>Expert Trading - Live</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #131722; color: #d1d4dc; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        #chart-container { width: 90%; height: 500px; border: 1px solid #363c4e; border-radius: 8px; overflow: hidden; }
-        .controls { margin-top: 20px; display: flex; gap: 10px; }
-        button { padding: 12px 24px; font-size: 16px; cursor: pointer; border: none; border-radius: 4px; transition: 0.3s; }
-        .btn-capture { background: #2962ff; color: white; }
-        .btn-capture:hover { background: #1e4bd8; }
-        .btn-nav { background: #363c4e; color: white; text-decoration: none; padding: 12px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #131722; color: #d1d4dc; text-align: center; }
+        #chart-container { width: 90%; height: 500px; margin: 20px auto; border: 1px solid #363c4e; }
+        button { padding: 12px 25px; background: #2962ff; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #1e4bd8; }
     </style>
 </head>
 <body>
     <h1>Trading Station v2.0</h1>
     <div id="chart-container"></div>
-    
-    <div class="controls">
-        <button class="btn-capture" onclick="takeScreenshot()">Capturer le Graphique</button>
-        <a href="analyse.html" class="btn-nav">Aller à l'Analyse →</a>
-    </div>
+    <button onclick="takeScreenshot()">📷 Capturer le Setup</button>
+    <p><a href="analyse.html" style="color: #2962ff;">Accéder à l'interface d'analyse →</a></p>
 
     <script>
-        // Initialisation du graphique
-        const chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
-            layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
-            grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
-        });
-        const candleSeries = chart.addCandlestickSeries();
+        console.log("Initialisation du graphique...");
         
-        // Données fictives (à remplacer par votre flux API TradingView)
-        candleSeries.setData([
-            { time: '2024-05-01', open: 60000, high: 62000, low: 59000, close: 61000 },
-            { time: '2024-05-02', open: 61000, high: 63000, low: 60500, close: 62500 }
-        ]);
+        try {
+            const chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
+                layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
+            });
+            const candleSeries = chart.addCandlestickSeries();
+            
+            // Données de test pour vérifier que le rendu fonctionne
+            candleSeries.setData([
+                { time: '2024-05-10', open: 60000, high: 62000, low: 59000, close: 61000 },
+                { time: '2024-05-11', open: 61000, high: 63000, low: 60500, close: 62500 },
+                { time: '2024-05-12', open: 62500, high: 64000, low: 62000, close: 63500 }
+            ]);
+            console.log("Graphique rendu avec succès.");
+        } catch (e) {
+            console.error("Erreur de rendu graphique:", e);
+        }
 
         async function takeScreenshot() {
-            const canvas = chart.takeScreenshot();
+            console.log("Tentative de capture...");
+            const canvas = document.querySelector('canvas');
+            if (!canvas) {
+                alert("Erreur : Graphique non trouvé.");
+                return;
+            }
             const dataURL = canvas.toDataURL('image/png');
             
-            try {
-                const response = await fetch('/api/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        image: dataURL,
-                        metadata: { timestamp: new Date().toISOString(), type: "Manual Capture" }
-                    })
-                });
-                const result = await response.json();
-                if(result.success) alert("Screenshot sauvegardé sur le serveur !");
-            } catch (err) {
-                alert("Erreur lors de la sauvegarde.");
-            }
+            const response = await fetch('/api/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: dataURL,
+                    metadata: { date: new Date().toLocaleString(), asset: "BTC/USD" }
+                })
+            });
+            
+            const result = await response.json();
+            if(result.success) alert("Setup enregistré avec succès !");
         }
     </script>
 </body>
