@@ -1,2 +1,0 @@
-REM expert-trading
-REM Nouvelle version pour capturer et analyser des screenhots
