@@ -11,60 +11,76 @@
             background-color: #131722; 
             color: #d1d4dc; 
             margin: 0; 
+            padding: 10px;
             display: flex; 
             flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
             min-height: 100vh;
         }
 
-        h1 { margin-bottom: 20px; color: #2962ff; }
-
-        /* CRITIQUE : Le conteneur DOIT avoir une hauteur définie */
-        #chart-container { 
-            width: 90%; 
-            height: 600px; 
-            border: 1px solid #363c4e; 
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            background-color: #131722;
+        /* En-tête avec titre et boutons alignés */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 95%;
+            margin: 0 auto 15px auto;
+            padding: 10px 0;
         }
 
-        .controls { 
-            margin-top: 25px; 
+        h1 { 
+            margin: 0; 
+            color: #2962ff; 
+            font-size: 24px;
+        }
+
+        .nav-buttons { 
             display: flex; 
-            gap: 15px; 
+            gap: 10px; 
         }
 
-        button { 
-            padding: 12px 28px; 
-            font-size: 16px; 
+        /* Style des boutons */
+        button, .btn-secondary { 
+            padding: 8px 18px; 
+            font-size: 14px; 
             font-weight: bold;
             cursor: pointer; 
             border: none; 
-            border-radius: 6px; 
+            border-radius: 4px; 
             transition: all 0.2s ease;
-            background-color: #2962ff; 
-            color: white; 
+            display: inline-block;
+            text-decoration: none;
+            line-height: 1.4;
         }
 
-        button:hover { background-color: #1e4bd8; transform: translateY(-2px); }
-        button:active { transform: translateY(0); }
+        button { background-color: #2962ff; color: white; }
+        button:hover { background-color: #1e4bd8; }
 
-        .btn-secondary { background-color: #363c4e; text-decoration: none; display: inline-block; color: white; padding: 12px 28px; border-radius: 6px; }
+        .btn-secondary { background-color: #363c4e; color: white; }
         .btn-secondary:hover { background-color: #4a5163; }
+
+        /* Le graphique occupe le reste de l'espace */
+        #chart-container { 
+            width: 95%; 
+            flex-grow: 1; /* Remplit l'espace vertical disponible */
+            min-height: 75vh;
+            margin: 0 auto; 
+            border: 1px solid #363c4e; 
+            border-radius: 4px;
+            background-color: #131722;
+        }
     </style>
 </head>
 <body>
 
-    <h1>Expert Trading v2.0</h1>
+    <div class="header">
+        <h1>Expert Trading v2.0</h1>
+        <div class="nav-buttons">
+            <button onclick="takeScreenshot()">📷 Capture</button>
+            <a href="analyse.html" class="btn-secondary">📊 Analyse</a>
+        </div>
+    </div>
 
     <div id="chart-container"></div>
-
-    <div class="controls">
-        <button onclick="takeScreenshot()">📷 Capturer le Setup</button>
-        <a href="analyse.html" class="btn-secondary">Voir mes Analyses →</a>
-    </div>
 
     <script>
         console.log("Démarrage du moteur graphique...");
@@ -74,10 +90,11 @@
 
         try {
             // 1. Initialisation du graphique
-            chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
+            const container = document.getElementById('chart-container');
+            chart = LightweightCharts.createChart(container, {
                 layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
                 grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
-                timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false }
+                timeScale: { timeVisible: true, secondsVisible: false }
             });
 
             candleSeries = chart.addCandlestickSeries({
@@ -85,10 +102,10 @@
                 wickUpColor: '#26a69a', wickDownColor: '#ef5350'
             });
 
-            // 2. Génération de données dynamiques (20 dernières bougies)
+            // 2. Génération de données dynamiques
             const data = [];
             const now = new Date();
-            for (let i = 20; i >= 0; i--) {
+            for (let i = 30; i >= 0; i--) {
                 const date = new Date();
                 date.setDate(now.getDate() - i);
                 data.push({
@@ -103,23 +120,14 @@
             candleSeries.setData(data);
             chart.timeScale().fitContent();
             
-            console.log("Graphique opérationnel.");
-
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
-            document.getElementById('chart-container').innerHTML = "<p style='color:red; padding:20px;'>Erreur lors du chargement du graphique.</p>";
         }
 
         // 3. Fonction de Capture
         async function takeScreenshot() {
-            console.log("Déclenchement de la capture...");
-            
-            // On cible le canvas créé par la librairie
             const canvas = document.querySelector('#chart-container canvas');
-            if (!canvas) {
-                alert("Erreur : Impossible de trouver le graphique à capturer.");
-                return;
-            }
+            if (!canvas) return;
 
             const dataURL = canvas.toDataURL('image/png');
 
@@ -131,28 +139,24 @@
                         image: dataURL,
                         metadata: { 
                             date: new Date().toLocaleString(), 
-                            strategy: "Price Action Test",
                             symbol: "BTC/USDT"
                         }
                     })
                 });
 
                 const result = await response.json();
-                if (result.success) {
-                    alert("✅ Succès ! La capture a été enregistrée sur le serveur Render.");
-                } else {
-                    alert("❌ Erreur serveur lors de la sauvegarde.");
-                }
+                if (result.success) alert("✅ Capture enregistrée !");
             } catch (err) {
-                console.error("Erreur réseau :", err);
-                alert("❌ Impossible de contacter le serveur Render. Vérifiez votre connexion.");
+                alert("❌ Erreur de sauvegarde.");
             }
         }
 
-        // Ajuster le graphique si la fenêtre change de taille
+        // Redimensionnement automatique
         window.addEventListener('resize', () => {
+            const container = document.getElementById('chart-container');
             chart.applyOptions({ 
-                width: document.getElementById('chart-container').clientWidth 
+                width: container.clientWidth,
+                height: container.clientHeight 
             });
         });
     </script>
