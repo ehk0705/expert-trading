@@ -4,7 +4,6 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-// Render définit automatiquement la variable PORT
 const PORT = process.env.PORT || 3000;
 
 // Configuration des middlewares
@@ -15,7 +14,7 @@ app.use(express.json({ limit: '50mb' }));
 // Sert les fichiers statiques (index.html, analyse.html) depuis la racine
 app.use(express.static(__dirname));
 
-// Rend le dossier screenshots accessible publiquement pour l'interface d'analyse
+// Rend le dossier screenshots accessible publiquement
 app.use('/screenshots', express.static(path.join(__dirname, 'screenshots')));
 
 // Création récursive du dossier screenshots s'il n'existe pas
@@ -72,9 +71,9 @@ app.get('/api/list', (req, res) => {
     });
 });
 
+// Démarrage du serveur
 app.listen(PORT, () => {
     console.log(`===========================================`);
     console.log(`Serveur EXPERT-TRADING actif sur le port ${PORT}`);
-    console.log(`URL locale : http://localhost:${PORT}`);
     console.log(`===========================================`);
 });
