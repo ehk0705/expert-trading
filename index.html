@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading v2.0 - Interface Pro</title>
+    <title>Expert Trading v2.0 - Configuration Pro</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body { 
@@ -17,85 +17,150 @@
             overflow: hidden;
         }
 
-        /* BARRE D'OUTILS SUPÉRIEURE (Style TradingView) */
+        /* BARRE D'OUTILS SUPÉRIEURE */
         .toolbar {
             display: flex;
             align-items: center;
             background-color: #1e222d;
-            padding: 5px 15px;
+            padding: 8px 15px;
             border-bottom: 1px solid #363c4e;
             gap: 15px;
+            flex-wrap: nowrap;
         }
 
-        .tool-group { display: flex; align-items: center; gap: 8px; border-right: 1px solid #363c4e; padding-right: 15px; }
-        .tool-group:last-child { border-right: none; }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-right: 1px solid #363c4e;
+            padding-right: 15px;
+        }
 
-        h1 { font-size: 14px; color: #2962ff; margin: 0; white-space: nowrap; }
+        .control-group:last-child { border-right: none; }
+
+        label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #787b86;
+            white-space: nowrap;
+        }
+
+        h1 { 
+            font-size: 16px; 
+            color: #2962ff; 
+            margin: 0; 
+            white-space: nowrap; 
+            flex-grow: 1;
+            text-align: center;
+        }
 
         select, button, .btn-nav {
             background: #2a2e39;
             color: #d1d4dc;
             border: 1px solid #363c4e;
-            padding: 6px 12px;
+            padding: 6px 10px;
             border-radius: 4px;
             font-size: 12px;
             cursor: pointer;
+            outline: none;
         }
 
-        button:hover, select:hover { background: #363c4e; }
-        .btn-capture { background: #2962ff; color: white; border: none; font-weight: bold; }
+        select:hover, button:hover { background: #363c4e; border-color: #4a4f5d; }
+
+        .btn-capture { 
+            background: #2962ff; 
+            color: white; 
+            border: none; 
+            font-weight: bold;
+            padding: 8px 16px;
+        }
         .btn-capture:hover { background: #1e4bd8; }
 
         /* ZONE GRAPHIQUE */
-        #chart-container { flex-grow: 1; width: 100%; }
+        #chart-container { 
+            flex-grow: 1; 
+            width: 100%; 
+            background-color: #131722;
+        }
+
+        a { text-decoration: none; }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
-        <div class="tool-group">
+        <div class="control-group">
             <button class="btn-capture" onclick="takeScreenshot()">📷 Capture le setup</button>
         </div>
 
-        <div class="tool-group">
-            <h1>EXPERT TRADING v2.0</h1>
-        </div>
-
-        <div class="tool-group">
-            <select id="symbolSelect" onchange="updateSymbol()">
-                <option value="BTCUSDT">BTC/USDT</option>
-                <option value="ETHUSDT">ETH/USDT</option>
-                <option value="SOLUSDT">SOL/USDT</option>
+        <div class="control-group">
+            <label for="asset-selector">ACTIF :</label>
+            <select id="asset-selector" onchange="actualiserGraphique()">
+                <option value="BINANCE:BTCUSDT">Bitcoin / USDT</option>
+                <option value="COINBASE:BTCUSD">Bitcoin / USD</option>
+                <option value="BINANCE:ETHUSDT">Ethereum / USDT</option>
+                <option value="OANDA:XAUUSD">Or / Dollar - XAUUSD</option>
+                <option value="NASDAQ:AAPL">Apple - AAPL</option>
+                <option value="NASDAQ:TSLA">Tesla - TSLA</option>
+                <option value="NASDAQ:NVDA">Nvidia - NVDA</option>
+                <option value="NASDAQ:MSFT">Microsoft - MSFT</option>
+                <option value="NASDAQ:AMZN">Amazon - AMZN</option>
+                <option value="NASDAQ:GOOGL">Google - GOOGL</option>
+                <option value="SP:SPX">S&amp;P 500</option>
+                <option value="TVC:DXY">Dollar Index - DXY</option>
             </select>
-            <select>
-                <option>1H</option>
-                <option>4H</option>
-                <option selected>D</option>
+        </div>
+
+        <h1>EXPERT TRADING v2.0</h1>
+
+        <div class="control-group">
+            <label for="interval-selector">INTERVALLE :</label>
+            <select id="interval-selector" onchange="actualiserGraphique()">
+                <option value="1">1 minute</option>
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 heure</option>
+                <option value="240">4 heures</option>
+                <option value="D" selected>1 jour</option>
+                <option value="W">1 semaine</option>
+                <option value="M">1 mois</option>
             </select>
         </div>
 
-        <div class="tool-group">
-            <button onclick="toggleEMA()">📈 Indicateurs (EMA)</button>
+        <div class="control-group">
+            <label for="indicator-selector">INDICATEUR :</label>
+            <select id="indicator-selector" onchange="actualiserGraphique()">
+                <option value="EMA">EMA</option>
+                <option value="RSI">RSI</option>
+                <option value="MACD">MACD</option>
+                <option value="SUPERTREND">Supertrend</option>
+                <option value="BOLLINGER">Bandes de Bollinger</option>
+                <option value="ATR">ATR</option>
+                <option value="VOLUME">Volume</option>
+                <option value="LIQUIDITY_ZONE">Zones de liquidité</option>
+            </select>
         </div>
 
-        <div style="margin-left: auto;">
-            <a href="analyse.html" style="text-decoration:none;"><button class="btn-nav">Voir les analyses 📊</button></a>
+        <div>
+            <a href="analyse.html">
+                <button style="background: #363c4e;">Voir les analyses 📊</button>
+            </a>
         </div>
     </div>
 
     <div id="chart-container"></div>
 
     <script>
-        let chart, candleSeries, emaSeries, volumeSeries;
-        let showEMA = true;
+        let chart, candleSeries, mainIndicator;
 
-        function initChart() {
+        function init() {
             const container = document.getElementById('chart-container');
             chart = LightweightCharts.createChart(container, {
                 layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
                 grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
-                timeScale: { borderVisible: false },
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                timeScale: { borderVisible: false, timeVisible: true },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
             });
 
             candleSeries = chart.addCandlestickSeries({
@@ -103,52 +168,69 @@
                 wickUpColor: '#089981', wickDownColor: '#f23645'
             });
 
-            emaSeries = chart.addLineSeries({ color: '#2962ff', lineWidth: 2, title: 'EMA 20' });
-            
-            volumeSeries = chart.addHistogramSeries({
-                color: '#26a69a', priceFormat: { type: 'volume' }, priceScaleId: ''
-            });
-            chart.priceScale('').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+            // Par défaut on affiche une EMA
+            mainIndicator = chart.addLineSeries({ color: '#2962ff', lineWidth: 2, title: 'EMA' });
 
-            generateData();
+            actualiserGraphique(); // Premier chargement
         }
 
-        function generateData() {
-            const data = [], volData = [], emaData = [];
-            let price = 60000;
-            for (let i = 200; i >= 0; i--) {
-                const time = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        function actualiserGraphique() {
+            const asset = document.getElementById('asset-selector').value;
+            const interval = document.getElementById('interval-selector').value;
+            const indicator = document.getElementById('indicator-selector').value;
+
+            console.log(`Mise à jour : ${asset} en ${interval} avec ${indicator}`);
+
+            // Simulation de changement de données
+            const data = [];
+            const indicatorData = [];
+            let price = 50000 + Math.random() * 10000;
+            const now = new Date();
+
+            for (let i = 150; i >= 0; i--) {
+                const time = new Date(now.getTime() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
                 const open = price;
                 const close = open + (Math.random() - 0.5) * 1000;
                 data.push({ time, open, high: Math.max(open, close) + 200, low: Math.min(open, close) - 200, close });
-                volData.push({ time, value: Math.random() * 100, color: close > open ? '#08998155' : '#f2364555' });
-                emaData.push({ time, value: open - 100 });
+                indicatorData.push({ time, value: open - 150 });
                 price = close;
             }
-            candleSeries.setData(data);
-            volumeSeries.setData(volData);
-            emaSeries.setData(emaData);
-            chart.timeScale().fitContent();
-        }
 
-        function toggleEMA() {
-            showEMA = !showEMA;
-            emaSeries.applyOptions({ visible: showEMA });
+            candleSeries.setData(data);
+            mainIndicator.setData(indicatorData);
+            chart.timeScale().fitContent();
         }
 
         async function takeScreenshot() {
             const canvas = document.querySelector('#chart-container canvas');
+            if (!canvas) return;
+
             const dataURL = canvas.toDataURL('image/png');
-            const res = await fetch('/api/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: dataURL, metadata: { symbol: document.getElementById('symbolSelect').value } })
-            });
-            if (res.ok) alert("✅ Setup capturé !");
+            const asset = document.getElementById('asset-selector').value;
+
+            try {
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: dataURL,
+                        metadata: { 
+                            date: new Date().toLocaleString(), 
+                            asset: asset,
+                            interval: document.getElementById('interval-selector').value
+                        }
+                    })
+                });
+                if (response.ok) alert("✅ Setup " + asset + " enregistré !");
+            } catch (err) {
+                alert("❌ Erreur serveur.");
+            }
         }
 
-        window.onload = initChart;
-        window.onresize = () => chart.applyOptions({ width: innerWidth, height: innerHeight - 50 });
+        window.onload = init;
+        window.onresize = () => {
+            chart.applyOptions({ width: window.innerWidth, height: window.innerHeight - 60 });
+        };
     </script>
 </body>
 </html>
