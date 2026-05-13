@@ -11,30 +11,37 @@
         
         .header-pro {
             display: flex; align-items: center; justify-content: space-between;
-            background: var(--header-bg); padding: 8px 15px; border-bottom: 1px solid var(--border);
-            gap: 10px;
+            background: var(--header-bg); padding: 5px 10px; border-bottom: 1px solid var(--border);
+            gap: 5px;
         }
 
-        .control-group { display: flex; align-items: center; gap: 8px; border-right: 1px solid var(--border); padding-right: 12px; }
+        /* Réduction globale de la taille pour la barre d'outils */
+        .control-group { 
+            display: flex; align-items: center; gap: 5px; 
+            border-right: 1px solid var(--border); padding-right: 8px; 
+        }
         .control-group:last-child { border-right: none; }
 
-        label { font-size: 11px; font-weight: bold; color: #787b86; white-space: nowrap; }
+        /* Police réduite pour les labels */
+        label { font-size: 9px; font-weight: bold; color: #787b86; white-space: nowrap; }
         
         h1 { 
-            font-size: 16px; 
+            font-size: 13px; 
             margin: 0; 
             color: var(--yellow-pro); 
             font-weight: 800; 
             text-transform: uppercase;
-            letter-spacing: 1.5px; 
+            letter-spacing: 1px; 
             flex-grow: 1; 
             text-align: center;
-            text-shadow: 0px 0px 8px rgba(240, 185, 11, 0.3);
+            text-shadow: 0px 0px 5px rgba(240, 185, 11, 0.2);
+            min-width: 120px;
         }
         
+        /* Taille des listes et boutons réduite */
         select, button {
             background: #2b3139; color: #fff; border: 1px solid #474d57;
-            padding: 6px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; outline: none;
+            padding: 4px 6px; border-radius: 3px; font-size: 10px; cursor: pointer; outline: none;
         }
         
         select:hover, button:hover { background: #363c4e; }
@@ -48,40 +55,40 @@
 
     <div class="header-pro">
         <div class="control-group">
-            <button class="btn-capture" onclick="takeScreenshot()">📷 CAPTURER SETUP</button>
+            <button class="btn-capture" onclick="takeScreenshot()">📷 CAPTURE</button>
         </div>
 
         <div class="control-group">
             <label for="asset-selector">ACTIF :</label>
             <select id="asset-selector" onchange="actualiserGraphique()">
-                <option value="BINANCE:BTCUSDT">Bitcoin / USDT</option>
-                <option value="COINBASE:BTCUSD">Bitcoin / USD</option>
-                <option value="BINANCE:ETHUSDT">Ethereum / USDT</option>
-                <option value="OANDA:XAUUSD">Or / Dollar - XAUUSD</option>
-                <option value="NASDAQ:AAPL">Apple - AAPL</option>
-                <option value="NASDAQ:TSLA">Tesla - TSLA</option>
-                <option value="NASDAQ:NVDA">Nvidia - NVDA</option>
-                <option value="NASDAQ:MSFT">Microsoft - MSFT</option>
-                <option value="NASDAQ:AMZN">Amazon - AMZN</option>
-                <option value="NASDAQ:GOOGL">Google - GOOGL</option>
+                <option value="BINANCE:BTCUSDT">BTC/USDT</option>
+                <option value="COINBASE:BTCUSD">BTC/USD</option>
+                <option value="BINANCE:ETHUSDT">ETH/USDT</option>
+                <option value="OANDA:XAUUSD">OR (XAU)</option>
+                <option value="NASDAQ:AAPL">AAPL</option>
+                <option value="NASDAQ:TSLA">TSLA</option>
+                <option value="NASDAQ:NVDA">NVDA</option>
+                <option value="NASDAQ:MSFT">MSFT</option>
+                <option value="NASDAQ:AMZN">AMZN</option>
+                <option value="NASDAQ:GOOGL">GOOGL</option>
                 <option value="SP:SPX">S&P 500</option>
-                <option value="TVC:DXY">Dollar Index - DXY</option>
+                <option value="TVC:DXY">DXY</option>
             </select>
         </div>
 
         <div class="control-group">
             <label for="categorie-analyse-btc">ANALYSE :</label>
             <select id="categorie-analyse-btc">
-                <option value="macroeconomie">Macroéconomie</option>
-                <option value="monnaie_bitcoin">Monnaie Bitcoin</option>
-                <option value="donnees_on_chain">Données on-chain</option>
+                <option value="macro">Macro</option>
+                <option value="monnaie">Monnaie</option>
+                <option value="onchain">On-chain</option>
                 <option value="minage">Minage</option>
-                <option value="analyse_technique" selected>Analyse technique</option>
+                <option value="technique" selected>Technique</option>
                 <option value="derives">Dérivés</option>
-                <option value="liquidite_marche">Liquidité de marché</option>
-                <option value="institutionnel">Institutionnel</option>
+                <option value="liquidite">Liquidité</option>
+                <option value="inst">Inst.</option>
                 <option value="sentiment">Sentiment</option>
-                <option value="reglementation_risques">Réglementation et risques</option>
+                <option value="risques">Risques</option>
             </select>
         </div>
 
@@ -98,16 +105,16 @@
         </div>
 
         <div class="control-group">
-            <label for="indicator-selector">INDICATEUR :</label>
+            <label for="indicator-selector">IND :</label>
             <select id="indicator-selector" onchange="actualiserGraphique()">
                 <option value="EMA">EMA</option>
                 <option value="RSI">RSI</option>
                 <option value="MACD">MACD</option>
-                <option value="SUPERTREND">Supertrend</option>
-                <option value="BOLLINGER">Bandes de Bollinger</option>
+                <option value="SUPERTREND">ST</option>
+                <option value="BOLLINGER">BB</option>
                 <option value="ATR">ATR</option>
-                <option value="VOLUME">Volume</option>
-                <option value="LIQUIDITY_ZONE">Zones de liquidité</option>
+                <option value="VOLUME">VOL</option>
+                <option value="LIQUIDITY">LIQ</option>
             </select>
         </div>
 
@@ -127,7 +134,7 @@
         </div>
 
         <div>
-            <a href="analyse.html"><button>ANALYSES 📊</button></a>
+            <a href="analyse.html"><button>📊</button></a>
         </div>
     </div>
 
@@ -245,11 +252,11 @@
                     }
                 })
             });
-            alert("✅ Setup " + catText + " enregistré !");
+            alert("✅ Enregistré !");
         }
 
         window.onload = init;
-        window.onresize = () => chart.applyOptions({ width: window.innerWidth, height: window.innerHeight - 60 });
+        window.onresize = () => chart.applyOptions({ width: window.innerWidth, height: window.innerHeight - 50 });
     </script>
 </body>
 </html>
