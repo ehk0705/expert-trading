@@ -20,7 +20,6 @@
 
         label { font-size: 11px; font-weight: bold; color: #787b86; white-space: nowrap; }
         
-        /* Titre en JAUNE et GRAS */
         h1 { 
             font-size: 16px; 
             margin: 0; 
@@ -40,6 +39,14 @@
         
         select:hover, button:hover { background: #363c4e; }
         .btn-capture { background: var(--accent); border: none; font-weight: 600; }
+
+        .category-description {
+            font-size: 10px;
+            color: #787b86;
+            margin-top: 2px;
+            max-width: 200px;
+            line-height: 1.2;
+        }
 
         #chart-container { flex-grow: 1; width: 100%; }
         a { text-decoration: none; }
@@ -65,9 +72,27 @@
                 <option value="NASDAQ:MSFT">Microsoft - MSFT</option>
                 <option value="NASDAQ:AMZN">Amazon - AMZN</option>
                 <option value="NASDAQ:GOOGL">Google - GOOGL</option>
-                <option value="SP:SPX">S&amp;P 500</option>
+                <option value="SP:SPX">S&P 500</option>
                 <option value="TVC:DXY">Dollar Index - DXY</option>
             </select>
+        </div>
+
+        <div class="control-group">
+            <div>
+                <label for="categorie-analyse-btc">TYPE D'ANALYSE :</label>
+                <select id="categorie-analyse-btc">
+                    <option value="macroeconomie">Macroéconomie</option>
+                    <option value="monnaie_bitcoin">Monnaie Bitcoin</option>
+                    <option value="donnees_on_chain">Données on-chain</option>
+                    <option value="minage">Minage</option>
+                    <option value="analyse_technique" selected>Analyse technique</option>
+                    <option value="derives">Dérivés</option>
+                    <option value="liquidite_marche">Liquidité de marché</option>
+                    <option value="institutionnel">Institutionnel</option>
+                    <option value="sentiment">Sentiment</option>
+                    <option value="reglementation_risques">Réglementation et risques</option>
+                </select>
+            </div>
         </div>
 
         <h1>EXPERT TRADING PRO</h1>
@@ -119,6 +144,7 @@
                 crosshair: { mode: 0 }
             });
 
+            // Initialisation des bougies (Candlesticks)
             candleSeries = chart.addCandlestickSeries({
                 upColor: '#2ebd85', downColor: '#f6465d', borderVisible: false,
                 wickUpColor: '#2ebd85', wickDownColor: '#f6465d'
@@ -132,6 +158,7 @@
             const symbol = rawAsset.split(':')[1] || rawAsset;
             let interval = document.getElementById('interval-selector').value;
 
+            // Mapping des intervalles pour l'API Binance
             if(interval === "60") interval = "1h";
             if(interval === "240") interval = "4h";
             if(interval === "D") interval = "1d";
@@ -144,25 +171,41 @@
             try {
                 const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol.toUpperCase()}&interval=${interval}&limit=500`);
                 const history = await res.json();
+                
+                // Chargement des données historiques dans les bougies
                 candleSeries.setData(history.map(d => ({
-                    time: d[0] / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
+                    time: d[0] / 1000, 
+                    open: parseFloat(d[1]), 
+                    high: parseFloat(d[2]), 
+                    low: parseFloat(d[3]), 
+                    close: parseFloat(d[4])
                 })));
 
+                // Flux live via WebSocket
                 socket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
                 socket.onmessage = (e) => {
                     const k = JSON.parse(e.data).k;
                     candleSeries.update({
-                        time: k.t / 1000, open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c)
+                        time: k.t / 1000, 
+                        open: parseFloat(k.o), 
+                        high: parseFloat(k.h), 
+                        low: parseFloat(k.l), 
+                        close: parseFloat(k.c)
                     });
                 };
             } catch (err) {
-                console.log("Flux live indisponible pour cet actif sur Binance.");
+                console.log("Flux live indisponible ou erreur réseau.");
             }
         }
 
         async function takeScreenshot() {
             const canvas = document.querySelector('#chart-container canvas');
             const dataURL = canvas.toDataURL('image/png');
+            
+            // On récupère la catégorie d'analyse sélectionnée
+            const categoryElement = document.getElementById('categorie-analyse-btc');
+            const categoryValue = categoryElement.options[categoryElement.selectedIndex].text;
+
             await fetch('/api/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -171,15 +214,18 @@
                     metadata: { 
                         asset: document.getElementById('asset-selector').value,
                         interval: document.getElementById('interval-selector').value,
+                        category: categoryValue,
                         date: new Date().toLocaleString()
                     }
                 })
             });
-            alert("✅ Capture enregistrée !");
+            alert("✅ Capture enregistrée avec le type d'analyse !");
         }
 
         window.onload = init;
-        window.onresize = () => chart.applyOptions({ width: innerWidth, height: innerHeight - 60 });
+        window.onresize = () => {
+            chart.applyOptions({ width: window.innerWidth, height: window.innerHeight - 60 });
+        };
     </script>
 </body>
 </html>
