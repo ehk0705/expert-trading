@@ -40,14 +40,6 @@
         select:hover, button:hover { background: #363c4e; }
         .btn-capture { background: var(--accent); border: none; font-weight: 600; }
 
-        .category-description {
-            font-size: 10px;
-            color: #787b86;
-            margin-top: 2px;
-            max-width: 200px;
-            line-height: 1.2;
-        }
-
         #chart-container { flex-grow: 1; width: 100%; }
         a { text-decoration: none; }
     </style>
@@ -78,51 +70,45 @@
         </div>
 
         <div class="control-group">
-            <div>
-                <label for="categorie-analyse-btc">TYPE D'ANALYSE :</label>
-                <select id="categorie-analyse-btc">
-                    <option value="macroeconomie">Macroéconomie</option>
-                    <option value="monnaie_bitcoin">Monnaie Bitcoin</option>
-                    <option value="donnees_on_chain">Données on-chain</option>
-                    <option value="minage">Minage</option>
-                    <option value="analyse_technique" selected>Analyse technique</option>
-                    <option value="derives">Dérivés</option>
-                    <option value="liquidite_marche">Liquidité de marché</option>
-                    <option value="institutionnel">Institutionnel</option>
-                    <option value="sentiment">Sentiment</option>
-                    <option value="reglementation_risques">Réglementation et risques</option>
-                </select>
-            </div>
+            <label for="categorie-analyse-btc">ANALYSE :</label>
+            <select id="categorie-analyse-btc">
+                <option value="macroeconomie">Macroéconomie</option>
+                <option value="monnaie_bitcoin">Monnaie Bitcoin</option>
+                <option value="donnees_on_chain">Données on-chain</option>
+                <option value="minage">Minage</option>
+                <option value="analyse_technique" selected>Analyse technique</option>
+                <option value="derives">Dérivés</option>
+                <option value="liquidite_marche">Liquidité de marché</option>
+                <option value="institutionnel">Institutionnel</option>
+                <option value="sentiment">Sentiment</option>
+                <option value="reglementation_risques">Réglementation et risques</option>
+            </select>
         </div>
 
         <h1>EXPERT TRADING PRO</h1>
 
         <div class="control-group">
-            <label for="interval-selector">INTERVALLE :</label>
-            <select id="interval-selector" onchange="actualiserGraphique()">
-                <option value="1">1 minute</option>
-                <option value="5">5 minutes</option>
-                <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="60">1 heure</option>
-                <option value="240">4 heures</option>
-                <option value="D" selected>1 jour</option>
-                <option value="W">1 semaine</option>
-                <option value="M">1 mois</option>
+            <label for="chart-type-selector">STYLE :</label>
+            <select id="chart-type-selector" onchange="changerStyleGraphique()">
+                <option value="candles" selected>Bougies</option>
+                <option value="bars">Barres</option>
+                <option value="line">Ligne</option>
+                <option value="area">Aire</option>
             </select>
         </div>
 
         <div class="control-group">
-            <label for="indicator-selector">INDICATEUR :</label>
-            <select id="indicator-selector" onchange="actualiserGraphique()">
-                <option value="EMA">EMA</option>
-                <option value="RSI">RSI</option>
-                <option value="MACD">MACD</option>
-                <option value="SUPERTREND">Supertrend</option>
-                <option value="BOLLINGER">Bandes de Bollinger</option>
-                <option value="ATR">ATR</option>
-                <option value="VOLUME">Volume</option>
-                <option value="LIQUIDITY_ZONE">Zones de liquidité</option>
+            <label for="interval-selector">INT :</label>
+            <select id="interval-selector" onchange="actualiserGraphique()">
+                <option value="1">1m</option>
+                <option value="5">5m</option>
+                <option value="15">15m</option>
+                <option value="30">30m</option>
+                <option value="60">1h</option>
+                <option value="240">4h</option>
+                <option value="D" selected>1J</option>
+                <option value="W">1S</option>
+                <option value="M">1M</option>
             </select>
         </div>
 
@@ -134,7 +120,8 @@
     <div id="chart-container"></div>
 
     <script>
-        let chart, candleSeries, socket;
+        let chart, mainSeries, socket;
+        let currentData = []; 
 
         function init() {
             chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
@@ -144,13 +131,38 @@
                 crosshair: { mode: 0 }
             });
 
-            // Initialisation des bougies (Candlesticks)
-            candleSeries = chart.addCandlestickSeries({
-                upColor: '#2ebd85', downColor: '#f6465d', borderVisible: false,
-                wickUpColor: '#2ebd85', wickDownColor: '#f6465d'
-            });
-
+            changerStyleGraphique();
             actualiserGraphique();
+        }
+
+        function changerStyleGraphique() {
+            const type = document.getElementById('chart-type-selector').value;
+            if (mainSeries) chart.removeSeries(mainSeries);
+
+            const commonOptions = {
+                priceFormat: { type: 'price', precision: 2, minMove: 0.01 }
+            };
+
+            if (type === 'candles') {
+                mainSeries = chart.addCandlestickSeries({
+                    ...commonOptions,
+                    upColor: '#2ebd85', downColor: '#f6465d', borderVisible: false,
+                    wickUpColor: '#2ebd85', wickDownColor: '#f6465d'
+                });
+            } else if (type === 'bars') {
+                mainSeries = chart.addBarSeries({ ...commonOptions, upColor: '#2ebd85', downColor: '#f6465d' });
+            } else if (type === 'line') {
+                mainSeries = chart.addLineSeries({ ...commonOptions, color: '#2962ff', lineWidth: 2 });
+            } else if (type === 'area') {
+                mainSeries = chart.addAreaSeries({ 
+                    ...commonOptions, 
+                    topColor: 'rgba(41, 98, 255, 0.4)', 
+                    bottomColor: 'rgba(41, 98, 255, 0.0)', 
+                    lineColor: '#2962ff', lineWidth: 2 
+                });
+            }
+
+            if (currentData.length > 0) mainSeries.setData(currentData);
         }
 
         async function actualiserGraphique() {
@@ -158,12 +170,11 @@
             const symbol = rawAsset.split(':')[1] || rawAsset;
             let interval = document.getElementById('interval-selector').value;
 
-            // Mapping des intervalles pour l'API Binance
             if(interval === "60") interval = "1h";
-            if(interval === "240") interval = "4h";
-            if(interval === "D") interval = "1d";
-            if(interval === "W") interval = "1w";
-            if(interval === "M") interval = "1M";
+            else if(interval === "240") interval = "4h";
+            else if(interval === "D") interval = "1d";
+            else if(interval === "W") interval = "1w";
+            else if(interval === "M") interval = "1M";
             else if(!isNaN(interval)) interval = interval + "m";
 
             if (socket) socket.close();
@@ -172,39 +183,38 @@
                 const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol.toUpperCase()}&interval=${interval}&limit=500`);
                 const history = await res.json();
                 
-                // Chargement des données historiques dans les bougies
-                candleSeries.setData(history.map(d => ({
+                currentData = history.map(d => ({
                     time: d[0] / 1000, 
-                    open: parseFloat(d[1]), 
-                    high: parseFloat(d[2]), 
-                    low: parseFloat(d[3]), 
-                    close: parseFloat(d[4])
-                })));
+                    open: parseFloat(d[1]), high: parseFloat(d[2]), 
+                    low: parseFloat(d[3]), close: parseFloat(d[4]),
+                    value: parseFloat(d[4]) 
+                }));
 
-                // Flux live via WebSocket
+                mainSeries.setData(currentData);
+
                 socket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
                 socket.onmessage = (e) => {
                     const k = JSON.parse(e.data).k;
-                    candleSeries.update({
+                    const update = {
                         time: k.t / 1000, 
-                        open: parseFloat(k.o), 
-                        high: parseFloat(k.h), 
-                        low: parseFloat(k.l), 
-                        close: parseFloat(k.c)
-                    });
+                        open: parseFloat(k.o), high: parseFloat(k.h), 
+                        low: parseFloat(k.l), close: parseFloat(k.c),
+                        value: parseFloat(k.c)
+                    };
+                    mainSeries.update(update);
+                    
+                    const lastIdx = currentData.length - 1;
+                    if (currentData[lastIdx] && currentData[lastIdx].time === update.time) currentData[lastIdx] = update;
+                    else currentData.push(update);
                 };
-            } catch (err) {
-                console.log("Flux live indisponible ou erreur réseau.");
-            }
+            } catch (err) { console.log("Erreur API/Socket"); }
         }
 
         async function takeScreenshot() {
             const canvas = document.querySelector('#chart-container canvas');
             const dataURL = canvas.toDataURL('image/png');
-            
-            // On récupère la catégorie d'analyse sélectionnée
-            const categoryElement = document.getElementById('categorie-analyse-btc');
-            const categoryValue = categoryElement.options[categoryElement.selectedIndex].text;
+            const cat = document.getElementById('categorie-analyse-btc');
+            const catText = cat.options[cat.selectedIndex].text;
 
             await fetch('/api/save', {
                 method: 'POST',
@@ -214,18 +224,17 @@
                     metadata: { 
                         asset: document.getElementById('asset-selector').value,
                         interval: document.getElementById('interval-selector').value,
-                        category: categoryValue,
+                        category: catText,
+                        style: document.getElementById('chart-type-selector').value,
                         date: new Date().toLocaleString()
                     }
                 })
             });
-            alert("✅ Capture enregistrée avec le type d'analyse !");
+            alert("✅ Setup " + catText + " enregistré !");
         }
 
         window.onload = init;
-        window.onresize = () => {
-            chart.applyOptions({ width: window.innerWidth, height: window.innerHeight - 60 });
-        };
+        window.onresize = () => chart.applyOptions({ width: window.innerWidth, height: window.innerHeight - 60 });
     </script>
 </body>
 </html>
