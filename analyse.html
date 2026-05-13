@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Analyse des Stratégies - Expert Trading</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; margin: 0; background: #f0f2f5; }
+        .sidebar { width: 300px; border-right: 1px solid #ccc; overflow-y: auto; background: white; padding: 15px; }
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .thumb-container { margin-bottom: 15px; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .thumb-container:hover { border-color: #2962ff; }
+        .thumb-container img { width: 100%; border-radius: 4px; }
+        #viewer { max-width: 95%; max-height: 70vh; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-radius: 8px; background: white; }
+        .details { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; width: 80%; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        h2 { color: #131722; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Mes Captures</h2>
+        <div id="gallery-list">Chargement des images...</div>
+    </div>
+
+    <div class="main">
+        <img id="viewer" src="" alt="Sélectionnez une capture dans la liste">
+        <div class="details" id="image-info">
+            <h3>Détails du Setup</h3>
+            <p>Sélectionnez une image pour voir les analyses associées.</p>
+        </div>
+        <p><a href="index.html">← Retour au Graphique Live</a></p>
+    </div>
+
+    <script>
+        async function loadGallery() {
+            try {
+                const response = await fetch('/api/list');
+                const files = await response.json();
+                const list = document.getElementById('gallery-list');
+                list.innerHTML = "";
+
+                if (files.length === 0) {
+                    list.innerHTML = "Aucune capture trouvée.";
+                    return;
+                }
+
+                files.forEach(file => {
+                    const div = document.createElement('div');
+                    div.className = 'thumb-container';
+                    div.innerHTML = `<img src="/screenshots/${file}" alt="Capture">`;
+                    div.onclick = () => {
+                        document.getElementById('viewer').src = `/screenshots/${file}`;
+                        loadMetadata(file);
+                    };
+                    list.appendChild(div);
+                });
+            } catch (err) {
+                console.error("Erreur galerie:", err);
+            }
+        }
+
+        async function loadMetadata(filename) {
+            // Optionnel : charger le fichier .json associé si besoin
+            const infoDiv = document.getElementById('image-info');
+            infoDiv.innerHTML = `<h3>Fichier : ${filename}</h3><p>Analyse en cours de développement...</p>`;
+        }
+
+        loadGallery();
+    </script>
+</body>
+</html>
