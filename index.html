@@ -1,64 +1,67 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Expert Trading - Live</title>
-    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #131722; color: #d1d4dc; text-align: center; }
-        #chart-container { width: 90%; height: 500px; margin: 20px auto; border: 1px solid #363c4e; }
-        button { padding: 12px 25px; background: #2962ff; color: white; border: none; cursor: pointer; border-radius: 4px; }
-        button:hover { background: #1e4bd8; }
-    </style>
-</head>
-<body>
-    <h1>Trading Station v2.0</h1>
-    <div id="chart-container"></div>
-    <button onclick="takeScreenshot()">📷 Capturer le Setup</button>
-    <p><a href="analyse.html" style="color: #2962ff;">Accéder à l'interface d'analyse →</a></p>
+<script>
+    console.log("Initialisation du graphique dynamique...");
+    
+    try {
+        const chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
+            layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+            grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
+            timeScale: { timeVisible: true, secondsVisible: false }
+        });
+        
+        const candleSeries = chart.addCandlestickSeries();
+        
+        // Génération de données basées sur la date actuelle pour assurer la visibilité
+        const now = new Date();
+        const data = [];
+        for (let i = 20; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(now.getDate() - i);
+            data.push({
+                time: d.toISOString().split('T')[0],
+                open: 60000 + Math.random() * 1000,
+                high: 61500 + Math.random() * 1000,
+                low: 59000 + Math.random() * 1000,
+                close: 60500 + Math.random() * 1000
+            });
+        }
+        
+        candleSeries.setData(data);
+        chart.timeScale().fitContent(); // Force le zoom sur les données
+        
+        console.log("Données injectées avec succès.");
 
-    <script>
-        console.log("Initialisation du graphique...");
+    } catch (e) {
+        console.error("Erreur technique :", e);
+    }
+
+    async function takeScreenshot() {
+        // On récupère le premier canvas généré par la bibliothèque
+        const canvas = document.querySelector('#chart-container canvas');
+        if (!canvas) {
+            alert("Erreur : Canvas introuvable");
+            return;
+        }
+        
+        const dataURL = canvas.toDataURL('image/png');
         
         try {
-            const chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
-                layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
-                grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
-            });
-            const candleSeries = chart.addCandlestickSeries();
-            
-            // Données de test pour vérifier que le rendu fonctionne
-            candleSeries.setData([
-                { time: '2024-05-10', open: 60000, high: 62000, low: 59000, close: 61000 },
-                { time: '2024-05-11', open: 61000, high: 63000, low: 60500, close: 62500 },
-                { time: '2024-05-12', open: 62500, high: 64000, low: 62000, close: 63500 }
-            ]);
-            console.log("Graphique rendu avec succès.");
-        } catch (e) {
-            console.error("Erreur de rendu graphique:", e);
-        }
-
-        async function takeScreenshot() {
-            console.log("Tentative de capture...");
-            const canvas = document.querySelector('canvas');
-            if (!canvas) {
-                alert("Erreur : Graphique non trouvé.");
-                return;
-            }
-            const dataURL = canvas.toDataURL('image/png');
-            
             const response = await fetch('/api/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     image: dataURL,
-                    metadata: { date: new Date().toLocaleString(), asset: "BTC/USD" }
+                    metadata: { 
+                        date: new Date().toLocaleString(), 
+                        strategy: "Test Backtest",
+                        symbol: "BTC/USDT"
+                    }
                 })
             });
-            
             const result = await response.json();
-            if(result.success) alert("Setup enregistré avec succès !");
+            if(result.success) alert("📷 Capture réussie et enregistrée sur Render !");
+        } catch (err) {
+            console.error("Erreur upload:", err);
+            alert("Erreur de communication avec le serveur.");
         }
-    </script>
-</body>
-</html>
+    }
+</script>
