@@ -2,29 +2,21 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
-// --- NOUVEAU : INTEGRATION IA ---
 const OpenAI = require('openai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ---debug ---
-app.post('/api/analyze-vision', async (req, res) => {
-    const { fileName } = req.body;
-    const filePath = path.join(screenshotDir, fileName);
+// --- GESTION DU RÉPERTOIRE DE STOCKAGE ---
+// Déclaré en haut pour être accessible partout
+const screenshotDir = path.join(__dirname, 'screenshots');
 
-    console.log("--- DEBUG ANALYSE ---");
-    console.log("Fichier cible :", filePath);
-    console.log("Existe ? :", fs.existsSync(filePath));
-
-    if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: "Image introuvable." });
-    }
-    // ... reste du code
-	
+if (!fs.existsSync(screenshotDir)) {
+    fs.mkdirSync(screenshotDir, { recursive: true });
+    console.log("Dossier 'screenshots' initialisé.");
+}
 
 // --- CONFIGURATION IA ---
-// Assurez-vous d'ajouter OPENAI_API_KEY dans vos variables d'environnement sur Render
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY, 
 });
@@ -33,35 +25,32 @@ const openai = new OpenAI({
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
-
-// --- GESTION DU RÉPERTOIRE DE STOCKAGE ---
-const screenshotDir = path.join(__dirname, 'screenshots');
-
-if (!fs.existsSync(screenshotDir)) {
-    fs.mkdirSync(screenshotDir, { recursive: true });
-    console.log("Dossier 'screenshots' initialisé.");
-}
-
 app.use('/screenshots', express.static(screenshotDir));
 
 // --- ROUTES API ---
 
 /**
- * NOUVELLE API : Analyse de vision par IA
- * Lit le fichier image local et l'envoie à GPT-4o Vision
+ * API : Analyse de vision par IA
+ * Fusionnée avec le debug pour plus de clarté
  */
 app.post('/api/analyze-vision', async (req, res) => {
     const { fileName } = req.body;
     const filePath = path.join(screenshotDir, fileName);
 
+    console.log("--- TENTATIVE D'ANALYSE IA ---");
+    console.log("Fichier cible :", filePath);
+
     if (!fs.existsSync(filePath)) {
+        console.error("ERREUR : Fichier introuvable sur le disque.");
         return res.status(404).json({ error: "Image introuvable pour analyse." });
     }
 
     try {
-        // 1. Encodage de l'image locale en Base64 pour l'envoi
+        // 1. Encodage de l'image locale en Base64
         const imageBuffer = fs.readFileSync(filePath);
         const base64Image = imageBuffer.toString('base64');
+
+        console.log("Envoi à OpenAI GPT-4o...");
 
         // 2. Appel à l'API Vision
         const response = await openai.chat.completions.create({
@@ -69,7 +58,7 @@ app.post('/api/analyze-vision', async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: "Tu es un ingénieur financier expert en analyse technique. Ton rôle est d'analyser les graphiques TradingView."
+                    content: "Tu es un ingénieur financier expert. Analyse les graphiques TradingView avec précision."
                 },
                 {
                     role: "user",
@@ -79,9 +68,9 @@ app.post('/api/analyze-vision', async (req, res) => {
                             text: `Analyse ce graphique. Détecte la tendance, les supports/résistances et le momentum. 
                                    Réponds UNIQUEMENT en format JSON strict comme suit : 
                                    {
-                                     "decision": "ACHETER" ou "VENDRE" ou "ATTENDRE",
-                                     "confidence": (nombre entre 0 et 100),
-                                     "reasoning": "Explication technique courte (max 300 caractères)"
+                                     "decision": "ACHETER", "VENDRE" ou "ATTENDRE",
+                                     "confidence": 85,
+                                     "reasoning": "Texte court technique"
                                    }` 
                         },
                         {
@@ -95,20 +84,24 @@ app.post('/api/analyze-vision', async (req, res) => {
         });
 
         const analysis = JSON.parse(response.choices[0].message.content);
+        console.log("Analyse reçue avec succès :", analysis.decision);
 
-        // 3. Sauvegarder automatiquement l'analyse dans le fichier JSON correspondant
+        // 3. Sauvegarde dans le fichier JSON correspondant
         const jsonPath = filePath.replace('.png', '.json');
         if (fs.existsSync(jsonPath)) {
             const fileData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-            fileData.ai_analysis = analysis; // On stocke l'analyse pour la retrouver plus tard
+            fileData.ai_analysis = analysis; 
             fs.writeFileSync(jsonPath, JSON.stringify(fileData, null, 2));
         }
 
         res.json({ success: true, analysis });
 
     } catch (error) {
-        console.error("Erreur Vision IA:", error);
-        res.status(500).json({ error: "Échec de l'analyse IA." });
+        console.error("ERREUR CRITIQUE API VISION :", error.message);
+        res.status(500).json({ 
+            error: "Échec de l'analyse IA.", 
+            details: error.message 
+        });
     }
 });
 
@@ -126,7 +119,7 @@ app.get('/api/list', (req, res) => {
 });
 
 /**
- * API : Sauvegarder une capture et ses métadonnées
+ * API : Sauvegarder une capture
  */
 app.post('/api/save', (req, res) => {
     const { image, metadata } = req.body;
@@ -144,13 +137,13 @@ app.post('/api/save', (req, res) => {
             fs.writeFileSync(jsonPath, JSON.stringify(metadata, null, 2));
             res.json({ success: true, filename: fileName });
         } catch (jsonErr) {
-            res.status(500).json({ error: "Image sauvegardée, erreur JSON." });
+            res.status(500).json({ error: "Erreur écriture métadonnées." });
         }
     });
 });
 
 /**
- * API : Mettre à jour les notes d'une analyse technique
+ * API : Mettre à jour les notes
  */
 app.post('/api/update-notes', (req, res) => {
     const { fileName, notes } = req.body;
@@ -163,7 +156,7 @@ app.post('/api/update-notes', (req, res) => {
             fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
             res.json({ success: true });
         } catch (err) {
-            res.status(500).json({ error: "Erreur lors de la mise à jour des notes." });
+            res.status(500).json({ error: "Erreur lors de la mise à jour." });
         }
     } else {
         res.status(404).json({ error: "Fichier introuvable." });
@@ -175,6 +168,6 @@ app.listen(PORT, () => {
     console.log(`===========================================`);
     console.log(`🚀 EXPERT TRADING PRO v2.0 - IA READY`);
     console.log(`📍 Port : ${PORT}`);
-    console.log(`🤖 IA : OpenAI GPT-4o Vision activée`);
+    console.log(`📁 Stockage : ${screenshotDir}`);
     console.log(`===========================================`);
 });
