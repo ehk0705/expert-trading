@@ -3,172 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading v2.0</title>
+    <title>Expert Trading v2.0 - Interface Pro</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, sans-serif;
             background-color: #131722; 
             color: #d1d4dc; 
             margin: 0; 
-            padding: 0;
             display: flex; 
             flex-direction: column; 
             height: 100vh;
             overflow: hidden;
         }
 
-        /* Barre d'outils supérieure */
-        .header {
+        /* BARRE D'OUTILS SUPÉRIEURE (Style TradingView) */
+        .toolbar {
             display: flex;
-            justify-content: space-between;
             align-items: center;
             background-color: #1e222d;
-            padding: 10px 20px;
+            padding: 5px 15px;
             border-bottom: 1px solid #363c4e;
+            gap: 15px;
         }
 
-        h1 { 
-            margin: 0; 
-            color: #d1d4dc; 
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 1px;
-        }
+        .tool-group { display: flex; align-items: center; gap: 8px; border-right: 1px solid #363c4e; padding-right: 15px; }
+        .tool-group:last-child { border-right: none; }
 
-        /* Style des boutons */
-        .btn {
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
+        h1 { font-size: 14px; color: #2962ff; margin: 0; white-space: nowrap; }
+
+        select, button, .btn-nav {
+            background: #2a2e39;
+            color: #d1d4dc;
+            border: 1px solid #363c4e;
+            padding: 6px 12px;
             border-radius: 4px;
-            border: none;
-            transition: 0.2s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 12px;
+            cursor: pointer;
         }
 
-        .btn-capture { background-color: #2962ff; color: white; }
-        .btn-capture:hover { background-color: #1e4bd8; }
+        button:hover, select:hover { background: #363c4e; }
+        .btn-capture { background: #2962ff; color: white; border: none; font-weight: bold; }
+        .btn-capture:hover { background: #1e4bd8; }
 
-        .btn-analyse { background-color: #363c4e; color: white; }
-        .btn-analyse:hover { background-color: #4a5163; }
-
-        /* Zone du graphique */
-        #chart-container { 
-            flex-grow: 1;
-            width: 100%;
-        }
+        /* ZONE GRAPHIQUE */
+        #chart-container { flex-grow: 1; width: 100%; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <button class="btn btn-capture" onclick="takeScreenshot()">📷 Capture le setup</button>
-        
-        <h1>EXPERT TRADING V2.0</h1>
-        
-        <a href="analyse.html" class="btn btn-analyse">Voir les analyses 📊</a>
+    <div class="toolbar">
+        <div class="tool-group">
+            <button class="btn-capture" onclick="takeScreenshot()">📷 Capture le setup</button>
+        </div>
+
+        <div class="tool-group">
+            <h1>EXPERT TRADING v2.0</h1>
+        </div>
+
+        <div class="tool-group">
+            <select id="symbolSelect" onchange="updateSymbol()">
+                <option value="BTCUSDT">BTC/USDT</option>
+                <option value="ETHUSDT">ETH/USDT</option>
+                <option value="SOLUSDT">SOL/USDT</option>
+            </select>
+            <select>
+                <option>1H</option>
+                <option>4H</option>
+                <option selected>D</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <button onclick="toggleEMA()">📈 Indicateurs (EMA)</button>
+        </div>
+
+        <div style="margin-left: auto;">
+            <a href="analyse.html" style="text-decoration:none;"><button class="btn-nav">Voir les analyses 📊</button></a>
+        </div>
     </div>
 
     <div id="chart-container"></div>
 
     <script>
-        let chart;
-        let candleSeries;
-        let volumeSeries;
-        let emaSeries;
+        let chart, candleSeries, emaSeries, volumeSeries;
+        let showEMA = true;
 
-        try {
+        function initChart() {
             const container = document.getElementById('chart-container');
-            
             chart = LightweightCharts.createChart(container, {
                 layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
                 grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
-                timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false },
-                rightPriceScale: { borderVisible: false },
+                timeScale: { borderVisible: false },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
             });
 
-            // Bougies (Style TradingView)
             candleSeries = chart.addCandlestickSeries({
                 upColor: '#089981', downColor: '#f23645', borderVisible: false,
                 wickUpColor: '#089981', wickDownColor: '#f23645'
             });
 
-            // Indicateur EMA 20 (Bleu)
-            emaSeries = chart.addLineSeries({
-                color: '#2962ff', lineWidth: 2, title: 'EMA 20', lastValueVisible: false, priceLineVisible: false
-            });
-
-            // Volume (Histogramme)
+            emaSeries = chart.addLineSeries({ color: '#2962ff', lineWidth: 2, title: 'EMA 20' });
+            
             volumeSeries = chart.addHistogramSeries({
                 color: '#26a69a', priceFormat: { type: 'volume' }, priceScaleId: ''
             });
-
             chart.priceScale('').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
 
-            // Données simulées pour l'affichage immédiat
-            const data = [];
-            const volumeData = [];
-            const emaData = [];
-            let lastClose = 62000;
-            const now = new Date();
+            generateData();
+        }
 
-            for (let i = 150; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(now.getDate() - i);
-                const time = date.toISOString().split('T')[0];
-                
-                const open = lastClose;
-                const close = open + (Math.random() - 0.5) * 1200;
-                const high = Math.max(open, close) + Math.random() * 300;
-                const low = Math.min(open, close) - Math.random() * 300;
-                
-                data.push({ time, open, high, low, close });
-                volumeData.push({ 
-                    time, value: Math.random() * 500, 
-                    color: close >= open ? 'rgba(8, 153, 129, 0.4)' : 'rgba(242, 54, 69, 0.4)' 
-                });
-                emaData.push({ time, value: open - 150 });
-                lastClose = close;
+        function generateData() {
+            const data = [], volData = [], emaData = [];
+            let price = 60000;
+            for (let i = 200; i >= 0; i--) {
+                const time = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                const open = price;
+                const close = open + (Math.random() - 0.5) * 1000;
+                data.push({ time, open, high: Math.max(open, close) + 200, low: Math.min(open, close) - 200, close });
+                volData.push({ time, value: Math.random() * 100, color: close > open ? '#08998155' : '#f2364555' });
+                emaData.push({ time, value: open - 100 });
+                price = close;
             }
-
             candleSeries.setData(data);
-            volumeSeries.setData(volumeData);
+            volumeSeries.setData(volData);
             emaSeries.setData(emaData);
             chart.timeScale().fitContent();
+        }
 
-        } catch (e) { console.error(e); }
+        function toggleEMA() {
+            showEMA = !showEMA;
+            emaSeries.applyOptions({ visible: showEMA });
+        }
 
         async function takeScreenshot() {
             const canvas = document.querySelector('#chart-container canvas');
-            if (!canvas) return;
-
             const dataURL = canvas.toDataURL('image/png');
-            try {
-                const response = await fetch('/api/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        image: dataURL,
-                        metadata: { date: new Date().toLocaleString(), symbol: "BTC/USDT" }
-                    })
-                });
-                const result = await response.json();
-                if (result.success) alert("✅ Capture enregistrée sur Render !");
-            } catch (err) { alert("❌ Erreur de connexion au serveur."); }
+            const res = await fetch('/api/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataURL, metadata: { symbol: document.getElementById('symbolSelect').value } })
+            });
+            if (res.ok) alert("✅ Setup capturé !");
         }
 
-        window.addEventListener('resize', () => {
-            chart.applyOptions({ 
-                width: container.clientWidth, 
-                height: container.clientHeight 
-            });
-        });
+        window.onload = initChart;
+        window.onresize = () => chart.applyOptions({ width: innerWidth, height: innerHeight - 50 });
     </script>
 </body>
 </html>
