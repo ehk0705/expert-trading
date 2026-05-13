@@ -98,6 +98,20 @@
         </div>
 
         <div class="control-group">
+            <label for="indicator-selector">INDICATEUR :</label>
+            <select id="indicator-selector" onchange="actualiserGraphique()">
+                <option value="EMA">EMA</option>
+                <option value="RSI">RSI</option>
+                <option value="MACD">MACD</option>
+                <option value="SUPERTREND">Supertrend</option>
+                <option value="BOLLINGER">Bandes de Bollinger</option>
+                <option value="ATR">ATR</option>
+                <option value="VOLUME">Volume</option>
+                <option value="LIQUIDITY_ZONE">Zones de liquidité</option>
+            </select>
+        </div>
+
+        <div class="control-group">
             <label for="interval-selector">INT :</label>
             <select id="interval-selector" onchange="actualiserGraphique()">
                 <option value="1">1m</option>
@@ -226,6 +240,7 @@
                         interval: document.getElementById('interval-selector').value,
                         category: catText,
                         style: document.getElementById('chart-type-selector').value,
+                        indicator: document.getElementById('indicator-selector').value,
                         date: new Date().toLocaleString()
                     }
                 })
