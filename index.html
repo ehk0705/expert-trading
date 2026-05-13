@@ -1,67 +1,160 @@
-<script>
-    console.log("Initialisation du graphique dynamique...");
-    
-    try {
-        const chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
-            layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
-            grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
-            timeScale: { timeVisible: true, secondsVisible: false }
-        });
-        
-        const candleSeries = chart.addCandlestickSeries();
-        
-        // Génération de données basées sur la date actuelle pour assurer la visibilité
-        const now = new Date();
-        const data = [];
-        for (let i = 20; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(now.getDate() - i);
-            data.push({
-                time: d.toISOString().split('T')[0],
-                open: 60000 + Math.random() * 1000,
-                high: 61500 + Math.random() * 1000,
-                low: 59000 + Math.random() * 1000,
-                close: 60500 + Math.random() * 1000
-            });
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expert Trading - Station de Capture</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #131722; 
+            color: #d1d4dc; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            min-height: 100vh;
         }
-        
-        candleSeries.setData(data);
-        chart.timeScale().fitContent(); // Force le zoom sur les données
-        
-        console.log("Données injectées avec succès.");
 
-    } catch (e) {
-        console.error("Erreur technique :", e);
-    }
+        h1 { margin-bottom: 20px; color: #2962ff; }
 
-    async function takeScreenshot() {
-        // On récupère le premier canvas généré par la bibliothèque
-        const canvas = document.querySelector('#chart-container canvas');
-        if (!canvas) {
-            alert("Erreur : Canvas introuvable");
-            return;
+        /* CRITIQUE : Le conteneur DOIT avoir une hauteur définie */
+        #chart-container { 
+            width: 90%; 
+            height: 600px; 
+            border: 1px solid #363c4e; 
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            background-color: #131722;
         }
-        
-        const dataURL = canvas.toDataURL('image/png');
-        
+
+        .controls { 
+            margin-top: 25px; 
+            display: flex; 
+            gap: 15px; 
+        }
+
+        button { 
+            padding: 12px 28px; 
+            font-size: 16px; 
+            font-weight: bold;
+            cursor: pointer; 
+            border: none; 
+            border-radius: 6px; 
+            transition: all 0.2s ease;
+            background-color: #2962ff; 
+            color: white; 
+        }
+
+        button:hover { background-color: #1e4bd8; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+
+        .btn-secondary { background-color: #363c4e; text-decoration: none; display: inline-block; color: white; padding: 12px 28px; border-radius: 6px; }
+        .btn-secondary:hover { background-color: #4a5163; }
+    </style>
+</head>
+<body>
+
+    <h1>Expert Trading v2.0</h1>
+
+    <div id="chart-container"></div>
+
+    <div class="controls">
+        <button onclick="takeScreenshot()">📷 Capturer le Setup</button>
+        <a href="analyse.html" class="btn-secondary">Voir mes Analyses →</a>
+    </div>
+
+    <script>
+        console.log("Démarrage du moteur graphique...");
+
+        let chart;
+        let candleSeries;
+
         try {
-            const response = await fetch('/api/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image: dataURL,
-                    metadata: { 
-                        date: new Date().toLocaleString(), 
-                        strategy: "Test Backtest",
-                        symbol: "BTC/USDT"
-                    }
-                })
+            // 1. Initialisation du graphique
+            chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
+                layout: { background: { color: '#131722' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#2b2b43' }, horzLines: { color: '#2b2b43' } },
+                timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false }
             });
-            const result = await response.json();
-            if(result.success) alert("📷 Capture réussie et enregistrée sur Render !");
-        } catch (err) {
-            console.error("Erreur upload:", err);
-            alert("Erreur de communication avec le serveur.");
+
+            candleSeries = chart.addCandlestickSeries({
+                upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
+                wickUpColor: '#26a69a', wickDownColor: '#ef5350'
+            });
+
+            // 2. Génération de données dynamiques (20 dernières bougies)
+            const data = [];
+            const now = new Date();
+            for (let i = 20; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(now.getDate() - i);
+                data.push({
+                    time: date.toISOString().split('T')[0],
+                    open: 60000 + Math.random() * 2000,
+                    high: 62500 + Math.random() * 2000,
+                    low: 58000 + Math.random() * 2000,
+                    close: 61000 + Math.random() * 2000
+                });
+            }
+
+            candleSeries.setData(data);
+            chart.timeScale().fitContent();
+            
+            console.log("Graphique opérationnel.");
+
+        } catch (error) {
+            console.error("Erreur d'initialisation :", error);
+            document.getElementById('chart-container').innerHTML = "<p style='color:red; padding:20px;'>Erreur lors du chargement du graphique.</p>";
         }
-    }
-</script>
+
+        // 3. Fonction de Capture
+        async function takeScreenshot() {
+            console.log("Déclenchement de la capture...");
+            
+            // On cible le canvas créé par la librairie
+            const canvas = document.querySelector('#chart-container canvas');
+            if (!canvas) {
+                alert("Erreur : Impossible de trouver le graphique à capturer.");
+                return;
+            }
+
+            const dataURL = canvas.toDataURL('image/png');
+
+            try {
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: dataURL,
+                        metadata: { 
+                            date: new Date().toLocaleString(), 
+                            strategy: "Price Action Test",
+                            symbol: "BTC/USDT"
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert("✅ Succès ! La capture a été enregistrée sur le serveur Render.");
+                } else {
+                    alert("❌ Erreur serveur lors de la sauvegarde.");
+                }
+            } catch (err) {
+                console.error("Erreur réseau :", err);
+                alert("❌ Impossible de contacter le serveur Render. Vérifiez votre connexion.");
+            }
+        }
+
+        // Ajuster le graphique si la fenêtre change de taille
+        window.addEventListener('resize', () => {
+            chart.applyOptions({ 
+                width: document.getElementById('chart-container').clientWidth 
+            });
+        });
+    </script>
+</body>
+</html>
