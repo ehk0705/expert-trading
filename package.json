@@ -1,0 +1,26 @@
+{
+  "name": "trading-capture-app",
+  "version": "1.0.0",
+  "description": "App de capture et analyse TradingView",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ehk0705/expert-trading.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ehk0705/expert-trading/issues"
+  },
+  "homepage": "https://github.com/ehk0705/expert-trading#readme"
+}
