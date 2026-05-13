@@ -1,0 +1,55 @@
+<div class="info-panel" id="image-info">
+    <h3 style="color: #f0b90b; margin-top: 0;">Détails & Analyse Technique</h3>
+    <div id="meta-content">
+        <p id="placeholder-text">Sélectionnez une capture à gauche pour l'analyser.</p>
+    </div>
+    
+    <div id="notes-section" style="display: none; margin-top: 20px; border-top: 1px solid #363c4e; padding-top: 15px;">
+        <label style="display: block; margin-bottom: 10px; color: #787b86; font-size: 13px;">Notes de l'ingénieur :</label>
+        <textarea id="user-notes" style="width: 100%; height: 120px; background: #2a2e39; color: #d1d4dc; border: 1px solid #474d57; border-radius: 4px; padding: 10px; font-family: inherit; resize: vertical;"></textarea>
+        <button onclick="saveNotes()" style="margin-top: 10px; background: #2962ff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Enregistrer l'analyse</button>
+    </div>
+</div>
+
+<script>
+    let currentFileName = "";
+
+    // ... (gardez votre fonction loadGallery existante) ...
+
+    async function selectImage(fileName) {
+        currentFileName = fileName;
+        viewer.src = `/screenshots/${fileName}`;
+        viewer.style.display = "block";
+        document.getElementById('notes-section').style.display = "block";
+        
+        try {
+            const jsonName = fileName.replace('.png', '.json');
+            const res = await fetch(`/screenshots/${jsonName}`);
+            if (res.ok) {
+                const meta = await res.json();
+                document.getElementById('meta-content').innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                        <p><strong>Date :</strong> ${meta.date || 'N/A'}</p>
+                        <p><strong>Actif :</strong> <span style="color:#f0b90b">${meta.asset || 'N/A'}</span></p>
+                        <p><strong>Intervalle :</strong> ${meta.interval || 'N/A'}</p>
+                    </div>
+                `;
+                document.getElementById('user-notes').value = meta.notes || "";
+            }
+        } catch (e) { console.error("Erreur meta:", e); }
+    }
+
+    async function saveNotes() {
+        const notes = document.getElementById('user-notes').value;
+        const jsonName = currentFileName.replace('.png', '.json');
+
+        try {
+            const response = await fetch('/api/update-notes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: jsonName, notes: notes })
+            });
+            if (response.ok) alert("✅ Analyse sauvegardée !");
+        } catch (err) { alert("❌ Erreur lors de la sauvegarde."); }
+    }
+</script>
