@@ -8,6 +8,21 @@ const OpenAI = require('openai');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ---debug ---
+app.post('/api/analyze-vision', async (req, res) => {
+    const { fileName } = req.body;
+    const filePath = path.join(screenshotDir, fileName);
+
+    console.log("--- DEBUG ANALYSE ---");
+    console.log("Fichier cible :", filePath);
+    console.log("Existe ? :", fs.existsSync(filePath));
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "Image introuvable." });
+    }
+    // ... reste du code
+	
+
 // --- CONFIGURATION IA ---
 // Assurez-vous d'ajouter OPENAI_API_KEY dans vos variables d'environnement sur Render
 const openai = new OpenAI({
