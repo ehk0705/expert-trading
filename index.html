@@ -6,7 +6,7 @@
     <title>Expert Trading Pro v2.0 - Full Interface</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
-        :root { --bg-color: #0b0e11; --header-bg: #1e2329; --text-main: #eaecef; --accent: #2962ff; --border: #363c4e; }
+        :root { --bg-color: #0b0e11; --header-bg: #1e2329; --text-main: #eaecef; --accent: #2962ff; --border: #363c4e; --yellow-pro: #f0b90b; }
         body { font-family: 'Inter', sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
         .header-pro {
@@ -19,7 +19,19 @@
         .control-group:last-child { border-right: none; }
 
         label { font-size: 11px; font-weight: bold; color: #787b86; white-space: nowrap; }
-        h1 { font-size: 14px; margin: 0; color: var(--accent); letter-spacing: 1px; flex-grow: 1; text-align: center; }
+        
+        /* Titre en JAUNE et GRAS */
+        h1 { 
+            font-size: 16px; 
+            margin: 0; 
+            color: var(--yellow-pro); 
+            font-weight: 800; 
+            text-transform: uppercase;
+            letter-spacing: 1.5px; 
+            flex-grow: 1; 
+            text-align: center;
+            text-shadow: 0px 0px 8px rgba(240, 185, 11, 0.3);
+        }
         
         select, button {
             background: #2b3139; color: #fff; border: 1px solid #474d57;
@@ -58,7 +70,7 @@
             </select>
         </div>
 
-        <h1>EXPERT TRADING v2.0</h1>
+        <h1>EXPERT TRADING PRO</h1>
 
         <div class="control-group">
             <label for="interval-selector">INTERVALLE :</label>
@@ -120,7 +132,6 @@
             const symbol = rawAsset.split(':')[1] || rawAsset;
             let interval = document.getElementById('interval-selector').value;
 
-            // Mapping pour Binance
             if(interval === "60") interval = "1h";
             if(interval === "240") interval = "4h";
             if(interval === "D") interval = "1d";
@@ -131,14 +142,12 @@
             if (socket) socket.close();
 
             try {
-                // Historique
                 const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol.toUpperCase()}&interval=${interval}&limit=500`);
                 const history = await res.json();
                 candleSeries.setData(history.map(d => ({
                     time: d[0] / 1000, open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4])
                 })));
 
-                // Flux Temps Réel
                 socket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
                 socket.onmessage = (e) => {
                     const k = JSON.parse(e.data).k;
@@ -147,7 +156,7 @@
                     });
                 };
             } catch (err) {
-                console.log("Actif non disponible en live sur Binance, passage en mode simulation.");
+                console.log("Flux live indisponible pour cet actif sur Binance.");
             }
         }
 
