@@ -4,40 +4,77 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
+// Render définit automatiquement la variable PORT
 const PORT = process.env.PORT || 3000;
 
+// Configuration des middlewares
 app.use(cors());
+// Augmentation de la limite pour supporter les captures d'écran haute résolution
 app.use(express.json({ limit: '50mb' }));
 
-// MODIFICATION ICI : On sert les fichiers depuis la racine (.) et non plus /public
+// Sert les fichiers statiques (index.html, analyse.html) depuis la racine
 app.use(express.static(__dirname));
 
-// Gestion du dossier screenshots
+// Rend le dossier screenshots accessible publiquement pour l'interface d'analyse
+app.use('/screenshots', express.static(path.join(__dirname, 'screenshots')));
+
+// Création récursive du dossier screenshots s'il n'existe pas
 const screenshotDir = path.join(__dirname, 'screenshots');
 if (!fs.existsSync(screenshotDir)) {
-    fs.mkdirSync(screenshotDir);
+    fs.mkdirSync(screenshotDir, { recursive: true });
 }
 
-// API : Sauvegarder
+// --- ROUTES API ---
+
+// API : Sauvegarder la capture et les métadonnées
 app.post('/api/save', (req, res) => {
     const { image, metadata } = req.body;
+    
+    if (!image) {
+        return res.status(400).json({ error: "Aucune image reçue" });
+    }
+
     const base64Data = image.replace(/^data:image\/png;base64,/, "");
-    const filename = `chart_${Date.now()}.png`;
+    const timestamp = Date.now();
+    const filename = `chart_${timestamp}.png`;
     const filePath = path.join(screenshotDir, filename);
 
+    // Sauvegarde de l'image
     fs.writeFile(filePath, base64Data, 'base64', (err) => {
-        if (err) return res.status(500).json({ error: "Erreur écriture" });
-        fs.writeFileSync(filePath.replace('.png', '.json'), JSON.stringify(metadata, null, 2));
-        res.json({ success: true, filename });
+        if (err) {
+            console.error("Erreur d'écriture image:", err);
+            return res.status(500).json({ error: "Erreur lors de l'enregistrement de l'image" });
+        }
+        
+        // Sauvegarde des métadonnées (JSON)
+        try {
+            const jsonPath = filePath.replace('.png', '.json');
+            fs.writeFileSync(jsonPath, JSON.stringify(metadata, null, 2));
+            res.json({ success: true, filename });
+        } catch (jsonErr) {
+            console.error("Erreur écriture JSON:", jsonErr);
+            res.status(500).json({ error: "Image sauvée, mais erreur sur les métadonnées" });
+        }
     });
 });
 
-// API : Lister
+// API : Lister les fichiers pour l'interface d'analyse
 app.get('/api/list', (req, res) => {
     fs.readdir(screenshotDir, (err, files) => {
-        if (err) return res.status(500).json({ error: "Erreur lecture" });
-        res.json(files.filter(f => f.endsWith('.png')));
+        if (err) {
+            return res.status(500).json({ error: "Impossible de lire le dossier de captures" });
+        }
+        // On ne renvoie que les fichiers PNG, triés du plus récent au plus ancien
+        const images = files
+            .filter(f => f.endsWith('.png'))
+            .sort((a, b) => b.localeCompare(a));
+        res.json(images);
     });
 });
 
-app.listen(PORT, () => console.log(`Serveur expert-trading actif sur le port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`===========================================`);
+    console.log(`Serveur EXPERT-TRADING actif sur le port ${PORT}`);
+    console.log(`URL locale : http://localhost:${PORT}`);
+    console.log(`===========================================`);
+});
