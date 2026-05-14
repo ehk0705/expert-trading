@@ -73,9 +73,15 @@ function normalizeAnalysis(analysis) {
     if (!allowed.includes(decision)) decision = 'ATTENDRE';
 
     const confidenceNumber = Number(analysis.confidence);
-    const confidence = Number.isFinite(confidenceNumber) ? Math.max(0, Math.min(100, Math.round(confidenceNumber))) : 0;
+    const confidence = Number.isFinite(confidenceNumber)
+        ? Math.max(0, Math.min(100, Math.round(confidenceNumber)))
+        : 0;
 
-    const reasoning = String(analysis.reasoning || analysis.raison || 'Aucune justification reçue.').trim();
+    const reasoning = String(
+        analysis.reasoning ||
+        analysis.raison ||
+        'Aucune justification reçue.'
+    ).trim();
 
     return { decision, confidence, reasoning };
 }
@@ -125,19 +131,60 @@ function validateImageForAnalysis(requestedFileName) {
     return { fileName, filePath };
 }
 
+/**
+ * Détails d'erreur OpenAI
+ * Correction importante :
+ * - status = statut HTTP numérique : 400, 401, 403, 429, 500...
+ * - code = code OpenAI : insufficient_quota, invalid_api_key...
+ * - type = type OpenAI : invalid_request_error, rate_limit_error...
+ * - details = message lisible
+ */
 function openAIErrorDetails(error) {
-    const status = error.status || error.code || error.httpStatus || null;
-    let details = error.details || error.message || 'Erreur inconnue.';
+    const status =
+        error.status ||
+        error.response?.status ||
+        error.httpStatus ||
+        null;
 
-    if (status === 401) {
+    const code =
+        error.code ||
+        error.error?.code ||
+        error.response?.data?.error?.code ||
+        null;
+
+    const type =
+        error.type ||
+        error.error?.type ||
+        error.response?.data?.error?.type ||
+        null;
+
+    let details =
+        error.details ||
+        error.message ||
+        error.error?.message ||
+        error.response?.data?.error?.message ||
+        'Erreur inconnue.';
+
+    if (code === 'insufficient_quota') {
+        details = 'Quota OpenAI insuffisant. Crédit API absent, épuisé ou facturation non activée.';
+    } else if (code === 'invalid_api_key') {
+        details = 'Clé OPENAI_API_KEY invalide.';
+    } else if (status === 401) {
         details = 'Clé OpenAI invalide ou absente.';
+    } else if (status === 403) {
+        details = 'Accès OpenAI refusé. Vérifiez les droits du compte API ou la facturation.';
     } else if (status === 429) {
-        details = 'Quota OpenAI atteint, crédit insuffisant ou trop de requêtes.';
+        details = 'Limite OpenAI atteinte : trop de requêtes, quota insuffisant ou limite de compte dépassée.';
     } else if (status === 400) {
         details = error.message || 'Requête OpenAI invalide. Vérifiez le modèle et le format de l’image.';
     }
 
-    return { status, details };
+    return {
+        status,
+        code,
+        type,
+        details
+    };
 }
 
 async function analyzeImageFile(fileName) {
@@ -209,7 +256,13 @@ Règles :
 
     const rawAnalysis = extractJsonObject(content);
     const analysis = normalizeAnalysis(rawAnalysis);
-    console.log('Analyse reçue avec succès :', validated.fileName, analysis.decision, analysis.confidence + '%');
+
+    console.log(
+        'Analyse reçue avec succès :',
+        validated.fileName,
+        analysis.decision,
+        analysis.confidence + '%'
+    );
 
     // 3. Sauvegarde dans le fichier JSON correspondant
     const jsonPath = jsonPathForImage(validated.filePath);
@@ -271,6 +324,8 @@ app.post('/api/analyze-vision', async (req, res) => {
 
         if (info.code === "insufficient_quota") {
             message = "Quota OpenAI insuffisant. Ajoutez du crédit API ou vérifiez la facturation OpenAI.";
+        } else if (info.code === "invalid_api_key") {
+            message = "Clé OPENAI_API_KEY invalide.";
         } else if (info.status === 401) {
             message = "Clé OPENAI_API_KEY absente, invalide ou mal configurée dans Render.";
         } else if (info.status === 429) {
@@ -340,17 +395,33 @@ app.post('/api/analyze-vision-batch', async (req, res) => {
             errorCount += 1;
             const info = openAIErrorDetails(error);
             const safeName = safeFileName(requestedFileName) || String(requestedFileName || 'fichier inconnu');
-            console.error('Erreur analyse batch pour', safeName, ':', info.details);
+
+            console.error('Erreur analyse batch pour', safeName, ':', {
+                status: info.status,
+                code: info.code,
+                type: info.type,
+                details: info.details
+            });
+
             results.push({
                 success: false,
                 fileName: safeName,
                 error: 'Échec de l\'analyse IA.',
                 details: info.details,
-                openaiStatus: info.status
+                openaiStatus: info.status,
+                openaiCode: info.code,
+                openaiType: info.type
             });
 
             // Si OpenAI refuse pour quota ou clé, inutile de continuer : les autres images échoueront aussi.
-            if (info.status === 401 || info.status === 429 || error.httpStatus === 500) {
+            if (
+                info.status === 401 ||
+                info.status === 403 ||
+                info.status === 429 ||
+                info.code === 'insufficient_quota' ||
+                info.code === 'invalid_api_key' ||
+                error.httpStatus === 500
+            ) {
                 break;
             }
         }
@@ -394,6 +465,7 @@ app.get('/api/list', (req, res) => {
  */
 app.post('/api/save', (req, res) => {
     const { image, metadata } = req.body;
+
     if (!image) {
         return res.status(400).json({
             success: false,
@@ -416,12 +488,19 @@ app.post('/api/save', (req, res) => {
         }
 
         const jsonPath = filePath.replace('.png', '.json');
+
         try {
             const data = metadata && typeof metadata === 'object' ? metadata : {};
             data.fileName = fileName;
             data.savedAt = new Date().toISOString();
+
             fs.writeFileSync(jsonPath, JSON.stringify(data, null, 2));
-            res.json({ success: true, filename: fileName });
+
+            res.json({
+                success: true,
+                filename: fileName
+            });
+
         } catch (jsonErr) {
             res.status(500).json({
                 success: false,
@@ -453,10 +532,16 @@ app.post('/api/update-notes', (req, res) => {
         try {
             const raw = fs.readFileSync(filePath, 'utf8');
             const fileData = raw.trim() ? JSON.parse(raw) : {};
+
             fileData.notes = notes || '';
             fileData.notesUpdatedAt = new Date().toISOString();
+
             fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
-            res.json({ success: true });
+
+            res.json({
+                success: true
+            });
+
         } catch (err) {
             res.status(500).json({
                 success: false,
