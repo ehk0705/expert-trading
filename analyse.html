@@ -20,63 +20,401 @@
 
         body { 
             font-family: 'Inter', -apple-system, sans-serif; 
-            display: flex; height: 100vh; margin: 0; 
-            background: var(--bg-color); color: var(--text-main); overflow: hidden;
+            display: flex; 
+            height: 100vh; 
+            margin: 0; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            overflow: hidden;
         }
 
-        .sidebar { width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--sidebar-bg); }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
-        .sidebar-header h2 { margin: 0; color: var(--yellow-pro); font-size: 16px; font-weight: 800; text-transform: uppercase; }
-        #gallery-list { flex-grow: 1; overflow-y: auto; padding: 15px; }
+        .sidebar { 
+            width: 320px; 
+            border-right: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            background: var(--sidebar-bg); 
+        }
 
-        .main-content { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; align-items: center; }
+        .sidebar-header { 
+            padding: 20px; 
+            border-bottom: 1px solid var(--border); 
+        }
 
-        .thumb-container { margin-bottom: 15px; cursor: pointer; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; transition: 0.2s; background: #161a1e; position: relative; }
-        .thumb-container:hover { border-color: var(--accent); }
-        .thumb-container.active { border-color: var(--yellow-pro); box-shadow: 0 0 10px rgba(240, 185, 11, 0.2); }
-        .thumb-container.selected { border-color: var(--engineer-green); box-shadow: 0 0 8px rgba(0, 255, 65, 0.25); }
-        .thumb-container img { width: 100%; display: block; height: auto; opacity: 0.7; }
-        .thumb-container.active img, .thumb-container.selected img { opacity: 1; }
-        .thumb-label { padding: 8px; font-size: 10px; text-align: center; color: var(--text-dim); }
-        .thumb-select-zone { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.75); padding: 5px 7px; border-radius: 4px; color: #fff; font-size: 11px; display: flex; align-items: center; gap: 5px; }
-        .thumb-select-zone input { transform: scale(1.15); cursor: pointer; }
+        .sidebar-header h2 { 
+            margin: 0; 
+            color: var(--yellow-pro); 
+            font-size: 16px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
 
-        .multi-toolbar { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
-        .multi-toolbar button { border: 1px solid var(--border); background: #161a1e; color: var(--text-main); padding: 8px 10px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: 11px; text-align: left; }
-        .multi-toolbar button:hover { border-color: var(--yellow-pro); color: var(--yellow-pro); }
-        #selected-count { color: var(--engineer-green); font-size: 11px; font-weight: 700; }
+        #gallery-list { 
+            flex-grow: 1; 
+            overflow-y: auto; 
+            padding: 15px; 
+        }
 
-        #viewer { max-width: 100%; max-height: 50vh; border-radius: 4px; border: 1px solid var(--border); box-shadow: 0 15px 40px rgba(0,0,0,0.6); display: none; margin-bottom: 20px; }
+        .main-content { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px; 
+            overflow-y: auto; 
+            align-items: center; 
+        }
 
-        .info-panel { background: #ffffff; padding: 30px; border-radius: 8px; width: 100%; max-width: 950px; color: #1e2329; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .thumb-container { 
+            margin-bottom: 15px; 
+            cursor: pointer; 
+            border: 1px solid var(--border); 
+            border-radius: 4px; 
+            overflow: hidden; 
+            transition: 0.2s; 
+            background: #161a1e; 
+            position: relative;
+        }
 
-        /* NOUVEAU : DASHBOARD IA */
-        .ai-dashboard { display: grid; grid-template-columns: 200px 1fr; gap: 20px; margin-bottom: 25px; display: none; }
-        .ai-card { background: #f8fafc; border: 1px solid #dcdfe4; border-radius: 8px; padding: 15px; text-align: center; }
-        .ai-logs { background: #161a1e; color: var(--engineer-green); border-radius: 8px; padding: 15px; font-family: 'Consolas', monospace; font-size: 12px; overflow: auto; white-space: pre-wrap; min-height: 80px; max-height: 260px; }
+        .thumb-container:hover { 
+            border-color: var(--accent); 
+        }
+
+        .thumb-container.active { 
+            border-color: var(--yellow-pro); 
+            box-shadow: 0 0 10px rgba(240, 185, 11, 0.2); 
+        }
+
+        .thumb-container.selected { 
+            border-color: var(--engineer-green); 
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.25); 
+        }
+
+        .thumb-container img { 
+            width: 100%; 
+            display: block; 
+            height: auto; 
+            opacity: 0.7; 
+        }
+
+        .thumb-container.active img { 
+            opacity: 1; 
+        }
+
+        .thumb-label { 
+            padding: 8px; 
+            font-size: 10px; 
+            text-align: center; 
+            color: var(--text-dim); 
+            word-break: break-all;
+        }
+
+        .thumb-check-zone {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.75);
+            border-radius: 4px;
+            padding: 5px 7px;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .thumb-check-zone input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .sidebar-tools {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .sidebar-tools button {
+            background: #2b3139;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .sidebar-tools button:hover {
+            border-color: var(--yellow-pro);
+            color: var(--yellow-pro);
+        }
+
+        #selection-count {
+            width: 100%;
+            color: var(--text-dim);
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        #viewer { 
+            max-width: 100%; 
+            max-height: 50vh; 
+            border-radius: 4px; 
+            border: 1px solid var(--border); 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6); 
+            display: none; 
+            margin-bottom: 20px; 
+        }
+
+        .info-panel { 
+            background: #ffffff; 
+            padding: 30px; 
+            border-radius: 8px; 
+            width: 100%; 
+            max-width: 950px; 
+            color: #1e2329; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+        }
+
+        .top-action-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #dcdfe4;
+            border-radius: 8px;
+        }
+
+        .top-action-bar .action-title {
+            width: 100%;
+            font-size: 12px;
+            font-weight: 800;
+            color: #787b86;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .ai-dashboard { 
+            display: grid; 
+            grid-template-columns: 200px 1fr; 
+            gap: 20px; 
+            margin-bottom: 25px; 
+            display: none; 
+        }
+
+        .ai-card { 
+            background: #f8fafc; 
+            border: 1px solid #dcdfe4; 
+            border-radius: 8px; 
+            padding: 15px; 
+            text-align: center; 
+        }
+
+        .ai-logs { 
+            background: #161a1e; 
+            color: var(--engineer-green); 
+            border-radius: 8px; 
+            padding: 15px; 
+            font-family: 'Consolas', monospace; 
+            font-size: 12px; 
+            overflow: hidden; 
+            white-space: pre-wrap;
+        }
         
-        .confidence-bar-container { background: #edf2f7; height: 8px; border-radius: 4px; margin: 10px 0; overflow: hidden; }
-        .confidence-bar { height: 100%; width: 0%; background: var(--accent); transition: width 1s ease-in-out; }
+        .confidence-bar-container { 
+            background: #edf2f7; 
+            height: 8px; 
+            border-radius: 4px; 
+            margin: 10px 0; 
+            overflow: hidden; 
+        }
 
-        .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f1f3f5; }
-        .meta-item b { color: #787b86; font-size: 10px; text-transform: uppercase; display: block; }
-        .meta-item span { font-size: 15px; color: #1e2329; font-weight: 700; }
+        .confidence-bar { 
+            height: 100%; 
+            width: 0%; 
+            background: var(--accent); 
+            transition: width 1s ease-in-out; 
+        }
 
-        .engineer-container { background: #161a1e; border-radius: 6px; padding: 20px; border-left: 5px solid var(--yellow-pro); }
-        .engineer-container label { color: var(--yellow-pro); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 10px; }
+        .meta-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 20px; 
+            margin-bottom: 20px; 
+            padding-bottom: 15px; 
+            border-bottom: 2px solid #f1f3f5; 
+        }
 
-        textarea { width: 100%; height: 220px; background: transparent; color: var(--engineer-green); border: none; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.6; resize: none; outline: none; }
+        .meta-item b { 
+            color: #787b86; 
+            font-size: 10px; 
+            text-transform: uppercase; 
+            display: block; 
+        }
 
-        .btn-group { display: flex; gap: 10px; margin-top: 20px; align-items: center; flex-wrap: wrap; }
-        .btn-analyze { background: var(--yellow-pro); color: #000; border: none; padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: 800; text-transform: uppercase; }
-        .btn-analyze-multi { background: #161a1e; color: var(--engineer-green); border: 1px solid var(--engineer-green); padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: 800; text-transform: uppercase; }
-        .btn-save { background: var(--accent); color: white; border: none; padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: 800; text-transform: uppercase; }
-        .btn-analyze:disabled, .btn-analyze-multi:disabled, .btn-save:disabled { opacity: 0.55; cursor: not-allowed; }
+        .meta-item span { 
+            font-size: 15px; 
+            color: #1e2329; 
+            font-weight: 700; 
+        }
+
+        .engineer-container { 
+            background: #161a1e; 
+            border-radius: 6px; 
+            padding: 20px; 
+            border-left: 5px solid var(--yellow-pro); 
+        }
+
+        .engineer-container label { 
+            color: var(--yellow-pro); 
+            font-size: 12px; 
+            font-weight: 800; 
+            letter-spacing: 1px; 
+            display: block; 
+            margin-bottom: 10px; 
+        }
+
+        textarea { 
+            width: 100%; 
+            height: 200px; 
+            background: transparent; 
+            color: var(--engineer-green); 
+            border: none; 
+            font-family: 'Consolas', monospace; 
+            font-size: 13px; 
+            line-height: 1.6; 
+            resize: none; 
+            outline: none; 
+        }
+
+        .btn-group { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 20px; 
+        }
+
+        .btn-analyze { 
+            background: var(--yellow-pro); 
+            color: #000; 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        .btn-analyze-multiple { 
+            background: #161a1e; 
+            color: var(--engineer-green); 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        .btn-save { 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        .btn-analyze:hover,
+        .btn-analyze-multiple:hover,
+        .btn-save:hover {
+            opacity: 0.88;
+        }
+
+        .btn-analyze:disabled,
+        .btn-analyze-multiple:disabled,
+        .btn-save:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
         
-        .loading-spinner { display: none; color: var(--accent); font-weight: bold; font-size: 12px; }
+        .loading-spinner { 
+            display: none; 
+            color: var(--accent); 
+            font-weight: bold; 
+            font-size: 12px; 
+        }
 
-        .advice-banner { background: #e7f0ff; border: 1px solid #2962ff; padding: 10px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; color: #1e4bd8; display: flex; align-items: center; gap: 10px; }
-        .btn-back { text-decoration: none; color: var(--text-dim); font-size: 11px; margin-top: 10px; display: inline-block; font-weight: 600; }
+        .advice-banner { 
+            background: #e7f0ff; 
+            border: 1px solid #2962ff; 
+            padding: 10px 15px; 
+            border-radius: 4px; 
+            margin-bottom: 20px; 
+            font-size: 13px; 
+            color: #1e4bd8; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+
+        .btn-back { 
+            text-decoration: none; 
+            color: var(--text-dim); 
+            font-size: 11px; 
+            margin-top: 10px; 
+            display: inline-block; 
+            font-weight: 600; 
+        }
+
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                overflow: auto;
+                height: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 45vh;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+
+            .info-panel {
+                padding: 16px;
+            }
+
+            .ai-dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .meta-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .top-action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-analyze,
+            .btn-analyze-multiple,
+            .btn-save {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -85,23 +423,52 @@
         <div class="sidebar-header">
             <h2>Journal Technique</h2>
             <a href="/" class="btn-back">← TERMINAL DE TRADING LIVE</a>
-
-            <div class="multi-toolbar">
-                <span id="selected-count">0 capture sélectionnée</span>
-                <button type="button" onclick="selectAllImages()" title="Sélectionner toutes les captures visibles">Tout sélectionner</button>
-                <button type="button" onclick="clearSelection()" title="Vider la sélection multiple">Vider la sélection</button>
-            </div>
         </div>
+
+        <div class="sidebar-tools">
+            <button type="button" onclick="selectAllImages()">Tout sélectionner</button>
+            <button type="button" onclick="clearSelection()">Vider la sélection</button>
+            <div id="selection-count">0 capture sélectionnée.</div>
+        </div>
+
         <div id="gallery-list">Chargement des fichiers...</div>
     </div>
 
     <div class="main-content">
-        <img id="viewer" src="" alt="Capture plein écran">
-        
         <div class="info-panel" id="image-info">
             <div class="advice-banner">
                 <strong>💡 RECOMMANDATION :</strong> 
-                <span id="dynamic-advice">Sélectionnez une ou plusieurs captures pour générer les conseils d'ingénierie.</span>
+                <span id="dynamic-advice">Sélectionnez une capture pour générer les conseils d'ingénierie.</span>
+            </div>
+
+            <div class="top-action-bar">
+                <div class="action-title">Commandes d'analyse</div>
+
+                <button 
+                    class="btn-analyze" 
+                    id="btn-trigger-ai" 
+                    title="Analyser uniquement le graphique affiché"
+                    onclick="triggerAIAnalysis()">
+                    Analyser
+                </button>
+
+                <button 
+                    class="btn-analyze-multiple" 
+                    id="btn-trigger-selected-ai" 
+                    title="Analyser toutes les captures cochées"
+                    onclick="triggerSelectedAIAnalysis()">
+                    Analyser la sélection
+                </button>
+
+                <button 
+                    class="btn-save" 
+                    id="btn-save-report"
+                    title="Archiver le rapport affiché"
+                    onclick="saveNotes()">
+                    Archiver le rapport
+                </button>
+
+                <span class="loading-spinner" id="spinner">ANALYSE EN COURS...</span>
             </div>
 
             <div class="meta-grid" id="meta-content">
@@ -125,14 +492,35 @@
                     <label> [ MODULE D'ANALYSE DÉCISIONNELLE ]</label>
                     <textarea id="user-notes" placeholder="Rapport technique..."></textarea>
                 </div>
+
                 <div class="btn-group">
-                    <button class="btn-analyze" id="btn-trigger-ai" onclick="triggerAIAnalysis()" title="Analyser la capture affichée">Analyser</button>
-                    <button class="btn-analyze-multi" id="btn-trigger-ai-multi" onclick="triggerSelectedAIAnalysis()" title="Analyser les captures cochées">Analyser la sélection</button>
-                    <button class="btn-save" id="btn-save-notes" onclick="saveNotes()">ARCHIVER LE RAPPORT</button>
-                    <span class="loading-spinner" id="spinner">ANALYSE EN COURS...</span>
+                    <button 
+                        class="btn-analyze" 
+                        id="btn-trigger-ai-bottom" 
+                        title="Analyser uniquement le graphique affiché"
+                        onclick="triggerAIAnalysis()">
+                        Analyser
+                    </button>
+
+                    <button 
+                        class="btn-analyze-multiple" 
+                        id="btn-trigger-selected-ai-bottom" 
+                        title="Analyser toutes les captures cochées"
+                        onclick="triggerSelectedAIAnalysis()">
+                        Analyser la sélection
+                    </button>
+
+                    <button 
+                        class="btn-save" 
+                        title="Archiver le rapport affiché"
+                        onclick="saveNotes()">
+                        Archiver le rapport
+                    </button>
                 </div>
             </div>
         </div>
+
+        <img id="viewer" src="" alt="Capture plein écran">
     </div>
 
     <script>
@@ -140,289 +528,266 @@
         let allFiles = [];
         const selectedFiles = new Set();
 
+        const API_BASE_URL = window.location.hostname.includes("github.io")
+            ? "https://expert-trading.onrender.com"
+            : "";
+
         const viewer = document.getElementById('viewer');
         const metaContent = document.getElementById('meta-content');
         const notesSection = document.getElementById('notes-section');
         const userNotes = document.getElementById('user-notes');
 
-        /*
-            IMPORTANT :
-            - Si analyse.html est servi par Render, API_URL reste vide et les routes /api/... fonctionnent.
-            - Si analyse.html est sur GitHub Pages, l'appel /api/... ne peut pas fonctionner.
-              Dans ce cas, API_URL pointe vers Render.
-            - Vous pouvez modifier cette URL si votre service Render change.
-        */
-        const RENDER_API_URL = "https://trading-g8ie.onrender.com";
-        const API_URL = window.API_URL || localStorage.getItem("API_URL") || (window.location.hostname.includes("github.io") ? RENDER_API_URL : "");
-
-        function apiPath(route) {
-            return `${API_URL}${route}`;
+        function getApiUrl(route) {
+            return API_BASE_URL + route;
         }
 
-        function mediaPath(route) {
-            return `${API_URL}${route}`;
+        function safeDomId(fileName) {
+            return fileName.replace(/[^a-zA-Z0-9_-]/g, "-");
         }
 
-        function domIdFromFileName(fileName) {
-            return fileName.replace(/[^a-zA-Z0-9_-]/g, '-');
-        }
+        async function readResponseAsJson(response) {
+            const rawText = await response.text();
 
-        function setLog(message) {
-            const el = document.getElementById('ai-reasoning');
-            if (el) el.innerText = message;
-        }
-
-        function safeText(value) {
-            if (value === undefined || value === null || value === "") return "N/A";
-            return String(value);
-        }
-
-        function normalizeAnalysis(data) {
-            const decision = String(data?.decision || "ATTENDRE").toUpperCase();
-            const confidenceNumber = Number(data?.confidence);
-            const confidence = Number.isFinite(confidenceNumber) ? Math.max(0, Math.min(100, Math.round(confidenceNumber))) : 0;
-            const reasoning = data?.reasoning || data?.raison || "Aucune justification reçue.";
-            return { decision, confidence, reasoning };
-        }
-
-        async function fetchWithTimeout(url, options = {}, timeoutMs = 120000) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            let data;
             try {
-                return await fetch(url, { ...options, signal: controller.signal });
-            } finally {
-                clearTimeout(timer);
+                data = JSON.parse(rawText);
+            } catch (error) {
+                throw new Error(
+                    "Le serveur n'a pas retourné du JSON valide.\n\n" +
+                    "Statut HTTP : " + response.status + "\n\n" +
+                    rawText
+                );
             }
+
+            if (!response.ok) {
+                const message = data.message || data.error || data.details || "Erreur serveur inconnue.";
+                throw new Error(
+                    "Statut HTTP : " + response.status + "\n\n" +
+                    "Réponse serveur :\n" + message
+                );
+            }
+
+            return data;
         }
 
-        function updateSelectionUI() {
+        function setLoadingState(isLoading, message = "ANALYSE EN COURS...") {
+            const spinner = document.getElementById('spinner');
+
+            const buttons = [
+                document.getElementById('btn-trigger-ai'),
+                document.getElementById('btn-trigger-selected-ai'),
+                document.getElementById('btn-save-report'),
+                document.getElementById('btn-trigger-ai-bottom'),
+                document.getElementById('btn-trigger-selected-ai-bottom')
+            ];
+
+            buttons.forEach(button => {
+                if (button) button.disabled = isLoading;
+            });
+
+            spinner.innerText = message;
+            spinner.style.display = isLoading ? "inline" : "none";
+        }
+
+        function updateSelectionCount() {
             const count = selectedFiles.size;
-            const countEl = document.getElementById('selected-count');
-            if (countEl) {
-                countEl.innerText = count + (count > 1 ? " captures sélectionnées" : " capture sélectionnée");
+            const label = document.getElementById("selection-count");
+
+            if (count <= 1) {
+                label.innerText = count + " capture sélectionnée.";
+            } else {
+                label.innerText = count + " captures sélectionnées.";
             }
 
-            allFiles.forEach(fileName => {
-                const id = domIdFromFileName(fileName);
-                const container = document.getElementById('thumb-' + id);
-                const checkbox = document.getElementById('select-' + id);
-
-                if (container) {
-                    container.classList.toggle('selected', selectedFiles.has(fileName));
-                }
-                if (checkbox) {
-                    checkbox.checked = selectedFiles.has(fileName);
+            document.querySelectorAll(".thumb-container").forEach(container => {
+                const fileName = container.getAttribute("data-file");
+                if (selectedFiles.has(fileName)) {
+                    container.classList.add("selected");
+                } else {
+                    container.classList.remove("selected");
                 }
             });
         }
 
-        function toggleFileSelection(fileName, checked) {
+        function toggleSelection(fileName, checked) {
             if (checked) {
                 selectedFiles.add(fileName);
             } else {
                 selectedFiles.delete(fileName);
             }
-            updateSelectionUI();
-            document.getElementById('dynamic-advice').innerText = selectedFiles.size > 0
-                ? selectedFiles.size + " capture(s) prête(s) pour l'analyse multiple."
-                : "Sélectionnez une ou plusieurs captures pour générer les conseils d'ingénierie.";
+
+            updateSelectionCount();
         }
 
         function selectAllImages() {
             allFiles.forEach(fileName => selectedFiles.add(fileName));
-            updateSelectionUI();
-            document.getElementById('dynamic-advice').innerText = selectedFiles.size + " capture(s) sélectionnée(s).";
+
+            document.querySelectorAll(".thumb-selector").forEach(input => {
+                input.checked = true;
+            });
+
+            updateSelectionCount();
         }
 
         function clearSelection() {
             selectedFiles.clear();
-            updateSelectionUI();
-            document.getElementById('dynamic-advice').innerText = "Sélection multiple vidée.";
-        }
 
-        function setBusy(isBusy, message = "ANALYSE EN COURS...") {
-            const btnSingle = document.getElementById('btn-trigger-ai');
-            const btnMulti = document.getElementById('btn-trigger-ai-multi');
-            const btnSave = document.getElementById('btn-save-notes');
-            const spinner = document.getElementById('spinner');
+            document.querySelectorAll(".thumb-selector").forEach(input => {
+                input.checked = false;
+            });
 
-            if (btnSingle) btnSingle.disabled = isBusy;
-            if (btnMulti) btnMulti.disabled = isBusy;
-            if (btnSave) btnSave.disabled = isBusy;
-
-            if (spinner) {
-                spinner.style.display = isBusy ? "inline" : "none";
-                spinner.innerText = message;
-            }
-        }
-
-        function parseErrorMessage(raw, fallback) {
-            if (!raw) return fallback || "Erreur inconnue.";
-            try {
-                const json = JSON.parse(raw);
-                return json.details || json.error || json.message || raw;
-            } catch (e) {
-                return raw;
-            }
+            updateSelectionCount();
         }
 
         async function loadGallery() {
             try {
-                setLog("> Chargement de la galerie...");
-                const response = await fetchWithTimeout(apiPath('/api/list'), {}, 30000);
-                const raw = await response.text();
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status} - ${raw}`);
-                }
-
-                let files;
-                try {
-                    files = JSON.parse(raw);
-                } catch (e) {
-                    throw new Error("Réponse /api/list non JSON : " + raw);
-                }
+                const response = await fetch(getApiUrl('/api/list'));
+                const files = await readResponseAsJson(response);
 
                 allFiles = Array.isArray(files) ? files : [];
+
                 const galleryList = document.getElementById('gallery-list');
+
                 if (!allFiles || allFiles.length === 0) {
                     galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucun setup archivé.</p>";
-                    updateSelectionUI();
                     return;
                 }
 
                 galleryList.innerHTML = "";
+
                 allFiles.forEach(fileName => {
-                    const id = domIdFromFileName(fileName);
                     const container = document.createElement('div');
+                    const domId = safeDomId(fileName);
+
                     container.className = 'thumb-container';
-                    container.id = 'thumb-' + id;
+                    container.id = 'thumb-' + domId;
+                    container.setAttribute("data-file", fileName);
+
                     container.innerHTML = `
-                        <label class="thumb-select-zone" title="Cocher pour analyse multiple" onclick="event.stopPropagation();">
-                            <input type="checkbox" id="select-${id}" onchange="toggleFileSelection('${fileName.replace(/'/g, "\\'")}', this.checked)">
-                            IA
-                        </label>
-                        <img src="${mediaPath('/screenshots/' + encodeURIComponent(fileName))}">
+                        <div class="thumb-check-zone" onclick="event.stopPropagation();">
+                            <input 
+                                type="checkbox" 
+                                class="thumb-selector" 
+                                id="check-${domId}"
+                                title="Sélectionner cette capture"
+                                onchange="toggleSelection('${fileName.replace(/'/g, "\\'")}', this.checked)">
+                            <span>Sélection</span>
+                        </div>
+                        <img src="${getApiUrl('/screenshots/' + encodeURIComponent(fileName))}" alt="${fileName}">
                         <div class="thumb-label">${fileName}</div>
                     `;
+
                     container.onclick = () => selectImage(fileName);
                     galleryList.appendChild(container);
                 });
-                updateSelectionUI();
-                setLog("> Galerie chargée. Sélectionnez une capture ou cochez plusieurs captures.");
+
+                updateSelectionCount();
+
             } catch (error) {
                 console.error(error);
-                document.getElementById('gallery-list').innerHTML = "<p style='color:#f6465d; padding:20px;'>Erreur de chargement de la galerie. Vérifiez le serveur Render et la route /api/list.</p>";
-                setLog("> ERREUR GALERIE :\n" + error.message);
+                document.getElementById('gallery-list').innerHTML =
+                    "<p style='color:#f6465d; padding:20px;'>Erreur lors du chargement des captures.</p>";
             }
         }
 
         async function selectImage(fileName) {
             currentFileName = fileName;
-            document.querySelectorAll('.thumb-container').forEach(t => t.classList.remove('active'));
-            const active = document.getElementById('thumb-' + domIdFromFileName(fileName));
-            if (active) active.classList.add('active');
 
-            viewer.src = mediaPath(`/screenshots/${encodeURIComponent(fileName)}`);
+            document.querySelectorAll('.thumb-container').forEach(t => t.classList.remove('active'));
+
+            const thumb = document.getElementById('thumb-' + safeDomId(fileName));
+            if (thumb) {
+                thumb.classList.add('active');
+            }
+
+            viewer.src = getApiUrl('/screenshots/' + encodeURIComponent(fileName));
             viewer.style.display = "block";
             notesSection.style.display = "block";
             document.getElementById('ai-panel').style.display = "grid";
-            document.getElementById('ai-decision').innerText = "--";
-            document.getElementById('ai-bar').style.width = "0%";
-            document.getElementById('ai-percent').innerText = "0%";
-            setLog("> Capture affichée : " + fileName + "\n> Vous pouvez analyser cette capture seule ou cocher plusieurs captures à gauche.");
+
+            document.getElementById('dynamic-advice').innerText =
+                "Capture sélectionnée : " + fileName;
 
             try {
-                const jsonName = fileName.replace(/\.(png|jpg|jpeg|webp)$/i, '.json');
-                const res = await fetchWithTimeout(mediaPath(`/screenshots/${encodeURIComponent(jsonName)}`), {}, 30000);
+                const jsonName = fileName.replace('.png', '.json');
+                const res = await fetch(getApiUrl('/screenshots/' + encodeURIComponent(jsonName)));
+
                 if (res.ok) {
                     const meta = await res.json();
+
                     metaContent.innerHTML = `
-                        <div class="meta-item"><b>Date</b><span>${safeText(meta.date || meta.savedAt)}</span></div>
-                        <div class="meta-item"><b>Actif</b><span style="color:var(--accent)">${safeText(meta.asset)}</span></div>
-                        <div class="meta-item"><b>Intervalle</b><span>${safeText(meta.interval)}</span></div>
+                        <div class="meta-item"><b>Date</b><span>${meta.date || 'N/A'}</span></div>
+                        <div class="meta-item"><b>Actif</b><span style="color:var(--accent)">${meta.asset || 'N/A'}</span></div>
+                        <div class="meta-item"><b>Intervalle</b><span>${meta.interval || 'N/A'}</span></div>
                     `;
+
                     userNotes.value = meta.notes || "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
                     
-                    // Si l'IA a déjà analysé (données présentes dans le JSON)
-                    if (meta.ai_analysis) renderAIResults(meta.ai_analysis);
+                    if (meta.ai_analysis) {
+                        renderAIResults(meta.ai_analysis);
+                    } else {
+                        resetAIResults();
+                    }
                 } else {
                     metaContent.innerHTML = `
                         <div class="meta-item"><b>Fichier</b><span>${fileName}</span></div>
                         <div class="meta-item"><b>Métadonnées</b><span>JSON absent</span></div>
-                        <div class="meta-item"><b>État</b><span>Analyse possible</span></div>
+                        <div class="meta-item"><b>Statut</b><span>Capture chargée</span></div>
                     `;
+
                     userNotes.value = "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+                    resetAIResults();
                 }
+
             } catch (e) {
                 console.error(e);
-                setLog("> Capture sélectionnée, mais les métadonnées JSON n'ont pas pu être lues.\n> Détail : " + e.message);
+                alert("Erreur lors du chargement des métadonnées.");
             }
+        }
+
+        function resetAIResults() {
+            document.getElementById('ai-decision').innerText = "--";
+            document.getElementById('ai-decision').style.color = "#1e2329";
+            document.getElementById('ai-bar').style.width = "0%";
+            document.getElementById('ai-percent').innerText = "0%";
+            document.getElementById('ai-reasoning').innerText = "> En attente du déclenchement de l'analyse...";
         }
 
         async function triggerAIAnalysis() {
             if (!currentFileName) {
-                alert("Aucune capture affichée.");
+                alert("Veuillez d'abord sélectionner un graphique à analyser.");
                 return;
             }
 
-            setBusy(true, "ANALYSE EN COURS...");
-            setLog("> Analyse en cours...\n> Envoi de la capture au serveur IA.\n> Fichier : " + currentFileName);
+            setLoadingState(true, "ANALYSE DU GRAPHIQUE AFFICHÉ...");
 
             try {
-                // Appel vers server.js qui communique avec OpenAI Vision
-                const response = await fetchWithTimeout(apiPath('/api/analyze-vision'), {
+                const response = await fetch(getApiUrl('/api/analyze-vision'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fileName: currentFileName })
-                }, 120000);
+                });
 
-                const texteBrut = await response.text();
-
-                console.log("STATUT HTTP :", response.status);
-                console.log("RÉPONSE BRUTE :", texteBrut);
-
-                if (!response.ok) {
-                    const messageErreur = parseErrorMessage(texteBrut, "Erreur analyse IA.");
-                    setLog("> ERREUR ANALYSE IA :\n> Statut HTTP : " + response.status + "\n> " + messageErreur);
-                    alert(
-                        "Erreur analyse IA.\n\n" +
-                        "Statut HTTP : " + response.status + "\n\n" +
-                        "Réponse serveur :\n" + messageErreur
-                    );
-                    return;
-                }
-
-                let data;
-                try {
-                    data = JSON.parse(texteBrut);
-                } catch (e) {
-                    setLog("> ERREUR : le serveur n'a pas retourné du JSON valide.\n" + texteBrut);
-                    alert("Le serveur n'a pas retourné du JSON valide.\n\n" + texteBrut);
-                    return;
-                }
+                const data = await readResponseAsJson(response);
 
                 if (!data.analysis) {
-                    setLog("> ERREUR : réponse reçue, mais data.analysis est absent.\n" + texteBrut);
-                    alert("Réponse reçue, mais data.analysis est absent.\n\n" + texteBrut);
-                    return;
+                    throw new Error("La réponse du serveur ne contient pas le bloc analysis.");
                 }
 
-                const analysis = normalizeAnalysis(data.analysis);
-                renderAIResults(analysis);
+                renderAIResults(data.analysis);
 
-                // On injecte automatiquement le résultat dans les notes
                 userNotes.value +=
-                    "\n\n[IA DECISION] : " + analysis.decision +
-                    "\n[CONFIANCE] : " + analysis.confidence + "%" +
-                    "\n[RAISON] : " + analysis.reasoning;
+                    "\n\n[IA DECISION] : " + data.analysis.decision +
+                    "\n[CONFIANCE] : " + data.analysis.confidence + "%" +
+                    "\n[RAISON] : " + data.analysis.reasoning;
 
-                document.getElementById('dynamic-advice').innerText = "Analyse terminée : " + analysis.decision + " avec " + analysis.confidence + "% de confiance.";
                 alert("Analyse terminée.");
+
             } catch (err) {
-                handleNetworkError(err);
+                console.error("ERREUR ANALYSE IA :", err);
+                alert("Erreur analyse IA.\n\n" + err.message);
             } finally {
-                setBusy(false);
+                setLoadingState(false);
             }
         }
 
@@ -430,184 +795,208 @@
             const filesToAnalyze = Array.from(selectedFiles);
 
             if (filesToAnalyze.length === 0) {
-                alert("Aucune capture cochée. Cochez au moins deux graphiques dans la colonne de gauche.");
+                alert("Veuillez cocher au moins une capture à analyser.");
                 return;
             }
 
-            notesSection.style.display = "block";
-            document.getElementById('ai-panel').style.display = "grid";
-            setBusy(true, "ANALYSE MULTIPLE EN COURS...");
-            setLog(
-                "> Analyse multiple en cours...\n" +
-                "> Nombre de captures : " + filesToAnalyze.length + "\n" +
-                "> Les images sont envoyées au serveur."
-            );
+            setLoadingState(true, "ANALYSE DE LA SÉLECTION...");
+
+            const results = [];
+            const errors = [];
 
             try {
-                const response = await fetchWithTimeout(apiPath('/api/analyze-vision-batch'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileNames: filesToAnalyze })
-                }, Math.max(120000, filesToAnalyze.length * 120000));
+                for (let i = 0; i < filesToAnalyze.length; i++) {
+                    const fileName = filesToAnalyze[i];
 
-                const texteBrut = await response.text();
-                console.log("STATUT HTTP BATCH :", response.status);
-                console.log("RÉPONSE BRUTE BATCH :", texteBrut);
-
-                if (!response.ok) {
-                    const messageErreur = parseErrorMessage(texteBrut, "Erreur analyse multiple IA.");
-                    setLog("> ERREUR ANALYSE MULTIPLE :\n> Statut HTTP : " + response.status + "\n> " + messageErreur);
-                    alert(
-                        "Erreur analyse multiple IA.\n\n" +
-                        "Statut HTTP : " + response.status + "\n\n" +
-                        "Réponse serveur :\n" + messageErreur
+                    setLoadingState(
+                        true,
+                        "ANALYSE " + (i + 1) + " / " + filesToAnalyze.length + " : " + fileName
                     );
-                    return;
+
+                    try {
+                        const response = await fetch(getApiUrl('/api/analyze-vision'), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fileName: fileName })
+                        });
+
+                        const data = await readResponseAsJson(response);
+
+                        if (!data.analysis) {
+                            throw new Error("Réponse reçue sans bloc analysis.");
+                        }
+
+                        results.push({
+                            fileName: fileName,
+                            analysis: data.analysis
+                        });
+
+                    } catch (singleError) {
+                        errors.push({
+                            fileName: fileName,
+                            message: singleError.message
+                        });
+                    }
                 }
 
-                let data;
-                try {
-                    data = JSON.parse(texteBrut);
-                } catch (e) {
-                    setLog("> ERREUR : le serveur n'a pas retourné du JSON valide.\n" + texteBrut);
-                    alert("Le serveur n'a pas retourné du JSON valide.\n\n" + texteBrut);
-                    return;
+                renderBatchResults(results, errors);
+
+                if (results.length > 0) {
+                    const lastResult = results[results.length - 1];
+                    renderAIResults(lastResult.analysis);
                 }
 
-                if (!Array.isArray(data.results)) {
-                    setLog("> ERREUR : réponse reçue, mais data.results est absent.\n" + texteBrut);
-                    alert("Réponse reçue, mais data.results est absent.\n\n" + texteBrut);
-                    return;
-                }
+                alert(
+                    "Analyse de la sélection terminée.\n\n" +
+                    "Succès : " + results.length + "\n" +
+                    "Erreurs : " + errors.length
+                );
 
-                renderBatchResults(data);
-                alert("Analyse multiple terminée. Succès : " + data.successCount + " / " + data.totalRequested);
             } catch (err) {
-                handleNetworkError(err);
+                console.error("ERREUR ANALYSE SÉLECTION :", err);
+                alert("Erreur pendant l'analyse de la sélection.\n\n" + err.message);
             } finally {
-                setBusy(false);
+                setLoadingState(false);
             }
         }
 
-        function renderAIResults(data) {
-            const analysis = normalizeAnalysis(data);
-            const decisionEl = document.getElementById('ai-decision');
-            const barEl = document.getElementById('ai-bar');
-            
-            decisionEl.innerText = analysis.decision;
-            decisionEl.style.color = analysis.decision === "ACHETER" ? "var(--buy-green)" : (analysis.decision === "VENDRE" ? "var(--sell-red)" : "var(--yellow-pro)");
-            
-            barEl.style.width = analysis.confidence + "%";
-            document.getElementById('ai-percent').innerText = analysis.confidence + "%";
-            document.getElementById('ai-reasoning').innerText = "> ANALYSE TERMINÉE :\n" + analysis.reasoning;
-        }
+        function renderBatchResults(results, errors) {
+            let report = "\n\n==================================================";
+            report += "\n[ANALYSE IA MULTIPLE]";
+            report += "\nNombre de captures analysées avec succès : " + results.length;
+            report += "\nNombre d'erreurs : " + errors.length;
+            report += "\n==================================================\n";
 
-        function renderBatchResults(data) {
-            const results = Array.isArray(data.results) ? data.results : [];
-            const successful = results.filter(item => item.success && item.analysis);
-            const failed = results.filter(item => !item.success);
-
-            let buy = 0;
-            let sell = 0;
-            let wait = 0;
-            let totalConfidence = 0;
-
-            const lines = [];
-            lines.push("> ANALYSE MULTIPLE TERMINÉE");
-            lines.push("> Succès : " + successful.length + " / " + data.totalRequested);
-            lines.push("");
-
-            successful.forEach(item => {
-                const analysis = normalizeAnalysis(item.analysis);
-                totalConfidence += analysis.confidence;
-                if (analysis.decision === "ACHETER") buy++;
-                else if (analysis.decision === "VENDRE") sell++;
-                else wait++;
-
-                lines.push("- " + item.fileName + " : " + analysis.decision + " | " + analysis.confidence + "%");
-                lines.push("  " + analysis.reasoning);
+            results.forEach((item, index) => {
+                report += "\n[" + (index + 1) + "] " + item.fileName;
+                report += "\nDécision : " + item.analysis.decision;
+                report += "\nConfiance : " + item.analysis.confidence + "%";
+                report += "\nRaison : " + item.analysis.reasoning;
+                report += "\n";
             });
 
-            if (failed.length > 0) {
-                lines.push("");
-                lines.push("> ÉCHECS");
-                failed.forEach(item => {
-                    lines.push("- " + item.fileName + " : " + (item.details || item.error || "Erreur inconnue"));
+            if (errors.length > 0) {
+                report += "\n[ERREURS]\n";
+
+                errors.forEach((item, index) => {
+                    report += "\n[" + (index + 1) + "] " + item.fileName;
+                    report += "\nErreur : " + item.message;
+                    report += "\n";
                 });
             }
 
-            const avgConfidence = successful.length > 0 ? Math.round(totalConfidence / successful.length) : 0;
-            let globalDecision = "ATTENDRE";
-            if (buy > sell && buy > wait) globalDecision = "ACHETER";
-            if (sell > buy && sell > wait) globalDecision = "VENDRE";
+            userNotes.value += report;
 
-            renderAIResults({
-                decision: globalDecision,
-                confidence: avgConfidence,
-                reasoning: "Synthèse de " + successful.length + " capture(s). ACHETER : " + buy + ", VENDRE : " + sell + ", ATTENDRE : " + wait + "."
-            });
+            const summary = buildBatchSummary(results);
 
-            setLog(lines.join("\n"));
-
-            metaContent.innerHTML = `
-                <div class="meta-item"><b>Captures</b><span>${data.totalRequested}</span></div>
-                <div class="meta-item"><b>Analysées</b><span style="color:var(--accent)">${successful.length}</span></div>
-                <div class="meta-item"><b>Synthèse</b><span>${globalDecision}</span></div>
-            `;
-
-            userNotes.value +=
-                "\n\n// --- ANALYSE MULTIPLE IA ---\n" +
-                lines.join("\n") +
-                "\n\n[SYNTHÈSE] : " + globalDecision +
-                "\n[CONFIANCE MOYENNE] : " + avgConfidence + "%";
-
-            document.getElementById('dynamic-advice').innerText = "Analyse multiple terminée : " + globalDecision + " avec " + avgConfidence + "% de confiance moyenne.";
+            document.getElementById('ai-panel').style.display = "grid";
+            document.getElementById('ai-reasoning').innerText = summary;
+            document.getElementById('dynamic-advice').innerText =
+                "Analyse multiple terminée : " + results.length + " succès, " + errors.length + " erreur(s).";
         }
 
-        function handleNetworkError(err) {
-            console.error("ERREUR FETCH :", err);
-            const isAbort = err.name === "AbortError";
-            const msg = isAbort
-                ? "L'analyse a dépassé le délai maximal. Le serveur ou OpenAI n'a pas répondu à temps."
-                : err.message;
+        function buildBatchSummary(results) {
+            if (!results || results.length === 0) {
+                return "> Aucune analyse réussie.";
+            }
 
-            setLog(
-                "> ERREUR RÉSEAU :\n" + msg +
-                "\n\nCauses possibles :\n" +
-                "- serveur Render arrêté ;\n" +
-                "- mauvaise URL API ;\n" +
-                "- route /api/analyze-vision ou /api/analyze-vision-batch absente ;\n" +
-                "- problème CORS ;\n" +
-                "- clé OPENAI_API_KEY absente ou invalide ;\n" +
-                "- crédit OpenAI insuffisant."
-            );
+            const counts = {
+                ACHETER: 0,
+                VENDRE: 0,
+                ATTENDRE: 0
+            };
 
-            alert(
-                "Erreur réseau lors de l'analyse IA.\n\n" + msg + "\n\n" +
-                "Vérifiez la console du navigateur et les logs Render."
+            let totalConfidence = 0;
+
+            results.forEach(item => {
+                const decision = String(item.analysis.decision || "ATTENDRE").toUpperCase();
+
+                if (counts[decision] === undefined) {
+                    counts.ATTENDRE++;
+                } else {
+                    counts[decision]++;
+                }
+
+                totalConfidence += Number(item.analysis.confidence || 0);
+            });
+
+            const averageConfidence = Math.round(totalConfidence / results.length);
+
+            let dominantDecision = "ATTENDRE";
+            if (counts.ACHETER > counts.VENDRE && counts.ACHETER > counts.ATTENDRE) {
+                dominantDecision = "ACHETER";
+            } else if (counts.VENDRE > counts.ACHETER && counts.VENDRE > counts.ATTENDRE) {
+                dominantDecision = "VENDRE";
+            }
+
+            document.getElementById('ai-decision').innerText = dominantDecision;
+            document.getElementById('ai-decision').style.color =
+                dominantDecision === "ACHETER"
+                    ? "var(--buy-green)"
+                    : (dominantDecision === "VENDRE" ? "var(--sell-red)" : "var(--yellow-pro)");
+
+            document.getElementById('ai-bar').style.width = averageConfidence + "%";
+            document.getElementById('ai-percent').innerText = averageConfidence + "%";
+
+            return (
+                "> SYNTHÈSE DE LA SÉLECTION\n" +
+                "Captures analysées : " + results.length + "\n" +
+                "Acheter : " + counts.ACHETER + "\n" +
+                "Vendre : " + counts.VENDRE + "\n" +
+                "Attendre : " + counts.ATTENDRE + "\n" +
+                "Décision dominante : " + dominantDecision + "\n" +
+                "Confiance moyenne : " + averageConfidence + "%"
             );
+        }
+
+        function renderAIResults(data) {
+            if (!data) return;
+
+            const decisionEl = document.getElementById('ai-decision');
+            const barEl = document.getElementById('ai-bar');
+
+            const decision = String(data.decision || "ATTENDRE").toUpperCase();
+            const confidence = Number(data.confidence || 0);
+            const reasoning = data.reasoning || "Aucune justification retournée par l'IA.";
+
+            decisionEl.innerText = decision;
+            decisionEl.style.color =
+                decision === "ACHETER"
+                    ? "var(--buy-green)"
+                    : (decision === "VENDRE" ? "var(--sell-red)" : "var(--yellow-pro)");
+            
+            barEl.style.width = Math.max(0, Math.min(100, confidence)) + "%";
+            document.getElementById('ai-percent').innerText = Math.max(0, Math.min(100, confidence)) + "%";
+            document.getElementById('ai-reasoning').innerText = "> ANALYSE TERMINÉE :\n" + reasoning;
         }
 
         async function saveNotes() {
             if (!currentFileName) {
-                alert("Aucune capture affichée. Pour l'analyse multiple, copiez le rapport si aucune capture n'est ouverte.");
+                alert("Veuillez d'abord sélectionner une capture avant d'archiver le rapport.");
                 return;
             }
+
             try {
-                const response = await fetchWithTimeout(apiPath('/api/update-notes'), {
+                const response = await fetch(getApiUrl('/api/update-notes'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fileName: currentFileName.replace(/\.(png|jpg|jpeg|webp)$/i, '.json'), notes: userNotes.value })
-                }, 30000);
+                    body: JSON.stringify({ 
+                        fileName: currentFileName.replace('.png', '.json'), 
+                        notes: userNotes.value 
+                    })
+                });
 
-                const texteBrut = await response.text();
-                if (response.ok) {
+                const data = await readResponseAsJson(response);
+
+                if (data.success) {
                     alert("✅ Rapport archivé.");
                 } else {
-                    alert("Impossible d'archiver le rapport.\n\n" + texteBrut);
+                    alert("Le serveur a répondu, mais l'archivage n'est pas confirmé.");
                 }
-            } catch (err) {
-                alert("Erreur réseau pendant l'archivage.\n\n" + err.message);
+
+            } catch (error) {
+                console.error("ERREUR ARCHIVAGE :", error);
+                alert("Erreur lors de l'archivage du rapport.\n\n" + error.message);
             }
         }
 
