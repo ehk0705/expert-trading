@@ -249,16 +249,47 @@ app.post('/api/analyze-vision', async (req, res) => {
 
     try {
         const result = await analyzeImageFile(requestedFileName);
-        res.json({ success: true, analysis: result.analysis, fileName: result.fileName });
+
+        return res.json({
+            success: true,
+            analysis: result.analysis,
+            fileName: result.fileName
+        });
+
     } catch (error) {
-        console.error('ERREUR CRITIQUE API VISION :', error);
         const info = openAIErrorDetails(error);
 
-        res.status(error.httpStatus || 500).json({
+        console.error('ERREUR CRITIQUE API VISION :', {
+            message: error.message,
+            status: info.status,
+            code: info.code,
+            type: info.type,
+            details: info.details
+        });
+
+        let message = "Échec de l'analyse IA.";
+
+        if (info.code === "insufficient_quota") {
+            message = "Quota OpenAI insuffisant. Ajoutez du crédit API ou vérifiez la facturation OpenAI.";
+        } else if (info.status === 401) {
+            message = "Clé OPENAI_API_KEY absente, invalide ou mal configurée dans Render.";
+        } else if (info.status === 429) {
+            message = "Limite OpenAI atteinte : trop de requêtes, quota insuffisant ou limite de compte dépassée.";
+        } else if (info.status === 400) {
+            message = "Requête OpenAI invalide. Vérifiez le modèle, le format de l'image ou le contenu envoyé.";
+        } else if (info.status === 403) {
+            message = "Accès OpenAI refusé. Vérifiez les droits du compte API ou la facturation.";
+        } else if (!process.env.OPENAI_API_KEY) {
+            message = "OPENAI_API_KEY n'est pas configurée dans les variables d'environnement Render.";
+        }
+
+        return res.status(info.status || error.httpStatus || 500).json({
             success: false,
-            error: 'Échec de l\'analyse IA.',
-            details: info.details,
-            openaiStatus: info.status,
+            error: message,
+            details: info.details || error.message || "Erreur inconnue.",
+            openaiStatus: info.status || null,
+            openaiCode: info.code || null,
+            openaiType: info.type || null,
             model: OPENAI_MODEL
         });
     }
