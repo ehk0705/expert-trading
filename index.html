@@ -157,33 +157,30 @@
             };
         }
 
-function appliquerThemeGraphiqueClair() {
-    if (!chart) return;
+        function appliquerThemeGraphiqueClair() {
+            if (!chart) return;
 
-    // On récupère les couleurs définies dans le CSS (style.css)
-    const style = getComputedStyle(document.body);
-    const chartBg = style.getPropertyValue('--chart-bg').trim() || '#f1f5f9';
-    const chartText = style.getPropertyValue('--chart-text').trim() || '#1e293b';
-    const gridColor = style.getPropertyValue('--chart-grid').trim() || '#cbd5e1';
-
-    chart.applyOptions({
-        layout: {
-            background: { color: chartBg },
-            textColor: chartText,
-        },
-        grid: {
-            vertLines: { color: gridColor },
-            horzLines: { color: gridColor }
-        },
-        rightPriceScale: {
-            borderColor: gridColor
-        },
-        timeScale: {
-            borderColor: gridColor,
-            timeVisible: true
+            chart.applyOptions({
+                layout: {
+                    background: { color: '#ffffff' },
+                    textColor: '#111827'
+                },
+                grid: {
+                    vertLines: { color: '#e7edf5' },
+                    horzLines: { color: '#e7edf5' }
+                },
+                rightPriceScale: {
+                    borderColor: '#d1d5db'
+                },
+                timeScale: {
+                    borderColor: '#d1d5db',
+                    timeVisible: true
+                },
+                crosshair: {
+                    mode: 0
+                }
+            });
         }
-    });
-}
 
         function init() {
             const container = document.getElementById('chart-container');
