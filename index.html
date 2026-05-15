@@ -7,19 +7,14 @@
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
     <style>
-        :root {
-            --bg-color: #0b0e11;
-            --header-bg: #1e2329;
-            --panel-bg: #111827;
-            --text-main: #eaecef;
-            --text-muted: #9ca3af;
-            --accent: #2962ff;
-            --border: #363c4e;
-            --yellow-pro: #f0b90b;
-            --buy-green: #2ebd85;
-            --sell-red: #f6465d;
-            --purple-pro: #7c3aed;
-        }
+:root {
+    --bg-color: #ffffff;
+    --header-bg: #f3f4f6;
+    --text-main: #111827;
+    --accent: #2962ff;
+    --border: #d1d5db;
+    --yellow-pro: #b77900;
+}
 
         * {
             box-sizing: border-box;
@@ -382,14 +377,14 @@
             chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
                 width: window.innerWidth,
                 height: hauteur,
-                layout: {
-                    background: { color: '#0b0e11' },
-                    textColor: '#848e9c'
-                },
-                grid: {
-                    vertLines: { color: '#1f2226' },
-                    horzLines: { color: '#1f2226' }
-                },
+layout: {
+    background: { color: '#ffffff' },
+    textColor: '#111827'
+},
+grid: {
+    vertLines: { color: '#e5e7eb' },
+    horzLines: { color: '#e5e7eb' }
+},
                 timeScale: {
                     borderVisible: false,
                     timeVisible: true
