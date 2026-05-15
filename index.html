@@ -7,24 +7,30 @@
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
     <style>
-:root {
-    --bg-color: #ffffff;
-    --header-bg: #f3f4f6;
-    --chart-bg: #ffffff;
-    --chart-grid: #e5e7eb;
-    --chart-text: #111827;
-    --text-main: #111827;
-    --text-muted: #4b5563;
-    --accent: #2962ff;
-    --border: #d1d5db;
-    --yellow-pro: #b77900;
-    --buy-green: #2ebd85;
-    --sell-red: #f6465d;
-    --purple-pro: #7c3aed;
-}
+        :root {
+            --bg-color: #ffffff;
+            --header-bg: #f3f4f6;
+            --chart-bg: #ffffff;
+            --chart-grid: #e5e7eb;
+            --chart-text: #111827;
+            --text-main: #111827;
+            --text-muted: #4b5563;
+            --accent: #2962ff;
+            --border: #d1d5db;
+            --yellow-pro: #b77900;
+            --buy-green: #2ebd85;
+            --sell-red: #f6465d;
+            --purple-pro: #7c3aed;
+        }
 
         * {
             box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
         }
 
         body {
@@ -34,7 +40,6 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
             overflow: hidden;
         }
 
@@ -48,6 +53,7 @@
             gap: 5px;
             flex-wrap: wrap;
             z-index: 10;
+            flex-shrink: 0;
         }
 
         .control-group {
@@ -65,7 +71,7 @@
         label {
             font-size: 9px;
             font-weight: bold;
-            color: #787b86;
+            color: #4b5563;
             white-space: nowrap;
         }
 
@@ -78,7 +84,7 @@
             letter-spacing: 1px;
             flex-grow: 1;
             text-align: center;
-            text-shadow: 0px 0px 5px rgba(240, 185, 11, 0.2);
+            text-shadow: none;
             min-width: 120px;
         }
 
@@ -111,12 +117,14 @@
 
         .btn-capture {
             background: var(--accent);
+            color: #ffffff;
             border: none;
             font-weight: 700;
         }
 
         .btn-vision {
             background: var(--purple-pro);
+            color: #ffffff;
             border: none;
             font-weight: 700;
         }
@@ -130,14 +138,17 @@
 
         .btn-effacer {
             background: var(--sell-red);
+            color: #ffffff;
             border: none;
             font-weight: 700;
         }
 
         #chart-container {
-            flex-grow: 1;
+            flex: 1 1 auto;
             width: 100%;
-            background: #ffffff !important;
+            min-height: 420px;
+            background: #ffffff;
+            position: relative;
         }
 
         #chart-container canvas {
@@ -363,11 +374,6 @@
             ============================================================
             CONFIGURATION API
             ============================================================
-
-            Si la page est sur GitHub Pages, elle appelle Render.
-            Si la page est servie depuis Render, elle utilise le même domaine.
-
-            Modifier cette URL si ton service Render change.
         */
         const API_BASE_URL = window.location.hostname.includes("github.io")
             ? "https://expert-trading.onrender.com"
@@ -383,12 +389,25 @@
             return API_BASE_URL + route;
         }
 
+        function getChartSize() {
+            const container = document.getElementById('chart-container');
+            const rect = container.getBoundingClientRect();
+
+            return {
+                width: Math.max(320, Math.floor(rect.width || window.innerWidth)),
+                height: Math.max(420, Math.floor(rect.height || (window.innerHeight - 60)))
+            };
+        }
+
         function appliquerThemeGraphiqueClair() {
             if (!chart) return;
 
             chart.applyOptions({
                 layout: {
-                    background: { color: '#ffffff' },
+                    background: {
+                        type: 'solid',
+                        color: '#ffffff'
+                    },
                     textColor: '#111827'
                 },
                 grid: {
@@ -406,22 +425,20 @@
                     mode: 0
                 }
             });
-
-            const container = document.getElementById('chart-container');
-            if (container) {
-                container.style.backgroundColor = '#ffffff';
-            }
         }
 
-
         function init() {
-            const hauteur = Math.max(420, window.innerHeight - 50);
+            const container = document.getElementById('chart-container');
+            const size = getChartSize();
 
-            chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
-                width: window.innerWidth,
-                height: hauteur,
+            chart = LightweightCharts.createChart(container, {
+                width: size.width,
+                height: size.height,
                 layout: {
-                    background: { color: '#ffffff' },
+                    background: {
+                        type: 'solid',
+                        color: '#ffffff'
+                    },
                     textColor: '#111827'
                 },
                 grid: {
@@ -432,7 +449,8 @@
                     borderColor: '#d1d5db'
                 },
                 timeScale: {
-                    borderVisible: false,
+                    borderColor: '#d1d5db',
+                    borderVisible: true,
                     timeVisible: true
                 },
                 crosshair: {
@@ -440,10 +458,9 @@
                 }
             });
 
-            appliquerThemeGraphiqueClair();
             changerStyleGraphique();
-            actualiserGraphique();
             appliquerThemeGraphiqueClair();
+            actualiserGraphique();
         }
 
         function afficherStatus(message) {
@@ -593,6 +610,7 @@
 
             if (mainSeries) {
                 chart.removeSeries(mainSeries);
+                mainSeries = null;
             }
 
             const commonOptions = {
@@ -627,7 +645,7 @@
             } else if (type === 'area') {
                 mainSeries = chart.addAreaSeries({
                     ...commonOptions,
-                    topColor: 'rgba(41, 98, 255, 0.4)',
+                    topColor: 'rgba(41, 98, 255, 0.25)',
                     bottomColor: 'rgba(255, 255, 255, 1)',
                     lineColor: '#2962ff',
                     lineWidth: 2
@@ -686,6 +704,7 @@
                     mainSeries.setData(currentData);
                 }
 
+                chart.timeScale().fitContent();
                 appliquerThemeGraphiqueClair();
 
                 socket = new WebSocket(
@@ -704,7 +723,9 @@
                         value: parseFloat(k.c)
                     };
 
-                    mainSeries.update(update);
+                    if (mainSeries) {
+                        mainSeries.update(update);
+                    }
 
                     const lastIdx = currentData.length - 1;
 
@@ -954,10 +975,13 @@
 
         window.onresize = () => {
             if (chart) {
+                const size = getChartSize();
+
                 chart.applyOptions({
-                    width: window.innerWidth,
-                    height: Math.max(420, window.innerHeight - 50)
+                    width: size.width,
+                    height: size.height
                 });
+
                 appliquerThemeGraphiqueClair();
             }
         };
