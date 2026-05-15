@@ -6,28 +6,31 @@
     <title>Expert Trading Pro v2.0 - Full Interface</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
-        <style>
+            <style>
         :root {
-            --bg-color: #f4f7fb;
-            --header-bg: rgba(255, 255, 255, 0.88);
-            --chart-bg: #ffffff;
-            --chart-grid: #e7edf5;
-            --chart-text: #111827;
+            --bg-color: #0b0f19;
+            --header-bg: #111827;
+            --toolbar-bg: #151a24;
+            --chart-bg: #131722;
+            --chart-panel: #161a25;
+            --chart-grid: #2a2e39;
+            --chart-text: #d1d4dc;
 
-            --text-main: #111827;
-            --text-muted: #5b6472;
+            --text-main: #e5e7eb;
+            --text-muted: #9ca3af;
 
-            --accent: #2563eb;
-            --accent-2: #14b8a6;
-            --yellow-pro: #d97706;
+            --accent: #2962ff;
+            --accent-soft: rgba(41, 98, 255, 0.16);
+            --border: #2a2e39;
+
+            --yellow-pro: #f0b90b;
+            --buy-green: #26a69a;
+            --sell-red: #ef5350;
             --purple-pro: #7c3aed;
-            --buy-green: #10b981;
-            --sell-red: #ef4444;
 
-            --border: rgba(148, 163, 184, 0.45);
-            --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.10);
-            --shadow-strong: 0 18px 55px rgba(15, 23, 42, 0.20);
-            --radius: 14px;
+            --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.28);
+            --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.42);
+            --radius: 12px;
         }
 
         * {
@@ -48,23 +51,21 @@
             flex-direction: column;
             overflow: hidden;
             background:
-                radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 34%),
-                radial-gradient(circle at top right, rgba(20, 184, 166, 0.18), transparent 28%),
-                linear-gradient(180deg, #f8fbff 0%, #eef3f9 100%);
+                radial-gradient(circle at top left, rgba(41, 98, 255, 0.16), transparent 34%),
+                linear-gradient(180deg, #0b0f19 0%, #090d14 100%);
         }
 
         .header-pro {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: var(--header-bg);
-            padding: 9px 12px;
+            background: linear-gradient(180deg, #151a24 0%, #10151f 100%);
+            padding: 8px 10px;
             border-bottom: 1px solid var(--border);
             gap: 8px;
             flex-wrap: wrap;
             z-index: 10;
             flex-shrink: 0;
-            backdrop-filter: blur(14px);
             box-shadow: var(--shadow-soft);
         }
 
@@ -72,21 +73,21 @@
             display: flex;
             align-items: center;
             gap: 7px;
-            padding: 7px 9px;
-            border: 1px solid rgba(148, 163, 184, 0.28);
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.72);
-            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+            padding: 6px 8px;
+            border: 1px solid #2a2e39;
+            border-radius: 10px;
+            background: #151a24;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
         }
 
         .control-group:last-child {
-            border-right: 1px solid rgba(148, 163, 184, 0.28);
+            border-right: 1px solid #2a2e39;
         }
 
         label {
             font-size: 10px;
             font-weight: 900;
-            color: #64748b;
+            color: #9ca3af;
             white-space: nowrap;
             letter-spacing: 0.04em;
         }
@@ -94,49 +95,52 @@
         h1 {
             font-size: 15px;
             margin: 0;
-            color: #0f172a;
+            color: var(--yellow-pro);
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 1.4px;
             flex-grow: 1;
             text-align: center;
             min-width: 160px;
-            background: linear-gradient(90deg, #2563eb, #7c3aed, #d97706);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            text-shadow: 0 0 16px rgba(240, 185, 11, 0.18);
         }
 
         select,
         button,
         input[type="file"] {
-            background: #ffffff;
-            color: #111827;
-            border: 1px solid #d5dce7;
+            background: #0f131d;
+            color: #d1d4dc;
+            border: 1px solid #2a2e39;
             padding: 7px 10px;
-            border-radius: 999px;
+            border-radius: 8px;
             font-size: 11px;
             cursor: pointer;
             outline: none;
-            transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+            transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
         }
 
         select {
-            min-width: 78px;
+            min-width: 82px;
         }
 
         input[type="file"] {
             max-width: 185px;
-            background: #f8fafc;
+            background: #0f131d;
         }
 
         select:hover,
         button:hover,
         input[type="file"]:hover {
-            background: #f8fafc;
-            border-color: #93c5fd;
-            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.13);
+            background: #1e2433;
+            border-color: #3b82f6;
             transform: translateY(-1px);
+        }
+
+        select:focus,
+        button:focus,
+        input[type="file"]:focus {
+            border-color: #2962ff;
+            box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.18);
         }
 
         button:disabled {
@@ -157,37 +161,38 @@
         }
 
         .btn-capture {
-            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+            background: linear-gradient(135deg, #2962ff, #1e88e5);
         }
 
         .btn-vision {
-            background: linear-gradient(135deg, #7c3aed, #db2777);
+            background: linear-gradient(135deg, #7c3aed, #c026d3);
         }
 
         .btn-technique {
-            background: linear-gradient(135deg, #10b981, #14b8a6);
-            color: #04130e;
+            background: linear-gradient(135deg, #26a69a, #00c853);
+            color: #03110d;
         }
 
         .btn-effacer {
-            background: linear-gradient(135deg, #ef4444, #f97316);
+            background: linear-gradient(135deg, #ef5350, #ff7043);
         }
 
         #chart-container {
             flex: 1 1 auto;
-            width: calc(100% - 24px);
-            height: calc(100vh - 72px);
+            width: calc(100% - 20px);
+            height: calc(100vh - 76px);
             min-height: 520px;
-            margin: 12px;
-            background: #ffffff;
+            margin: 10px;
+            background: #131722;
             position: relative;
-            border: 1px solid rgba(148, 163, 184, 0.35);
-            border-radius: 18px;
+            border: 1px solid #2a2e39;
+            border-radius: 14px;
             overflow: hidden;
             box-shadow: var(--shadow-strong);
         }
-#chart-container canvas {
-            background: #ffffff !important;
+
+        #chart-container canvas {
+            background: #131722 !important;
             display: block !important;
             position: relative;
             z-index: 0;
@@ -203,15 +208,14 @@
             bottom: 18px;
             width: min(640px, calc(100vw - 36px));
             max-height: 45vh;
-            background: rgba(15, 23, 42, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            border-radius: 18px;
-            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.38);
+            background: rgba(17, 24, 39, 0.96);
+            border: 1px solid #2a2e39;
+            border-radius: 16px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
             display: flex;
             flex-direction: column;
             overflow: hidden;
             z-index: 20;
-            backdrop-filter: blur(14px);
         }
 
         .result-header {
@@ -220,27 +224,27 @@
             justify-content: space-between;
             gap: 8px;
             padding: 10px 12px;
-            background: linear-gradient(90deg, rgba(37, 99, 235, 0.45), rgba(124, 58, 237, 0.42));
-            border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+            background: linear-gradient(90deg, #151a24, #1f2937);
+            border-bottom: 1px solid #2a2e39;
         }
 
         .result-header strong {
-            color: #ffffff;
+            color: var(--yellow-pro);
             font-size: 13px;
             letter-spacing: 0.04em;
         }
 
         .result-header button {
-            background: rgba(255, 255, 255, 0.12);
-            color: #ffffff;
-            border-color: rgba(255, 255, 255, 0.26);
+            background: #0f131d;
+            color: #d1d4dc;
+            border-color: #2a2e39;
         }
 
         .status-line {
-            color: #cbd5e1;
+            color: #9ca3af;
             font-size: 11px;
             padding: 8px 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            border-bottom: 1px solid #2a2e39;
             white-space: pre-wrap;
         }
 
@@ -261,7 +265,7 @@
         }
 
         #resultat-analyse::-webkit-scrollbar-thumb {
-            background: rgba(147, 197, 253, 0.45);
+            background: rgba(41, 98, 255, 0.48);
             border-radius: 999px;
         }
 
@@ -283,7 +287,7 @@
 
             .control-group {
                 width: 100%;
-                border-radius: 14px;
+                border-radius: 12px;
                 justify-content: space-between;
             }
 
@@ -305,7 +309,7 @@
                 height: 65vh;
                 min-height: 420px;
                 margin: 10px;
-                border-radius: 14px;
+                border-radius: 12px;
             }
 
             .result-panel {
@@ -313,7 +317,7 @@
                 width: calc(100% - 20px);
                 margin: 10px;
                 max-height: none;
-                border-radius: 14px;
+                border-radius: 12px;
             }
         }
     </style>
@@ -467,23 +471,23 @@
             };
         }
 
-        function appliquerThemeGraphiqueClair() {
+        function appliquerThemeGraphiqueTradingView() {
             if (!chart) return;
 
             chart.applyOptions({
                 layout: {
-                    background: { color: '#ffffff' },
-                    textColor: '#111827'
+                    background: { color: '#131722' },
+                    textColor: '#d1d4dc'
                 },
                 grid: {
-                    vertLines: { color: '#e7edf5' },
-                    horzLines: { color: '#e7edf5' }
+                    vertLines: { color: '#2a2e39' },
+                    horzLines: { color: '#2a2e39' }
                 },
                 rightPriceScale: {
-                    borderColor: '#d1d5db'
+                    borderColor: '#2a2e39'
                 },
                 timeScale: {
-                    borderColor: '#d1d5db',
+                    borderColor: '#2a2e39',
                     timeVisible: true
                 },
                 crosshair: {
@@ -505,18 +509,18 @@
                 width: size.width,
                 height: size.height,
                 layout: {
-                    background: { color: '#ffffff' },
-                    textColor: '#111827'
+                    background: { color: '#131722' },
+                    textColor: '#d1d4dc'
                 },
                 grid: {
-                    vertLines: { color: '#e7edf5' },
-                    horzLines: { color: '#e7edf5' }
+                    vertLines: { color: '#2a2e39' },
+                    horzLines: { color: '#2a2e39' }
                 },
                 rightPriceScale: {
-                    borderColor: '#d1d5db'
+                    borderColor: '#2a2e39'
                 },
                 timeScale: {
-                    borderColor: '#d1d5db',
+                    borderColor: '#2a2e39',
                     borderVisible: true,
                     timeVisible: true
                 },
@@ -526,7 +530,7 @@
             });
 
             changerStyleGraphique();
-            appliquerThemeGraphiqueClair();
+            appliquerThemeGraphiqueTradingView();
             actualiserGraphique();
 
             setTimeout(() => {
@@ -536,7 +540,7 @@
                         width: newSize.width,
                         height: newSize.height
                     });
-                    appliquerThemeGraphiqueClair();
+                    appliquerThemeGraphiqueTradingView();
                     if (mainSeries && currentData.length > 0) {
                         mainSeries.setData(currentData);
                         chart.timeScale().fitContent();
@@ -727,8 +731,8 @@
             } else if (type === 'area') {
                 mainSeries = chart.addAreaSeries({
                     ...commonOptions,
-                    topColor: 'rgba(41, 98, 255, 0.25)',
-                    bottomColor: 'rgba(255, 255, 255, 1)',
+                    topColor: 'rgba(41, 98, 255, 0.35)',
+                    bottomColor: 'rgba(19, 23, 34, 1)',
                     lineColor: '#2962ff',
                     lineWidth: 2
                 });
@@ -738,7 +742,7 @@
                 mainSeries.setData(currentData);
             }
 
-            appliquerThemeGraphiqueClair();
+            appliquerThemeGraphiqueTradingView();
         }
 
         async function actualiserGraphique() {
@@ -787,7 +791,7 @@
                 }
 
                 chart.timeScale().fitContent();
-                appliquerThemeGraphiqueClair();
+                appliquerThemeGraphiqueTradingView();
 
                 socket = new WebSocket(
                     `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
@@ -1089,7 +1093,7 @@
                     height: size.height
                 });
 
-                appliquerThemeGraphiqueClair();
+                appliquerThemeGraphiqueTradingView();
             }
         };
     </script>
