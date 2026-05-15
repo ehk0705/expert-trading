@@ -1,36 +1,36 @@
 /* ============================================================
    Expert Trading Pro v2.0
    Fichier : style.css
-   Version corrigée : graphique visible, gris clair contrasté
+   Version : Fond blanc pur & Graphique contrasté
    ============================================================ */
 
 :root {
-    /* Page */
-    --page-bg: #d6dde8;
-    --header-bg: #ffffff;
-    --toolbar-bg: #f8fafc;
+    /* Page : Fond Blanc Pur */
+    --page-bg: #ffffff;
+    --header-bg: #f8fafc;
+    --toolbar-bg: #ffffff;
 
-    /* Graphique : ni blanc pur, ni noir */
-    --chart-bg: #f3f6fb;
-    --chart-border: #7c8aa0;
-    --chart-grid: #aeb8c8;
-    --chart-text: #111827;
+    /* Graphique : Fond Gris-Bleu très clair pour le détacher du blanc */
+    --chart-bg: #f1f5f9; 
+    --chart-border: #2563eb; /* Bordure bleue pour bien délimiter */
+    --chart-grid: #cbd5e1;
+    --chart-text: #1e293b;
 
     /* Texte */
-    --text-main: #111827;
-    --text-muted: #475569;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
 
     /* Actions */
     --accent: #2563eb;
     --purple-pro: #7c3aed;
-    --buy-green: #059669;
-    --sell-red: #dc2626;
-    --yellow-pro: #b77900;
+    --buy-green: #10b981;
+    --sell-red: #ef4444;
+    --yellow-pro: #f59e0b;
 
     /* Bordures et ombres */
-    --border: #cbd5e1;
-    --shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.12);
-    --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.20);
+    --border: #e2e8f0;
+    --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --shadow-strong: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 /* ============================================================
@@ -41,24 +41,19 @@
     box-sizing: border-box;
 }
 
-html,
-body {
+html, body {
     width: 100%;
     height: 100%;
     margin: 0;
 }
 
 body {
-    font-family: Inter, Arial, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     background: var(--page-bg);
     color: var(--text-main);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-}
-
-a {
-    text-decoration: none;
 }
 
 /* ============================================================
@@ -73,8 +68,7 @@ a {
     flex-wrap: wrap;
     flex-shrink: 0;
     z-index: 10;
-
-    padding: 8px 10px;
+    padding: 10px 15px;
     background: var(--header-bg);
     border-bottom: 1px solid var(--border);
     box-shadow: var(--shadow-soft);
@@ -83,270 +77,100 @@ a {
 .control-group {
     display: flex;
     align-items: center;
-    gap: 7px;
-
-    padding: 6px 8px;
+    gap: 8px;
+    padding: 5px 10px;
     background: var(--toolbar-bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 label {
-    font-size: 10px;
-    font-weight: 900;
+    font-size: 11px;
+    font-weight: 700;
     color: var(--text-muted);
-    white-space: nowrap;
-    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 h1 {
     flex-grow: 1;
-    min-width: 160px;
     margin: 0;
-
     text-align: center;
-    font-size: 15px;
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 1.4px;
-    color: var(--text-main);
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 1px;
 }
 
 /* ============================================================
-   Formulaires et boutons
+   Boutons
    ============================================================ */
 
-select,
-button,
-input[type="file"] {
-    background: #ffffff;
-    color: var(--text-main);
+button, select {
+    font-weight: 600;
     border: 1px solid var(--border);
-    border-radius: 8px;
-
-    padding: 7px 10px;
-    font-size: 11px;
-    cursor: pointer;
-    outline: none;
-
-    transition:
-        background 0.16s ease,
-        border-color 0.16s ease,
-        transform 0.16s ease,
-        box-shadow 0.16s ease;
+    transition: all 0.2s ease;
 }
 
-select {
-    min-width: 82px;
-}
+.btn-capture { background: var(--accent); color: white; }
+.btn-vision { background: var(--purple-pro); color: white; }
+.btn-technique { background: var(--buy-green); color: white; }
+.btn-effacer { background: var(--sell-red); color: white; }
 
-input[type="file"] {
-    max-width: 185px;
-}
-
-select:hover,
-button:hover,
-input[type="file"]:hover {
-    background: #f1f5f9;
-    border-color: var(--accent);
+button:hover {
+    filter: brightness(1.1);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
-}
-
-button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-/* Boutons principaux */
-
-.btn-capture,
-.btn-vision,
-.btn-technique,
-.btn-effacer {
-    color: #ffffff;
-    border: none;
-    font-weight: 900;
-    letter-spacing: 0.02em;
-}
-
-.btn-capture {
-    background: var(--accent);
-}
-
-.btn-vision {
-    background: var(--purple-pro);
-}
-
-.btn-technique {
-    background: var(--buy-green);
-}
-
-.btn-effacer {
-    background: var(--sell-red);
 }
 
 /* ============================================================
-   Graphique
+   Graphique (Correction visibilité)
    ============================================================ */
 
 #chart-container {
-    flex: 1 1 auto;
-    width: calc(100% - 24px);
-    height: calc(100vh - 76px);
-    min-height: 520px;
-    margin: 12px;
-
+    flex: 1;
+    margin: 15px;
     position: relative;
-    overflow: hidden;
-
     background: var(--chart-bg);
-    border: 2px solid var(--chart-border);
-    border-radius: 14px;
+    border: 2px solid var(--chart-border); /* Bordure colorée pour le contraste */
+    border-radius: 12px;
     box-shadow: var(--shadow-strong);
+    overflow: hidden;
 }
 
-/*
-   Le fond du canvas doit être identique au fond du graphique,
-   mais différent du fond général de la page.
-*/
 #chart-container canvas {
-    display: block !important;
     background: var(--chart-bg) !important;
 }
 
-/* Filigrane discret */
+/* Filigrane */
 #chart-container::after {
     content: "EXPERT TRADING PRO";
     position: absolute;
-    left: 22px;
-    top: 18px;
-    z-index: 2;
-
-    color: rgba(17, 24, 39, 0.07);
-    font-size: 28px;
+    bottom: 20px;
+    right: 20px;
+    color: rgba(37, 99, 235, 0.1);
+    font-size: 24px;
     font-weight: 900;
     pointer-events: none;
 }
 
 /* ============================================================
-   Panneau de résultat IA
+   Résultats IA
    ============================================================ */
 
 .result-panel {
     position: fixed;
-    right: 18px;
-    bottom: 18px;
-    z-index: 20;
-
-    width: min(640px, calc(100vw - 36px));
-    max-height: 45vh;
-
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    background: #ffffff;
+    right: 25px;
+    bottom: 25px;
+    width: 450px;
+    background: white;
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 12px;
     box-shadow: var(--shadow-strong);
-}
-
-.result-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-
-    padding: 10px 12px;
-    background: #f1f5f9;
-    border-bottom: 1px solid var(--border);
-}
-
-.result-header strong {
-    color: var(--text-main);
-    font-size: 13px;
-    letter-spacing: 0.04em;
-}
-
-.status-line {
-    padding: 8px 12px;
-
-    color: var(--text-muted);
-    font-size: 11px;
-    white-space: pre-wrap;
-
-    border-bottom: 1px solid var(--border);
+    z-index: 100;
 }
 
 #resultat-analyse {
-    margin: 0;
-    padding: 12px;
-
-    color: var(--text-main);
-    background: #ffffff;
-
-    font-family: Consolas, monospace;
-    font-size: 11px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    overflow: auto;
-}
-
-.hidden {
-    display: none;
-}
-
-/* ============================================================
-   Responsive
-   ============================================================ */
-
-@media (max-width: 900px) {
-    body {
-        height: auto;
-        min-height: 100vh;
-        overflow: auto;
-    }
-
-    .header-pro {
-        align-items: stretch;
-        padding: 10px;
-    }
-
-    .control-group {
-        width: 100%;
-        justify-content: space-between;
-        border-radius: 12px;
-    }
-
-    h1 {
-        width: 100%;
-        order: -1;
-        margin-bottom: 4px;
-    }
-
-    select,
-    button,
-    input[type="file"] {
-        flex: 1;
-        min-width: 0;
-    }
-
-    #chart-container {
-        width: calc(100% - 20px);
-        height: 65vh;
-        min-height: 420px;
-        margin: 10px;
-        border-radius: 12px;
-    }
-
-    .result-panel {
-        position: static;
-        width: calc(100% - 20px);
-        margin: 10px;
-        max-height: none;
-        border-radius: 12px;
-    }
+    padding: 15px;
+    font-size: 12px;
+    max-height: 300px;
+    overflow-y: auto;
 }
