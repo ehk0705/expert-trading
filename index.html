@@ -5,14 +5,238 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expert Trading Pro v2.0 - Full Interface</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-    <link rel="stylesheet" href="style.css">
+
     <style>
-        /* Sécurité pour garantir la visibilité du conteneur */
+        :root {
+            --bg-color: #0b0e11;
+            --header-bg: #1e2329;
+            --panel-bg: #111827;
+            --text-main: #eaecef;
+            --text-muted: #9ca3af;
+            --accent: #2962ff;
+            --border: #363c4e;
+            --yellow-pro: #f0b90b;
+            --buy-green: #2ebd85;
+            --sell-red: #f6465d;
+            --purple-pro: #7c3aed;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header-pro {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--header-bg);
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--border);
+            gap: 5px;
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border-right: 1px solid var(--border);
+            padding-right: 8px;
+        }
+
+        .control-group:last-child {
+            border-right: none;
+        }
+
+        label {
+            font-size: 9px;
+            font-weight: bold;
+            color: #787b86;
+            white-space: nowrap;
+        }
+
+        h1 {
+            font-size: 13px;
+            margin: 0;
+            color: var(--yellow-pro);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            flex-grow: 1;
+            text-align: center;
+            text-shadow: 0px 0px 5px rgba(240, 185, 11, 0.2);
+            min-width: 120px;
+        }
+
+        select,
+        button,
+        input[type="file"] {
+            background: #2b3139;
+            color: #fff;
+            border: 1px solid #474d57;
+            padding: 4px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        input[type="file"] {
+            max-width: 175px;
+        }
+
+        select:hover,
+        button:hover {
+            background: #363c4e;
+        }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .btn-capture {
+            background: var(--accent);
+            border: none;
+            font-weight: 700;
+        }
+
+        .btn-vision {
+            background: var(--purple-pro);
+            border: none;
+            font-weight: 700;
+        }
+
+        .btn-technique {
+            background: var(--buy-green);
+            color: #06140e;
+            border: none;
+            font-weight: 700;
+        }
+
+        .btn-effacer {
+            background: var(--sell-red);
+            border: none;
+            font-weight: 700;
+        }
+
         #chart-container {
+            flex-grow: 1;
             width: 100%;
-            height: 600px;
-            background-color: #f0f2f5; /* Gris léger pour voir le conteneur avant le chargement */
-            border: 1px solid #ccc;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .result-panel {
+            position: fixed;
+            right: 12px;
+            bottom: 12px;
+            width: min(620px, calc(100vw - 24px));
+            max-height: 45vh;
+            background: rgba(17, 24, 39, 0.97);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 20;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 10px;
+            background: #0f172a;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .result-header strong {
+            color: var(--yellow-pro);
+            font-size: 12px;
+        }
+
+        .status-line {
+            color: var(--text-muted);
+            font-size: 11px;
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--border);
+            white-space: pre-wrap;
+        }
+
+        #resultat-analyse {
+            margin: 0;
+            padding: 10px;
+            color: #dbeafe;
+            font-family: Consolas, monospace;
+            font-size: 11px;
+            line-height: 1.45;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                overflow: auto;
+            }
+
+            .header-pro {
+                align-items: stretch;
+            }
+
+            .control-group {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 5px;
+            }
+
+            h1 {
+                width: 100%;
+                order: -1;
+                margin-bottom: 4px;
+            }
+
+            select,
+            button,
+            input[type="file"] {
+                flex: 1;
+                min-width: 0;
+            }
+
+            #chart-container {
+                height: 65vh;
+                min-height: 420px;
+            }
+
+            .result-panel {
+                position: static;
+                width: 100%;
+                max-height: none;
+                border-radius: 0;
+            }
         }
     </style>
 </head>
@@ -112,7 +336,6 @@
             </a>
 
             <button class="btn-effacer" onclick="effacerResultat()">Effacer</button>
-            <button type="button" onclick="diagnosticGraphique()">Diagnostic graphique</button>
         </div>
     </div>
 
@@ -129,6 +352,16 @@
     </div>
 
     <script>
+        /*
+            ============================================================
+            CONFIGURATION API
+            ============================================================
+
+            Si la page est sur GitHub Pages, elle appelle Render.
+            Si la page est servie depuis Render, elle utilise le même domaine.
+
+            Modifier cette URL si ton service Render change.
+        */
         const API_BASE_URL = window.location.hostname.includes("github.io")
             ? "https://expert-trading.onrender.com"
             : "";
@@ -143,77 +376,61 @@
             return API_BASE_URL + route;
         }
 
-        function getChartSize() {
-            const container = document.getElementById('chart-container');
-            const width = container ? container.clientWidth : window.innerWidth;
-            const height = 600; // Hauteur fixe pour éviter l'invisibilité
-            return { width, height };
-        }
+        function init() {
+            const hauteur = Math.max(420, window.innerHeight - 50);
 
-        function appliquerThemeGraphiqueClair() {
-            if (!chart) return;
-
-            chart.applyOptions({
+            chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
+                width: window.innerWidth,
+                height: hauteur,
                 layout: {
-                    background: { color: '#ffffff' },
-                    textColor: '#191b20', // Gris très foncé presque noir
+                    background: { color: '#0b0e11' },
+                    textColor: '#848e9c'
                 },
                 grid: {
-                    vertLines: { color: '#f0f3fa' },
-                    horzLines: { color: '#f0f3fa' }
-                },
-                rightPriceScale: {
-                    borderColor: '#dee2e6',
+                    vertLines: { color: '#1f2226' },
+                    horzLines: { color: '#1f2226' }
                 },
                 timeScale: {
-                    borderColor: '#dee2e6',
+                    borderVisible: false,
                     timeVisible: true
-                }
-            });
-        }
-
-        function init() {
-            const container = document.getElementById('chart-container');
-            const size = getChartSize();
-
-            if (!container) return;
-
-            chart = LightweightCharts.createChart(container, {
-                width: size.width,
-                height: size.height,
-                layout: {
-                    background: { color: '#ffffff' },
-                    textColor: '#191b20'
                 },
-                grid: {
-                    vertLines: { color: '#f0f3fa' },
-                    horzLines: { color: '#f0f3fa' }
+                crosshair: {
+                    mode: 0
                 }
             });
 
             changerStyleGraphique();
             actualiserGraphique();
-
-            window.addEventListener('resize', () => {
-                const newSize = getChartSize();
-                chart.applyOptions({ width: newSize.width, height: newSize.height });
-            });
         }
 
         function afficherStatus(message) {
             const status = document.getElementById("status");
-            if (status) status.textContent = message;
+
+            if (status) {
+                status.textContent = message;
+            }
         }
 
         function afficherResultat(data) {
             const zone = document.getElementById("resultat-analyse");
+
             if (!zone) return;
-            zone.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+
+            if (typeof data === "string") {
+                zone.textContent = data;
+            } else {
+                zone.textContent = JSON.stringify(data, null, 2);
+            }
         }
 
         function togglePanel() {
             const zone = document.getElementById("resultat-analyse");
-            if (zone) zone.classList.toggle("hidden");
+            const status = document.getElementById("status");
+
+            if (!zone || !status) return;
+
+            zone.classList.toggle("hidden");
+            status.classList.toggle("hidden");
         }
 
         function effacerResultat() {
@@ -222,46 +439,106 @@
         }
 
         function setBoutonsActifs(actif) {
-            const ids = ["btn-capture", "btn-vision"];
+            const ids = [
+                "btn-capture",
+                "btn-vision"
+            ];
+
             ids.forEach(id => {
                 const bouton = document.getElementById(id);
-                if (bouton) bouton.disabled = !actif;
+
+                if (bouton) {
+                    bouton.disabled = !actif;
+                }
             });
         }
 
         async function lireReponseJson(response) {
             const texte = await response.text();
+
             let data;
+
             try {
                 data = JSON.parse(texte);
             } catch (erreur) {
-                throw new Error("Erreur JSON : " + response.status);
+                throw new Error(
+                    "Le serveur n'a pas retourné du JSON valide.\n\n" +
+                    "Statut HTTP : " + response.status + "\n\n" +
+                    texte
+                );
             }
+
+            if (!response.ok || data.ok === false) {
+                throw new Error(
+                    data.details ||
+                    data.message ||
+                    data.error ||
+                    ("Erreur HTTP " + response.status)
+                );
+            }
+
             return data;
         }
 
         function obtenirConfiguration() {
             const cat = document.getElementById('categorie-analyse-btc');
+            const catText = cat.options[cat.selectedIndex].text;
+
+            const actif = document.getElementById('asset-selector').value;
+            const intervalle = document.getElementById('interval-selector').value;
+            const indicateur = document.getElementById('indicator-selector').value;
+            const style = document.getElementById('chart-type-selector').value;
+
             return {
-                actif: document.getElementById('asset-selector').value,
-                intervalle: document.getElementById('interval-selector').value,
-                indicateur: document.getElementById('indicator-selector').value,
-                style: document.getElementById('chart-type-selector').value,
-                categorieAnalyseLibelle: cat.options[cat.selectedIndex].text
+                nom: "Expert Trading Pro v2.0",
+                actif: actif,
+                intervalle: intervalle,
+                indicateur: indicateur,
+                categorieAnalyse: document.getElementById('categorie-analyse-btc').value,
+                categorieAnalyseLibelle: catText,
+                style: style,
+                graphique: {
+                    actif: actif,
+                    intervalle: intervalle,
+                    indicateur: indicateur,
+                    style: style,
+                    source: "lightweight_charts_binance"
+                },
+                marcheLocal: {
+                    derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
+                    nombreBougies: currentData.length
+                },
+                dateConfiguration: new Date().toISOString()
             };
         }
 
         function convertirIntervallePourBinance(intervalleTradingView) {
             const interval = String(intervalleTradingView || "60");
+
+            if (interval === "60") return "1h";
+            if (interval === "240") return "4h";
             if (interval === "D") return "1d";
             if (interval === "W") return "1w";
             if (interval === "M") return "1M";
-            return isNaN(interval) ? interval : interval + "m";
+            if (!isNaN(interval)) return interval + "m";
+
+            return interval;
         }
 
         function obtenirSymboleBinanceDepuisActif(actif) {
             const brut = String(actif || "BINANCE:BTCUSDT").toUpperCase();
-            return brut.includes(":") ? brut.split(":")[1] : "BTCUSDT";
+
+            if (brut.includes("BINANCE:")) {
+                return brut.split(":")[1];
+            }
+
+            if (brut.includes("BTC")) return "BTCUSDT";
+            if (brut.includes("ETH")) return "ETHUSDT";
+            if (brut.includes("SOL")) return "SOLUSDT";
+            if (brut.includes("BNB")) return "BNBUSDT";
+            if (brut.includes("XRP")) return "XRPUSDT";
+
+            return "BTCUSDT";
         }
 
         function actifCompatibleBinance(actif) {
@@ -270,129 +547,372 @@
 
         function changerStyleGraphique() {
             const type = document.getElementById('chart-type-selector').value;
-            if (mainSeries) chart.removeSeries(mainSeries);
+
+            if (mainSeries) {
+                chart.removeSeries(mainSeries);
+            }
 
             const commonOptions = {
-                priceFormat: { type: 'price', precision: 2, minMove: 0.01 }
+                priceFormat: {
+                    type: 'price',
+                    precision: 2,
+                    minMove: 0.01
+                }
             };
 
             if (type === 'candles') {
                 mainSeries = chart.addCandlestickSeries({
                     ...commonOptions,
-                    upColor: '#26a69a',
-                    downColor: '#ef5350',
+                    upColor: '#2ebd85',
+                    downColor: '#f6465d',
                     borderVisible: false,
-                    wickUpColor: '#26a69a',
-                    wickDownColor: '#ef5350'
+                    wickUpColor: '#2ebd85',
+                    wickDownColor: '#f6465d'
                 });
             } else if (type === 'bars') {
-                mainSeries = chart.addBarSeries({ ...commonOptions, upColor: '#26a69a', downColor: '#ef5350' });
+                mainSeries = chart.addBarSeries({
+                    ...commonOptions,
+                    upColor: '#2ebd85',
+                    downColor: '#f6465d'
+                });
             } else if (type === 'line') {
-                mainSeries = chart.addLineSeries({ ...commonOptions, color: '#2962ff', lineWidth: 2 });
+                mainSeries = chart.addLineSeries({
+                    ...commonOptions,
+                    color: '#2962ff',
+                    lineWidth: 2
+                });
             } else if (type === 'area') {
                 mainSeries = chart.addAreaSeries({
                     ...commonOptions,
-                    topColor: 'rgba(33, 150, 243, 0.56)',
-                    bottomColor: 'rgba(33, 150, 243, 0.04)',
-                    lineColor: 'rgba(33, 150, 243, 1)',
+                    topColor: 'rgba(41, 98, 255, 0.4)',
+                    bottomColor: 'rgba(41, 98, 255, 0.0)',
+                    lineColor: '#2962ff',
                     lineWidth: 2
                 });
             }
 
-            if (currentData.length > 0) mainSeries.setData(currentData);
-            appliquerThemeGraphiqueClair();
+            if (currentData.length > 0 && mainSeries) {
+                mainSeries.setData(currentData);
+            }
         }
 
         async function actualiserGraphique() {
             const rawAsset = document.getElementById('asset-selector').value;
+
             if (!actifCompatibleBinance(rawAsset)) {
-                afficherStatus("Veuillez choisir un actif BINANCE.");
+                afficherStatus(
+                    "Actif non compatible avec Binance dans cette version.\n" +
+                    "Choisir un actif BINANCE pour les données directes et l'analyse serveur."
+                );
                 return;
             }
 
             const symbol = obtenirSymboleBinanceDepuisActif(rawAsset);
             const interval = convertirIntervallePourBinance(document.getElementById('interval-selector').value);
 
-            if (socket) socket.close();
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
 
             try {
-                afficherStatus("Chargement " + symbol + "...");
-                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`);
+                afficherStatus("Chargement Binance : " + symbol + " / " + interval);
+
+                const res = await fetch(
+                    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`
+                );
+
                 const history = await res.json();
+
+                if (!Array.isArray(history)) {
+                    throw new Error("Réponse Binance inattendue : " + JSON.stringify(history));
+                }
 
                 currentData = history.map(d => ({
                     time: d[0] / 1000,
                     open: parseFloat(d[1]),
                     high: parseFloat(d[2]),
                     low: parseFloat(d[3]),
-                    close: parseFloat(d[4])
+                    close: parseFloat(d[4]),
+                    value: parseFloat(d[4])
                 }));
 
-                if (mainSeries) mainSeries.setData(currentData);
-                chart.timeScale().fitContent();
+                if (mainSeries) {
+                    mainSeries.setData(currentData);
+                }
 
-                socket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`);
+                socket = new WebSocket(
+                    `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
+                );
+
                 socket.onmessage = (e) => {
                     const k = JSON.parse(e.data).k;
+
                     const update = {
                         time: k.t / 1000,
                         open: parseFloat(k.o),
                         high: parseFloat(k.h),
                         low: parseFloat(k.l),
-                        close: parseFloat(k.c)
+                        close: parseFloat(k.c),
+                        value: parseFloat(k.c)
                     };
-                    if (mainSeries) mainSeries.update(update);
+
+                    mainSeries.update(update);
+
+                    const lastIdx = currentData.length - 1;
+
+                    if (currentData[lastIdx] && currentData[lastIdx].time === update.time) {
+                        currentData[lastIdx] = update;
+                    } else {
+                        currentData.push(update);
+                    }
                 };
 
-                afficherStatus("Graphique à jour : " + symbol);
+                socket.onerror = () => {
+                    afficherStatus("WebSocket Binance indisponible. Les bougies historiques restent visibles.");
+                };
+
+                afficherStatus("Graphique chargé : " + symbol + " / " + interval);
+
             } catch (err) {
-                afficherStatus("Erreur : " + err.message);
+                console.error("Erreur API/Socket :", err);
+                afficherStatus("Erreur API Binance : " + err.message);
             }
+        }
+
+        async function convertirFichierImageEnBase64(fichier) {
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error("Impossible de lire le fichier image."));
+
+                reader.readAsDataURL(fichier);
+            });
         }
 
         function capturerCanvasEnBase64() {
             const canvas = document.querySelector('#chart-container canvas');
-            if (!canvas) throw new Error("Graphique non rendu.");
+
+            if (!canvas) {
+                throw new Error("Canvas du graphique introuvable.");
+            }
+
             return canvas.toDataURL('image/png');
+        }
+
+        async function obtenirImagePourAnalyse() {
+            const input = document.getElementById("screenshot-file");
+
+            if (input && input.files && input.files.length > 0) {
+                return await convertirFichierImageEnBase64(input.files[0]);
+            }
+
+            if (dernierScreenshotBase64) {
+                return dernierScreenshotBase64;
+            }
+
+            return capturerCanvasEnBase64();
         }
 
         async function takeScreenshot() {
             try {
+                afficherStatus("Capture en cours...");
+
                 const dataURL = capturerCanvasEnBase64();
                 dernierScreenshotBase64 = dataURL;
-                alert("✅ Capture réussie (mémoire locale).");
+
+                const configuration = obtenirConfiguration();
+
+                const payload = {
+                    image: dataURL,
+                    screenshot_base64: dataURL,
+                    metadata: {
+                        asset: configuration.actif,
+                        interval: configuration.intervalle,
+                        category: configuration.categorieAnalyseLibelle,
+                        style: configuration.style,
+                        indicator: configuration.indicateur,
+                        date: new Date().toLocaleString()
+                    },
+                    configuration: configuration
+                };
+
+                try {
+                    const response = await fetch(getApiUrl('/api/save'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await lireReponseJson(response);
+                    afficherResultat(data);
+                    afficherStatus("Capture enregistrée sur le serveur.");
+                    alert("✅ Capture enregistrée.");
+
+                } catch (erreurServeur) {
+                    afficherResultat({
+                        ok: false,
+                        message: "Capture créée, mais sauvegarde serveur échouée.",
+                        details: erreurServeur.message,
+                        route: getApiUrl('/api/save')
+                    });
+
+                    afficherStatus("Capture créée localement, mais non sauvegardée sur le serveur.");
+                    alert("Capture créée localement, mais sauvegarde serveur échouée.");
+                }
+
                 return dataURL;
+
             } catch (err) {
-                alert("Erreur capture : " + err.message);
+                console.error("Erreur capture :", err);
+                afficherStatus("Erreur capture : " + err.message);
+                alert("Erreur capture.\n\n" + err.message);
+                return null;
+            }
+        }
+
+        async function testerAnalyseTechnique() {
+            try {
+                const configuration = obtenirConfiguration();
+
+                if (!actifCompatibleBinance(configuration.actif)) {
+                    alert("La route technique utilise Binance. Choisir un actif BINANCE.");
+                    return;
+                }
+
+                afficherStatus("Test technique serveur en cours...");
+
+                const response = await fetch(getApiUrl('/api/analyse-technique-pro'), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        actif: configuration.actif,
+                        intervalle: configuration.intervalle,
+                        configuration: configuration
+                    })
+                });
+
+                const data = await lireReponseJson(response);
+
+                afficherResultat(data);
+                afficherStatus("Analyse technique serveur reçue.");
+
+            } catch (err) {
+                console.error("Erreur test technique :", err);
+                afficherStatus("Erreur test technique : " + err.message);
+                alert("Erreur test technique.\n\n" + err.message);
             }
         }
 
         async function analyserVisionMarche() {
             try {
+                const configuration = obtenirConfiguration();
+
+                if (!actifCompatibleBinance(configuration.actif)) {
+                    alert("L'analyse Vision + Marché utilise Binance. Choisir un actif BINANCE.");
+                    return;
+                }
+
                 setBoutonsActifs(false);
-                afficherStatus("Analyse IA en cours...");
-                const imageBase64 = dernierScreenshotBase64 || capturerCanvasEnBase64();
-                // Simulation ou appel API réel ici
-                afficherStatus("Analyse terminée.");
+                afficherStatus("Analyse Vision + Marché en cours...");
+
+                const imageBase64 = await obtenirImagePourAnalyse();
+
+                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        actif: configuration.actif,
+                        intervalle: configuration.intervalle,
+                        imageBase64: imageBase64,
+                        configuration: configuration
+                    })
+                });
+
+                const data = await lireReponseJson(response);
+
+                afficherResultat(formatterAnalyseVision(data));
+                afficherStatus("Analyse Vision + Marché terminée.");
+                alert("Analyse Vision + Marché terminée.");
+
             } catch (err) {
-                afficherStatus("Erreur Vision.");
+                console.error("Erreur Vision + Marché :", err);
+                afficherStatus("Erreur Vision + Marché : " + err.message);
+                alert("Erreur Vision + Marché.\n\n" + err.message);
             } finally {
                 setBoutonsActifs(true);
             }
         }
 
-        function diagnosticGraphique() {
-            const container = document.getElementById('chart-container');
-            const infos = {
-                largeur: container?.clientWidth,
-                hauteur: container?.clientHeight,
-                nbBougies: currentData.length,
-                theme: "Clair Contrasté"
-            };
-            afficherResultat(infos);
+        function formatterAnalyseVision(data) {
+            const analyse = data.analysis || data.analyse || data;
+
+            const lignes = [];
+
+            lignes.push("ANALYSE VISION + MARCHÉ");
+            lignes.push("=======================");
+            lignes.push("");
+            lignes.push("Décision : " + (analyse.decision || analyse.signal || "N/A"));
+            lignes.push("Confiance : " + (analyse.confiance ?? analyse.confidence ?? "N/A") + "%");
+            lignes.push("Tendance : " + (analyse.tendance || "N/A"));
+            lignes.push("Actif : " + (analyse.actif || "N/A"));
+            lignes.push("Intervalle : " + (analyse.intervalle || "N/A"));
+            lignes.push("Prix actuel : " + (analyse.prix_actuel ?? "N/A"));
+            lignes.push("Support principal : " + (analyse.support_principal ?? "N/A"));
+            lignes.push("Résistance principale : " + (analyse.resistance_principale ?? "N/A"));
+            lignes.push("Stop loss : " + (analyse.stop_loss ?? "N/A"));
+            lignes.push("Take profit 1 : " + (analyse.take_profit_1 ?? "N/A"));
+            lignes.push("Take profit 2 : " + (analyse.take_profit_2 ?? "N/A"));
+            lignes.push("");
+
+            if (analyse.resume) {
+                lignes.push("Résumé :");
+                lignes.push(analyse.resume);
+                lignes.push("");
+            }
+
+            if (Array.isArray(analyse.raisons) && analyse.raisons.length > 0) {
+                lignes.push("Raisons :");
+                analyse.raisons.forEach(item => lignes.push("- " + item));
+                lignes.push("");
+            }
+
+            if (Array.isArray(analyse.risques) && analyse.risques.length > 0) {
+                lignes.push("Risques :");
+                analyse.risques.forEach(item => lignes.push("- " + item));
+                lignes.push("");
+            }
+
+            if (Array.isArray(analyse.recommandations) && analyse.recommandations.length > 0) {
+                lignes.push("Recommandations :");
+                analyse.recommandations.forEach(item => lignes.push("- " + item));
+                lignes.push("");
+            }
+
+            lignes.push("JSON COMPLET");
+            lignes.push("============");
+            lignes.push(JSON.stringify(data, null, 2));
+
+            return lignes.join("\n");
         }
 
         window.onload = init;
+
+        window.onresize = () => {
+            if (chart) {
+                chart.applyOptions({
+                    width: window.innerWidth,
+                    height: Math.max(420, window.innerHeight - 50)
+                });
+            }
+        };
     </script>
 </body>
 </html>
