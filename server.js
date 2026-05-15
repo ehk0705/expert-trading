@@ -52,6 +52,14 @@ if (!fs.existsSync(SCREENSHOT_DIR)) {
 
 app.use("/screenshots", express.static(SCREENSHOT_DIR));
 
+/*
+    Sert les fichiers HTML/CSS/JS placés à la racine du projet :
+    - index.html
+    - analyse.html
+    - autres fichiers statiques éventuels
+*/
+app.use(express.static(__dirname));
+
 /* ============================================================
    OUTILS GÉNÉRAUX
    ============================================================ */
@@ -845,6 +853,34 @@ Règles :
    ============================================================ */
 
 app.get("/", (req, res) => {
+    const indexPath = path.join(__dirname, "index.html");
+
+    if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+    }
+
+    return res.json({
+        ok: true,
+        statut: "ok",
+        message: "Serveur Expert Trading Pro actif, mais index.html est absent du dossier racine.",
+        aide: "Ajoutez index.html dans le même dossier que server.js, puis redéployez.",
+        routes: [
+            "GET /api/test",
+            "GET /api/health",
+            "GET /api/list",
+            "POST /api/save",
+            "POST /api/analyze-vision",
+            "POST /api/analyze-vision-batch",
+            "POST /api/update-notes",
+            "POST /api/analyse-technique-pro",
+            "POST /api/analyze-vision-pro"
+        ],
+        sources_marche: ["binance", "okx", "coingecko"],
+        date: maintenantIso()
+    });
+});
+
+app.get("/api/info", (req, res) => {
     res.json({
         ok: true,
         statut: "ok",
