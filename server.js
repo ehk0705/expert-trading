@@ -73,15 +73,9 @@ function normalizeAnalysis(analysis) {
     if (!allowed.includes(decision)) decision = 'ATTENDRE';
 
     const confidenceNumber = Number(analysis.confidence);
-    const confidence = Number.isFinite(confidenceNumber)
-        ? Math.max(0, Math.min(100, Math.round(confidenceNumber)))
-        : 0;
+    const confidence = Number.isFinite(confidenceNumber) ? Math.max(0, Math.min(100, Math.round(confidenceNumber))) : 0;
 
-    const reasoning = String(
-        analysis.reasoning ||
-        analysis.raison ||
-        'Aucune justification reçue.'
-    ).trim();
+    const reasoning = String(analysis.reasoning || analysis.raison || 'Aucune justification reçue.').trim();
 
     return { decision, confidence, reasoning };
 }
@@ -131,60 +125,19 @@ function validateImageForAnalysis(requestedFileName) {
     return { fileName, filePath };
 }
 
-/**
- * Détails d'erreur OpenAI
- * Correction importante :
- * - status = statut HTTP numérique : 400, 401, 403, 429, 500...
- * - code = code OpenAI : insufficient_quota, invalid_api_key...
- * - type = type OpenAI : invalid_request_error, rate_limit_error...
- * - details = message lisible
- */
 function openAIErrorDetails(error) {
-    const status =
-        error.status ||
-        error.response?.status ||
-        error.httpStatus ||
-        null;
+    const status = error.status || error.code || error.httpStatus || null;
+    let details = error.details || error.message || 'Erreur inconnue.';
 
-    const code =
-        error.code ||
-        error.error?.code ||
-        error.response?.data?.error?.code ||
-        null;
-
-    const type =
-        error.type ||
-        error.error?.type ||
-        error.response?.data?.error?.type ||
-        null;
-
-    let details =
-        error.details ||
-        error.message ||
-        error.error?.message ||
-        error.response?.data?.error?.message ||
-        'Erreur inconnue.';
-
-    if (code === 'insufficient_quota') {
-        details = 'Quota OpenAI insuffisant. Crédit API absent, épuisé ou facturation non activée.';
-    } else if (code === 'invalid_api_key') {
-        details = 'Clé OPENAI_API_KEY invalide.';
-    } else if (status === 401) {
+    if (status === 401) {
         details = 'Clé OpenAI invalide ou absente.';
-    } else if (status === 403) {
-        details = 'Accès OpenAI refusé. Vérifiez les droits du compte API ou la facturation.';
     } else if (status === 429) {
-        details = 'Limite OpenAI atteinte : trop de requêtes, quota insuffisant ou limite de compte dépassée.';
+        details = 'Quota OpenAI atteint, crédit insuffisant ou trop de requêtes.';
     } else if (status === 400) {
         details = error.message || 'Requête OpenAI invalide. Vérifiez le modèle et le format de l’image.';
     }
 
-    return {
-        status,
-        code,
-        type,
-        details
-    };
+    return { status, details };
 }
 
 async function analyzeImageFile(fileName) {
@@ -256,13 +209,7 @@ Règles :
 
     const rawAnalysis = extractJsonObject(content);
     const analysis = normalizeAnalysis(rawAnalysis);
-
-    console.log(
-        'Analyse reçue avec succès :',
-        validated.fileName,
-        analysis.decision,
-        analysis.confidence + '%'
-    );
+    console.log('Analyse reçue avec succès :', validated.fileName, analysis.decision, analysis.confidence + '%');
 
     // 3. Sauvegarde dans le fichier JSON correspondant
     const jsonPath = jsonPathForImage(validated.filePath);
@@ -273,6 +220,457 @@ Règles :
     });
 
     return { fileName: validated.fileName, analysis };
+}
+
+/* ============================================================
+   AJOUT : BINANCE + CALCULS TECHNIQUES + VISION CONTRÔLÉE
+   ============================================================ */
+
+function normaliserActifPourBinancePro(actif) {
+    const valeur = String(actif || 'BINANCE:BTCUSDT').trim().toUpperCase();
+
+    if (valeur.includes(':')) {
+        return valeur.split(':').pop().replace('/', '').replace('-', '');
+    }
+
+    return valeur.replace('/', '').replace('-', '');
+}
+
+function convertirIntervallePourBinancePro(intervalle) {
+    const valeur = String(intervalle || '1h').trim().toLowerCase();
+
+    const table = {
+        '1': '1m',
+        '3': '3m',
+        '5': '5m',
+        '15': '15m',
+        '30': '30m',
+        '45': '30m',
+        '60': '1h',
+        '120': '2h',
+        '240': '4h',
+        '1h': '1h',
+        '2h': '2h',
+        '4h': '4h',
+        '1d': '1d',
+        'd': '1d',
+        'jour': '1d',
+        'daily': '1d',
+        '1w': '1w',
+        'w': '1w'
+    };
+
+    return table[valeur] || valeur || '1h';
+}
+
+async function recupererBougiesBinancePro(symbole, intervalle, limite = 300) {
+    const url = new URL('https://api.binance.com/api/v3/klines');
+    url.searchParams.set('symbol', symbole);
+    url.searchParams.set('interval', intervalle);
+    url.searchParams.set('limit', String(Math.min(Math.max(Number(limite) || 300, 50), 1000)));
+
+    const reponse = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
+    });
+
+    const texte = await reponse.text();
+
+    if (!reponse.ok) {
+        throw new Error('Erreur Binance HTTP ' + reponse.status + ' : ' + texte);
+    }
+
+    let donnees;
+    try {
+        donnees = JSON.parse(texte);
+    } catch (erreur) {
+        throw new Error('Réponse Binance non JSON : ' + texte);
+    }
+
+    if (!Array.isArray(donnees)) {
+        throw new Error('Format Binance inattendu.');
+    }
+
+    return donnees.map(k => ({
+        openTime: Number(k[0]),
+        open: Number(k[1]),
+        high: Number(k[2]),
+        low: Number(k[3]),
+        close: Number(k[4]),
+        volume: Number(k[5]),
+        closeTime: Number(k[6])
+    })).filter(b =>
+        Number.isFinite(b.open) &&
+        Number.isFinite(b.high) &&
+        Number.isFinite(b.low) &&
+        Number.isFinite(b.close)
+    );
+}
+
+function moyennePro(valeurs) {
+    const propres = valeurs.filter(v => Number.isFinite(v));
+    if (propres.length === 0) return null;
+    return propres.reduce((a, b) => a + b, 0) / propres.length;
+}
+
+function calculerEMAPro(valeurs, periode) {
+    if (!Array.isArray(valeurs) || valeurs.length < periode) return null;
+
+    const k = 2 / (periode + 1);
+    let ema = moyennePro(valeurs.slice(0, periode));
+
+    for (let i = periode; i < valeurs.length; i++) {
+        ema = valeurs[i] * k + ema * (1 - k);
+    }
+
+    return ema;
+}
+
+function calculerRSIPro(closes, periode = 14) {
+    if (!Array.isArray(closes) || closes.length <= periode) return null;
+
+    let gains = 0;
+    let pertes = 0;
+
+    for (let i = 1; i <= periode; i++) {
+        const diff = closes[i] - closes[i - 1];
+        if (diff >= 0) gains += diff;
+        else pertes -= diff;
+    }
+
+    let gainMoyen = gains / periode;
+    let perteMoyenne = pertes / periode;
+
+    for (let i = periode + 1; i < closes.length; i++) {
+        const diff = closes[i] - closes[i - 1];
+        const gain = diff > 0 ? diff : 0;
+        const perte = diff < 0 ? -diff : 0;
+
+        gainMoyen = ((gainMoyen * (periode - 1)) + gain) / periode;
+        perteMoyenne = ((perteMoyenne * (periode - 1)) + perte) / periode;
+    }
+
+    if (perteMoyenne === 0) return 100;
+
+    const rs = gainMoyen / perteMoyenne;
+    return 100 - (100 / (1 + rs));
+}
+
+function calculerMACDPro(closes) {
+    if (!Array.isArray(closes) || closes.length < 35) {
+        return { macd: null, signal: null, histogramme: null };
+    }
+
+    const macdSeries = [];
+
+    for (let i = 35; i <= closes.length; i++) {
+        const slice = closes.slice(0, i);
+        const ema12 = calculerEMAPro(slice, 12);
+        const ema26 = calculerEMAPro(slice, 26);
+
+        if (ema12 !== null && ema26 !== null) {
+            macdSeries.push(ema12 - ema26);
+        }
+    }
+
+    const macd = macdSeries.length ? macdSeries[macdSeries.length - 1] : null;
+    const signal = macdSeries.length >= 9 ? calculerEMAPro(macdSeries, 9) : null;
+
+    return {
+        macd,
+        signal,
+        histogramme: macd !== null && signal !== null ? macd - signal : null
+    };
+}
+
+function calculerATRPro(bougies, periode = 14) {
+    if (!Array.isArray(bougies) || bougies.length <= periode) return null;
+
+    const trs = [];
+
+    for (let i = 1; i < bougies.length; i++) {
+        const h = bougies[i].high;
+        const l = bougies[i].low;
+        const pc = bougies[i - 1].close;
+
+        trs.push(Math.max(
+            h - l,
+            Math.abs(h - pc),
+            Math.abs(l - pc)
+        ));
+    }
+
+    return moyennePro(trs.slice(-periode));
+}
+
+function detecterSupportsResistancesPro(bougies, fenetre = 80) {
+    const zone = bougies.slice(-fenetre);
+
+    if (zone.length < 20) {
+        return { support: null, resistance: null };
+    }
+
+    const lows = zone.map(b => b.low).filter(Number.isFinite).sort((a, b) => a - b);
+    const highs = zone.map(b => b.high).filter(Number.isFinite).sort((a, b) => a - b);
+
+    const indexSupport = Math.floor(lows.length * 0.15);
+    const indexResistance = Math.floor(highs.length * 0.85);
+
+    return {
+        support: lows[indexSupport] ?? null,
+        resistance: highs[indexResistance] ?? null
+    };
+}
+
+function arrondirPro(nombre, decimales = 4) {
+    if (!Number.isFinite(nombre)) return null;
+    return Number(Number(nombre).toFixed(decimales));
+}
+
+function construireAnalyseTechniquePro({ actif, intervalle, symbole, bougies }) {
+    if (!Array.isArray(bougies) || bougies.length < 60) {
+        return {
+            ok: false,
+            statut: 'historique_insuffisant',
+            message: 'Historique insuffisant pour calculer une analyse technique fiable.'
+        };
+    }
+
+    const closes = bougies.map(b => b.close);
+    const volumes = bougies.map(b => b.volume);
+    const derniere = bougies[bougies.length - 1];
+
+    const ema20 = calculerEMAPro(closes, 20);
+    const ema50 = calculerEMAPro(closes, 50);
+    const ema200 = calculerEMAPro(closes, 200);
+    const rsi = calculerRSIPro(closes, 14);
+    const macd = calculerMACDPro(closes);
+    const atr = calculerATRPro(bougies, 14);
+    const zones = detecterSupportsResistancesPro(bougies, 80);
+
+    let tendance = 'neutre';
+
+    if (ema20 && ema50 && derniere.close > ema20 && ema20 > ema50) {
+        tendance = 'haussiere';
+    }
+
+    if (ema20 && ema50 && derniere.close < ema20 && ema20 < ema50) {
+        tendance = 'baissiere';
+    }
+
+    let signalTechnique = 'attendre';
+
+    if (
+        tendance === 'haussiere' &&
+        rsi !== null &&
+        rsi < 70 &&
+        macd.histogramme !== null &&
+        macd.histogramme > 0
+    ) {
+        signalTechnique = 'acheter';
+    }
+
+    if (
+        tendance === 'baissiere' &&
+        rsi !== null &&
+        rsi > 30 &&
+        macd.histogramme !== null &&
+        macd.histogramme < 0
+    ) {
+        signalTechnique = 'vendre';
+    }
+
+    return {
+        ok: true,
+        actif,
+        symbole,
+        intervalle,
+        prix_actuel: arrondirPro(derniere.close),
+        support_principal: arrondirPro(zones.support),
+        resistance_principale: arrondirPro(zones.resistance),
+        rsi: arrondirPro(rsi, 2),
+        ema20: arrondirPro(ema20),
+        ema50: arrondirPro(ema50),
+        ema200: arrondirPro(ema200),
+        macd: {
+            macd: arrondirPro(macd.macd),
+            signal: arrondirPro(macd.signal),
+            histogramme: arrondirPro(macd.histogramme)
+        },
+        atr: arrondirPro(atr),
+        volume: arrondirPro(derniere.volume, 2),
+        volume_moyen_20: arrondirPro(moyennePro(volumes.slice(-20)), 2),
+        tendance,
+        signal_technique: signalTechnique,
+        derniere_bougie: derniere,
+        date_calcul: new Date().toISOString()
+    };
+}
+
+function convertirImageEnDataUrlPro({ imageBase64, imageUrl, fileName }) {
+    if (imageUrl) {
+        return String(imageUrl);
+    }
+
+    if (imageBase64) {
+        const image = String(imageBase64);
+
+        if (image.startsWith('data:image/')) {
+            return image;
+        }
+
+        return 'data:image/png;base64,' + image.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+    }
+
+    if (fileName) {
+        const validated = validateImageForAnalysis(fileName);
+        const imageBuffer = fs.readFileSync(validated.filePath);
+        const base64Image = imageBuffer.toString('base64');
+        const mime = imageMimeType(validated.fileName);
+        return `data:${mime};base64,${base64Image}`;
+    }
+
+    const erreur = new Error('Aucune image fournie. Envoyer imageBase64, imageUrl ou fileName.');
+    erreur.httpStatus = 400;
+    throw erreur;
+}
+
+function normaliserAnalyseVisionPro(raw, analyseTechnique) {
+    const signalBrut = String(raw.signal || raw.decision || 'attendre').trim().toLowerCase();
+
+    let signal = 'attendre';
+    if (['acheter', 'buy', 'achat'].includes(signalBrut)) signal = 'acheter';
+    if (['vendre', 'sell', 'vente'].includes(signalBrut)) signal = 'vendre';
+
+    let confiance = Number(raw.confiance ?? raw.confidence ?? 0);
+    if (!Number.isFinite(confiance)) confiance = 0;
+    if (confiance <= 1) confiance = confiance * 100;
+    confiance = Math.max(0, Math.min(100, Math.round(confiance)));
+
+    return {
+        ok: true,
+        statut: 'ok',
+        source: 'openai_vision_plus_binance',
+        actif: analyseTechnique.actif,
+        symbole: analyseTechnique.symbole,
+        intervalle: analyseTechnique.intervalle,
+        signal,
+        decision: signal.toUpperCase(),
+        confiance,
+        tendance: raw.tendance || analyseTechnique.tendance || 'neutre',
+        prix_actuel: analyseTechnique.prix_actuel,
+        support_principal: analyseTechnique.support_principal,
+        resistance_principale: analyseTechnique.resistance_principale,
+        rsi: analyseTechnique.rsi,
+        ema20: analyseTechnique.ema20,
+        ema50: analyseTechnique.ema50,
+        ema200: analyseTechnique.ema200,
+        macd: analyseTechnique.macd,
+        atr: analyseTechnique.atr,
+        volume: analyseTechnique.volume,
+        stop_loss: Number.isFinite(Number(raw.stop_loss)) ? Number(raw.stop_loss) : null,
+        take_profit_1: Number.isFinite(Number(raw.take_profit_1)) ? Number(raw.take_profit_1) : null,
+        take_profit_2: Number.isFinite(Number(raw.take_profit_2)) ? Number(raw.take_profit_2) : null,
+        resume: String(raw.resume || raw.reasoning || raw.raison || '').trim(),
+        raisons: Array.isArray(raw.raisons) ? raw.raisons : [],
+        risques: Array.isArray(raw.risques) ? raw.risques : [],
+        recommandations: Array.isArray(raw.recommandations) ? raw.recommandations : [],
+        analyse_visuelle: raw.analyse_visuelle && typeof raw.analyse_visuelle === 'object' ? raw.analyse_visuelle : {},
+        analyse_technique: analyseTechnique,
+        avertissement: "Analyse technique informative. Ce n'est pas un conseil financier.",
+        date: new Date().toISOString()
+    };
+}
+
+async function analyserImageAvecOpenAIVisionPro({ imageBase64, imageUrl, fileName, analyseTechnique, configuration }) {
+    if (!HAS_OPENAI_KEY) {
+        const error = new Error('OPENAI_API_KEY absente sur le serveur Render.');
+        error.httpStatus = 500;
+        error.details = 'Ajoutez OPENAI_API_KEY dans les variables d’environnement Render, puis redéployez le service.';
+        throw error;
+    }
+
+    const imageDataUrl = convertirImageEnDataUrlPro({ imageBase64, imageUrl, fileName });
+
+    const prompt = `Tu es un analyste technique prudent.
+
+Tu reçois :
+1. une capture TradingView ;
+2. des données OHLCV Binance calculées côté serveur.
+
+Tu dois donner une analyse concrète, mais tu ne dois jamais inventer un prix.
+Les prix fiables sont ceux des données numériques ci-dessous.
+
+Données techniques calculées :
+${JSON.stringify(analyseTechnique, null, 2)}
+
+Configuration utilisateur :
+${JSON.stringify(configuration || {}, null, 2)}
+
+Réponds uniquement en JSON valide.
+Structure obligatoire :
+{
+  "signal": "acheter | vendre | attendre",
+  "confiance": 0,
+  "tendance": "haussiere | baissiere | neutre",
+  "resume": "",
+  "raisons": [],
+  "risques": [],
+  "recommandations": [],
+  "stop_loss": null,
+  "take_profit_1": null,
+  "take_profit_2": null,
+  "analyse_visuelle": {
+    "supports_visibles": [],
+    "resistances_visibles": [],
+    "cassure": "",
+    "momentum": "",
+    "commentaire": ""
+  }
+}
+
+Règles :
+- Si la capture est floue ou incomplète, indique-le dans risques.
+- Si le signal est incertain, choisis "attendre".
+- Le stop loss et les objectifs doivent être cohérents avec support, résistance et ATR.
+- Ne donne pas d'ordre ferme.
+- Ne promets jamais un gain.
+- Ne donne pas de conseil financier personnalisé.`;
+
+    const response = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: 0.15,
+        max_tokens: 1400,
+        response_format: { type: 'json_object' },
+        messages: [
+            {
+                role: 'system',
+                content: 'Tu retournes uniquement un JSON valide. Tu es prudent. Tu n’inventes jamais les prix.'
+            },
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: prompt },
+                    {
+                        type: 'image_url',
+                        image_url: {
+                            url: imageDataUrl,
+                            detail: 'high'
+                        }
+                    }
+                ]
+            }
+        ]
+    });
+
+    const content = response?.choices?.[0]?.message?.content;
+
+    if (!content) {
+        throw new Error('OpenAI a retourné une réponse vide.');
+    }
+
+    const rawJson = extractJsonObject(content);
+    return normaliserAnalyseVisionPro(rawJson, analyseTechnique);
 }
 
 // --- ROUTES API ---
@@ -302,49 +700,16 @@ app.post('/api/analyze-vision', async (req, res) => {
 
     try {
         const result = await analyzeImageFile(requestedFileName);
-
-        return res.json({
-            success: true,
-            analysis: result.analysis,
-            fileName: result.fileName
-        });
-
+        res.json({ success: true, analysis: result.analysis, fileName: result.fileName });
     } catch (error) {
+        console.error('ERREUR CRITIQUE API VISION :', error);
         const info = openAIErrorDetails(error);
 
-        console.error('ERREUR CRITIQUE API VISION :', {
-            message: error.message,
-            status: info.status,
-            code: info.code,
-            type: info.type,
-            details: info.details
-        });
-
-        let message = "Échec de l'analyse IA.";
-
-        if (info.code === "insufficient_quota") {
-            message = "Quota OpenAI insuffisant. Ajoutez du crédit API ou vérifiez la facturation OpenAI.";
-        } else if (info.code === "invalid_api_key") {
-            message = "Clé OPENAI_API_KEY invalide.";
-        } else if (info.status === 401) {
-            message = "Clé OPENAI_API_KEY absente, invalide ou mal configurée dans Render.";
-        } else if (info.status === 429) {
-            message = "Limite OpenAI atteinte : trop de requêtes, quota insuffisant ou limite de compte dépassée.";
-        } else if (info.status === 400) {
-            message = "Requête OpenAI invalide. Vérifiez le modèle, le format de l'image ou le contenu envoyé.";
-        } else if (info.status === 403) {
-            message = "Accès OpenAI refusé. Vérifiez les droits du compte API ou la facturation.";
-        } else if (!process.env.OPENAI_API_KEY) {
-            message = "OPENAI_API_KEY n'est pas configurée dans les variables d'environnement Render.";
-        }
-
-        return res.status(info.status || error.httpStatus || 500).json({
+        res.status(error.httpStatus || 500).json({
             success: false,
-            error: message,
-            details: info.details || error.message || "Erreur inconnue.",
-            openaiStatus: info.status || null,
-            openaiCode: info.code || null,
-            openaiType: info.type || null,
+            error: 'Échec de l\'analyse IA.',
+            details: info.details,
+            openaiStatus: info.status,
             model: OPENAI_MODEL
         });
     }
@@ -395,33 +760,17 @@ app.post('/api/analyze-vision-batch', async (req, res) => {
             errorCount += 1;
             const info = openAIErrorDetails(error);
             const safeName = safeFileName(requestedFileName) || String(requestedFileName || 'fichier inconnu');
-
-            console.error('Erreur analyse batch pour', safeName, ':', {
-                status: info.status,
-                code: info.code,
-                type: info.type,
-                details: info.details
-            });
-
+            console.error('Erreur analyse batch pour', safeName, ':', info.details);
             results.push({
                 success: false,
                 fileName: safeName,
                 error: 'Échec de l\'analyse IA.',
                 details: info.details,
-                openaiStatus: info.status,
-                openaiCode: info.code,
-                openaiType: info.type
+                openaiStatus: info.status
             });
 
             // Si OpenAI refuse pour quota ou clé, inutile de continuer : les autres images échoueront aussi.
-            if (
-                info.status === 401 ||
-                info.status === 403 ||
-                info.status === 429 ||
-                info.code === 'insufficient_quota' ||
-                info.code === 'invalid_api_key' ||
-                error.httpStatus === 500
-            ) {
+            if (info.status === 401 || info.status === 429 || error.httpStatus === 500) {
                 break;
             }
         }
@@ -437,6 +786,125 @@ app.post('/api/analyze-vision-batch', async (req, res) => {
         results,
         model: OPENAI_MODEL
     });
+});
+
+/**
+ * API : Analyse technique seule
+ * Ne consomme aucun crédit OpenAI.
+ * Sert à vérifier Binance, RSI, EMA, MACD, ATR, support et résistance.
+ */
+app.post('/api/analyse-technique-pro', async (req, res) => {
+    try {
+        const { actif = 'BINANCE:BTCUSDT', intervalle = '1h', limite = 300 } = req.body || {};
+
+        const symbole = normaliserActifPourBinancePro(actif);
+        const intervalleBinance = convertirIntervallePourBinancePro(intervalle);
+        const bougies = await recupererBougiesBinancePro(symbole, intervalleBinance, limite);
+
+        const analyseTechnique = construireAnalyseTechniquePro({
+            actif,
+            symbole,
+            intervalle: intervalleBinance,
+            bougies
+        });
+
+        return res.json(analyseTechnique);
+
+    } catch (error) {
+        console.error('Erreur /api/analyse-technique-pro :', error);
+
+        return res.status(500).json({
+            ok: false,
+            statut: 'erreur',
+            message: 'Échec de l’analyse technique.',
+            details: error.message,
+            date: new Date().toISOString()
+        });
+    }
+});
+
+/**
+ * API : Analyse concrète Vision + Marché
+ * Combine :
+ * - capture TradingView ;
+ * - données Binance ;
+ * - RSI, EMA, MACD, ATR ;
+ * - réponse JSON contrôlée.
+ */
+app.post('/api/analyze-vision-pro', async (req, res) => {
+    try {
+        const {
+            actif = 'BINANCE:BTCUSDT',
+            intervalle = '1h',
+            limite = 300,
+            imageBase64 = null,
+            imageUrl = null,
+            fileName = null,
+            configuration = null
+        } = req.body || {};
+
+        const symbole = normaliserActifPourBinancePro(actif);
+        const intervalleBinance = convertirIntervallePourBinancePro(intervalle);
+
+        const bougies = await recupererBougiesBinancePro(symbole, intervalleBinance, limite);
+
+        const analyseTechnique = construireAnalyseTechniquePro({
+            actif,
+            symbole,
+            intervalle: intervalleBinance,
+            bougies
+        });
+
+        if (!analyseTechnique.ok) {
+            return res.status(400).json(analyseTechnique);
+        }
+
+        const analyseFinale = await analyserImageAvecOpenAIVisionPro({
+            imageBase64,
+            imageUrl,
+            fileName,
+            analyseTechnique,
+            configuration
+        });
+
+        if (fileName) {
+            const safeName = safeFileName(fileName);
+            if (safeName) {
+                const filePath = path.join(screenshotDir, safeName);
+                const jsonPath = jsonPathForImage(filePath);
+
+                writeJsonIfPossible(jsonPath, (fileData) => {
+                    fileData.ai_analysis_pro = analyseFinale;
+                    fileData.ai_analysis_pro_date = new Date().toISOString();
+                    fileData.ai_model = OPENAI_MODEL;
+                });
+            }
+        }
+
+        return res.json({
+            ok: true,
+            statut: 'ok',
+            success: true,
+            analysis: analyseFinale,
+            analyse: analyseFinale,
+            model: OPENAI_MODEL
+        });
+
+    } catch (error) {
+        console.error('Erreur /api/analyze-vision-pro :', error);
+        const info = openAIErrorDetails(error);
+
+        return res.status(error.httpStatus || 500).json({
+            ok: false,
+            statut: 'erreur',
+            success: false,
+            message: 'Échec de l’analyse Vision + Marché.',
+            details: info.details,
+            openaiStatus: info.status,
+            model: OPENAI_MODEL,
+            date: new Date().toISOString()
+        });
+    }
 });
 
 /**
@@ -465,7 +933,6 @@ app.get('/api/list', (req, res) => {
  */
 app.post('/api/save', (req, res) => {
     const { image, metadata } = req.body;
-
     if (!image) {
         return res.status(400).json({
             success: false,
@@ -488,19 +955,12 @@ app.post('/api/save', (req, res) => {
         }
 
         const jsonPath = filePath.replace('.png', '.json');
-
         try {
             const data = metadata && typeof metadata === 'object' ? metadata : {};
             data.fileName = fileName;
             data.savedAt = new Date().toISOString();
-
             fs.writeFileSync(jsonPath, JSON.stringify(data, null, 2));
-
-            res.json({
-                success: true,
-                filename: fileName
-            });
-
+            res.json({ success: true, filename: fileName });
         } catch (jsonErr) {
             res.status(500).json({
                 success: false,
@@ -532,16 +992,10 @@ app.post('/api/update-notes', (req, res) => {
         try {
             const raw = fs.readFileSync(filePath, 'utf8');
             const fileData = raw.trim() ? JSON.parse(raw) : {};
-
             fileData.notes = notes || '';
             fileData.notesUpdatedAt = new Date().toISOString();
-
             fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
-
-            res.json({
-                success: true
-            });
-
+            res.json({ success: true });
         } catch (err) {
             res.status(500).json({
                 success: false,
@@ -573,6 +1027,8 @@ app.use('/api', (req, res) => {
             'POST /api/save',
             'POST /api/analyze-vision',
             'POST /api/analyze-vision-batch',
+            'POST /api/analyse-technique-pro',
+            'POST /api/analyze-vision-pro',
             'POST /api/update-notes'
         ]
     });
@@ -586,5 +1042,6 @@ app.listen(PORT, () => {
     console.log(`📁 Stockage : ${screenshotDir}`);
     console.log(`🤖 Modèle OpenAI : ${OPENAI_MODEL}`);
     console.log(`🔑 OPENAI_API_KEY configurée : ${HAS_OPENAI_KEY ? 'OUI' : 'NON'}`);
+    console.log('✅ Routes ajoutées : /api/analyse-technique-pro et /api/analyze-vision-pro');
     console.log('===========================================');
 });
