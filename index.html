@@ -19,6 +19,11 @@
         </div>
 
         <div class="control-group">
+            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()">📷 CAPTURE</button>
+            <input type="file" id="screenshot-file" accept="image/png,image/jpeg,image/webp">
+            <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()">Vision + Marché</button>
+        </div>
+        <div class="control-group">
             <label for="asset-selector">ACTIF :</label>
             <select id="asset-selector" onchange="actualiserGraphique()">
                 <option value="BINANCE:BTCUSDT">BTC/USDT</option>
