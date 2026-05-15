@@ -8,14 +8,16 @@
 
     <style>
         :root {
-            --bg-color: #0b0e11;
-            --header-bg: #1e2329;
-            --panel-bg: #111827;
-            --text-main: #eaecef;
-            --text-muted: #9ca3af;
+            --bg-color: #ffffff;
+            --header-bg: #f3f4f6;
+            --chart-bg: #ffffff;
+            --chart-grid: #e5e7eb;
+            --chart-text: #111827;
+            --text-main: #111827;
+            --text-muted: #4b5563;
             --accent: #2962ff;
-            --border: #363c4e;
-            --yellow-pro: #f0b90b;
+            --border: #d1d5db;
+            --yellow-pro: #b77900;
             --buy-green: #2ebd85;
             --sell-red: #f6465d;
             --purple-pro: #7c3aed;
@@ -25,14 +27,19 @@
             box-sizing: border-box;
         }
 
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
         body {
             font-family: 'Inter', Arial, sans-serif;
-            background: var(--bg-color);
+            background: #ffffff;
             color: var(--text-main);
             margin: 0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
             overflow: hidden;
         }
 
@@ -46,6 +53,7 @@
             gap: 5px;
             flex-wrap: wrap;
             z-index: 10;
+            flex-shrink: 0;
         }
 
         .control-group {
@@ -63,7 +71,7 @@
         label {
             font-size: 9px;
             font-weight: bold;
-            color: #787b86;
+            color: #4b5563;
             white-space: nowrap;
         }
 
@@ -76,16 +84,16 @@
             letter-spacing: 1px;
             flex-grow: 1;
             text-align: center;
-            text-shadow: 0px 0px 5px rgba(240, 185, 11, 0.2);
+            text-shadow: none;
             min-width: 120px;
         }
 
         select,
         button,
         input[type="file"] {
-            background: #2b3139;
-            color: #fff;
-            border: 1px solid #474d57;
+            background: #ffffff;
+            color: #111827;
+            border: 1px solid #d1d5db;
             padding: 4px 6px;
             border-radius: 3px;
             font-size: 10px;
@@ -99,7 +107,7 @@
 
         select:hover,
         button:hover {
-            background: #363c4e;
+            background: #f3f4f6;
         }
 
         button:disabled {
@@ -109,12 +117,14 @@
 
         .btn-capture {
             background: var(--accent);
+            color: #ffffff;
             border: none;
             font-weight: 700;
         }
 
         .btn-vision {
             background: var(--purple-pro);
+            color: #ffffff;
             border: none;
             font-weight: 700;
         }
@@ -128,13 +138,21 @@
 
         .btn-effacer {
             background: var(--sell-red);
+            color: #ffffff;
             border: none;
             font-weight: 700;
         }
 
         #chart-container {
-            flex-grow: 1;
+            flex: 1 1 auto;
             width: 100%;
+            min-height: 420px;
+            background: #ffffff;
+            position: relative;
+        }
+
+        #chart-container canvas {
+            background: #ffffff !important;
         }
 
         a {
@@ -356,11 +374,6 @@
             ============================================================
             CONFIGURATION API
             ============================================================
-
-            Si la page est sur GitHub Pages, elle appelle Render.
-            Si la page est servie depuis Render, elle utilise le même domaine.
-
-            Modifier cette URL si ton service Render change.
         */
         const API_BASE_URL = window.location.hostname.includes("github.io")
             ? "https://expert-trading.onrender.com"
@@ -376,22 +389,68 @@
             return API_BASE_URL + route;
         }
 
-        function init() {
-            const hauteur = Math.max(420, window.innerHeight - 50);
+        function getChartSize() {
+            const container = document.getElementById('chart-container');
+            const rect = container.getBoundingClientRect();
 
-            chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
-                width: window.innerWidth,
-                height: hauteur,
+            return {
+                width: Math.max(320, Math.floor(rect.width || window.innerWidth)),
+                height: Math.max(420, Math.floor(rect.height || (window.innerHeight - 60)))
+            };
+        }
+
+        function appliquerThemeGraphiqueClair() {
+            if (!chart) return;
+
+            chart.applyOptions({
                 layout: {
-                    background: { color: '#0b0e11' },
-                    textColor: '#848e9c'
+                    background: {
+                        type: 'solid',
+                        color: '#ffffff'
+                    },
+                    textColor: '#111827'
                 },
                 grid: {
-                    vertLines: { color: '#1f2226' },
-                    horzLines: { color: '#1f2226' }
+                    vertLines: { color: '#e5e7eb' },
+                    horzLines: { color: '#e5e7eb' }
+                },
+                rightPriceScale: {
+                    borderColor: '#d1d5db'
                 },
                 timeScale: {
-                    borderVisible: false,
+                    borderColor: '#d1d5db',
+                    timeVisible: true
+                },
+                crosshair: {
+                    mode: 0
+                }
+            });
+        }
+
+        function init() {
+            const container = document.getElementById('chart-container');
+            const size = getChartSize();
+
+            chart = LightweightCharts.createChart(container, {
+                width: size.width,
+                height: size.height,
+                layout: {
+                    background: {
+                        type: 'solid',
+                        color: '#ffffff'
+                    },
+                    textColor: '#111827'
+                },
+                grid: {
+                    vertLines: { color: '#e5e7eb' },
+                    horzLines: { color: '#e5e7eb' }
+                },
+                rightPriceScale: {
+                    borderColor: '#d1d5db'
+                },
+                timeScale: {
+                    borderColor: '#d1d5db',
+                    borderVisible: true,
                     timeVisible: true
                 },
                 crosshair: {
@@ -400,6 +459,7 @@
             });
 
             changerStyleGraphique();
+            appliquerThemeGraphiqueClair();
             actualiserGraphique();
         }
 
@@ -550,6 +610,7 @@
 
             if (mainSeries) {
                 chart.removeSeries(mainSeries);
+                mainSeries = null;
             }
 
             const commonOptions = {
@@ -584,8 +645,8 @@
             } else if (type === 'area') {
                 mainSeries = chart.addAreaSeries({
                     ...commonOptions,
-                    topColor: 'rgba(41, 98, 255, 0.4)',
-                    bottomColor: 'rgba(41, 98, 255, 0.0)',
+                    topColor: 'rgba(41, 98, 255, 0.25)',
+                    bottomColor: 'rgba(255, 255, 255, 1)',
                     lineColor: '#2962ff',
                     lineWidth: 2
                 });
@@ -594,6 +655,8 @@
             if (currentData.length > 0 && mainSeries) {
                 mainSeries.setData(currentData);
             }
+
+            appliquerThemeGraphiqueClair();
         }
 
         async function actualiserGraphique() {
@@ -641,6 +704,9 @@
                     mainSeries.setData(currentData);
                 }
 
+                chart.timeScale().fitContent();
+                appliquerThemeGraphiqueClair();
+
                 socket = new WebSocket(
                     `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
                 );
@@ -657,7 +723,9 @@
                         value: parseFloat(k.c)
                     };
 
-                    mainSeries.update(update);
+                    if (mainSeries) {
+                        mainSeries.update(update);
+                    }
 
                     const lastIdx = currentData.length - 1;
 
@@ -907,10 +975,14 @@
 
         window.onresize = () => {
             if (chart) {
+                const size = getChartSize();
+
                 chart.applyOptions({
-                    width: window.innerWidth,
-                    height: Math.max(420, window.innerHeight - 50)
+                    width: size.width,
+                    height: size.height
                 });
+
+                appliquerThemeGraphiqueClair();
             }
         };
     </script>
