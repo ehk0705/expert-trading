@@ -1,15 +1,14 @@
-index.html corrigé
+index.html corrigé.
 
-Modification demandée :
-- fond du graphique en blanc.
+Objectif :
+- conserver un CSS moderne ;
+- rétablir l'affichage du graphique ;
+- supprimer l'effet CSS qui pouvait recouvrir le canvas ;
+- forcer une hauteur visible du conteneur ;
+- ajouter un bouton Diagnostic graphique.
 
-Corrections appliquées :
-- fond global de la page en blanc ;
-- fond du conteneur #chart-container en blanc ;
-- fond du canvas du graphique en blanc ;
-- option Lightweight Charts layout.background en blanc ;
-- grille gris clair ;
-- texte du graphique foncé ;
-- réapplication du thème clair après création du graphique, changement de style, chargement des données et redimensionnement.
-
-Aucune fonction n'a été supprimée.
+À faire :
+1. Remplacer index.html.
+2. Redéployer Render.
+3. Faire Ctrl + F5.
+4. Si le graphique reste vide, cliquer sur Diagnostic graphique et lire nombreBougies.

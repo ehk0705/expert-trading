@@ -176,7 +176,8 @@
         #chart-container {
             flex: 1 1 auto;
             width: calc(100% - 24px);
-            min-height: 420px;
+            height: calc(100vh - 72px);
+            min-height: 520px;
             margin: 12px;
             background: #ffffff;
             position: relative;
@@ -185,20 +186,11 @@
             overflow: hidden;
             box-shadow: var(--shadow-strong);
         }
-
-        #chart-container::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent 20%),
-                radial-gradient(circle at top right, rgba(37, 99, 235, 0.08), transparent 26%);
-            z-index: 1;
-        }
-
-        #chart-container canvas {
+#chart-container canvas {
             background: #ffffff !important;
+            display: block !important;
+            position: relative;
+            z-index: 0;
         }
 
         a {
@@ -422,6 +414,7 @@
             </a>
 
             <button class="btn-effacer" onclick="effacerResultat()">Effacer</button>
+            <button type="button" onclick="diagnosticGraphique()">Diagnostic graphique</button>
         </div>
     </div>
 
@@ -459,11 +452,18 @@
 
         function getChartSize() {
             const container = document.getElementById('chart-container');
-            const rect = container.getBoundingClientRect();
+
+            const width = container && container.clientWidth
+                ? container.clientWidth
+                : window.innerWidth;
+
+            const height = container && container.clientHeight
+                ? container.clientHeight
+                : Math.max(520, window.innerHeight - 72);
 
             return {
-                width: Math.max(320, Math.floor(rect.width || window.innerWidth)),
-                height: Math.max(420, Math.floor(rect.height || (window.innerHeight - 60)))
+                width: Math.max(320, Math.floor(width)),
+                height: Math.max(420, Math.floor(height))
             };
         }
 
@@ -472,10 +472,7 @@
 
             chart.applyOptions({
                 layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#ffffff'
-                    },
+                    background: { color: '#ffffff' },
                     textColor: '#111827'
                 },
                 grid: {
@@ -499,14 +496,16 @@
             const container = document.getElementById('chart-container');
             const size = getChartSize();
 
+            if (!container) {
+                console.error("Conteneur graphique introuvable.");
+                return;
+            }
+
             chart = LightweightCharts.createChart(container, {
                 width: size.width,
                 height: size.height,
                 layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#ffffff'
-                    },
+                    background: { color: '#ffffff' },
                     textColor: '#111827'
                 },
                 grid: {
@@ -529,6 +528,21 @@
             changerStyleGraphique();
             appliquerThemeGraphiqueClair();
             actualiserGraphique();
+
+            setTimeout(() => {
+                if (chart) {
+                    const newSize = getChartSize();
+                    chart.applyOptions({
+                        width: newSize.width,
+                        height: newSize.height
+                    });
+                    appliquerThemeGraphiqueClair();
+                    if (mainSeries && currentData.length > 0) {
+                        mainSeries.setData(currentData);
+                        chart.timeScale().fitContent();
+                    }
+                }
+            }, 250);
         }
 
         function afficherStatus(message) {
@@ -813,6 +827,11 @@
             } catch (err) {
                 console.error("Erreur API/Socket :", err);
                 afficherStatus("Erreur API Binance : " + err.message);
+
+                if (mainSeries) {
+                    currentData = [];
+                    mainSeries.setData(currentData);
+                }
             }
         }
 
@@ -1038,6 +1057,26 @@
 
             return lignes.join("\n");
         }
+
+
+        function diagnosticGraphique() {
+            const container = document.getElementById('chart-container');
+            const infos = {
+                conteneurExiste: Boolean(container),
+                largeur: container ? container.clientWidth : null,
+                hauteur: container ? container.clientHeight : null,
+                chartExiste: Boolean(chart),
+                mainSeriesExiste: Boolean(mainSeries),
+                nombreBougies: currentData.length,
+                actif: document.getElementById('asset-selector')?.value || null,
+                intervalle: document.getElementById('interval-selector')?.value || null
+            };
+
+            afficherResultat(infos);
+            afficherStatus("Diagnostic graphique affiché.");
+            console.log("Diagnostic graphique :", infos);
+        }
+
 
         window.onload = init;
 
