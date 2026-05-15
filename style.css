@@ -1,31 +1,36 @@
 /* ============================================================
    Expert Trading Pro v2.0
    Fichier : style.css
-   CSS épuré et contrasté
+   Version corrigée : graphique visible, contraste fort
    ============================================================ */
 
 :root {
+    /* Page */
     --page-bg: #e2e8f0;
     --header-bg: #ffffff;
     --toolbar-bg: #f8fafc;
 
-    --chart-bg: #ffffff;
-    --chart-border: #94a3b8;
-    --chart-grid: #cbd5e1;
-    --chart-text: #111827;
+    /* Graphique : fond sombre pour éviter blanc sur blanc */
+    --chart-bg: #131722;
+    --chart-border: #2a2e39;
+    --chart-grid: #2a2e39;
+    --chart-text: #d1d4dc;
 
+    /* Texte */
     --text-main: #111827;
     --text-muted: #475569;
 
+    /* Actions */
     --accent: #2563eb;
     --purple-pro: #7c3aed;
-    --buy-green: #16a085;
-    --sell-red: #e74c3c;
+    --buy-green: #26a69a;
+    --sell-red: #ef5350;
     --yellow-pro: #b77900;
 
+    /* Bordures et ombres */
     --border: #cbd5e1;
     --shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.12);
-    --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.20);
+    --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.22);
 }
 
 /* Base */
@@ -149,6 +154,8 @@ button:disabled {
     box-shadow: none;
 }
 
+/* Boutons principaux */
+
 .btn-capture,
 .btn-vision,
 .btn-technique,
@@ -193,11 +200,17 @@ button:disabled {
     box-shadow: var(--shadow-strong);
 }
 
+/*
+   Important :
+   on force le fond du canvas en sombre.
+   Cela évite le problème blanc sur blanc.
+*/
 #chart-container canvas {
     display: block !important;
     background: var(--chart-bg) !important;
 }
 
+/* Filigrane discret */
 #chart-container::after {
     content: "EXPERT TRADING PRO";
     position: absolute;
@@ -205,7 +218,7 @@ button:disabled {
     top: 18px;
     z-index: 2;
 
-    color: rgba(17, 24, 39, 0.08);
+    color: rgba(209, 212, 220, 0.08);
     font-size: 28px;
     font-weight: 900;
     pointer-events: none;
