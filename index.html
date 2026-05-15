@@ -1,14 +1,322 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading Pro v2.0</title>
-    
+    <title>Expert Trading Pro v2.0 - Full Interface</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-    
-    <link rel="stylesheet" href="style.css">
+
+        <style>
+        :root {
+            --bg-color: #f4f7fb;
+            --header-bg: rgba(255, 255, 255, 0.88);
+            --chart-bg: #ffffff;
+            --chart-grid: #e7edf5;
+            --chart-text: #111827;
+
+            --text-main: #111827;
+            --text-muted: #5b6472;
+
+            --accent: #2563eb;
+            --accent-2: #14b8a6;
+            --yellow-pro: #d97706;
+            --purple-pro: #7c3aed;
+            --buy-green: #10b981;
+            --sell-red: #ef4444;
+
+            --border: rgba(148, 163, 184, 0.45);
+            --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.10);
+            --shadow-strong: 0 18px 55px rgba(15, 23, 42, 0.20);
+            --radius: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: Inter, Arial, sans-serif;
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 34%),
+                radial-gradient(circle at top right, rgba(20, 184, 166, 0.18), transparent 28%),
+                linear-gradient(180deg, #f8fbff 0%, #eef3f9 100%);
+        }
+
+        .header-pro {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--header-bg);
+            padding: 9px 12px;
+            border-bottom: 1px solid var(--border);
+            gap: 8px;
+            flex-wrap: wrap;
+            z-index: 10;
+            flex-shrink: 0;
+            backdrop-filter: blur(14px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 9px;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+        }
+
+        .control-group:last-child {
+            border-right: 1px solid rgba(148, 163, 184, 0.28);
+        }
+
+        label {
+            font-size: 10px;
+            font-weight: 900;
+            color: #64748b;
+            white-space: nowrap;
+            letter-spacing: 0.04em;
+        }
+
+        h1 {
+            font-size: 15px;
+            margin: 0;
+            color: #0f172a;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            flex-grow: 1;
+            text-align: center;
+            min-width: 160px;
+            background: linear-gradient(90deg, #2563eb, #7c3aed, #d97706);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        select,
+        button,
+        input[type="file"] {
+            background: #ffffff;
+            color: #111827;
+            border: 1px solid #d5dce7;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            cursor: pointer;
+            outline: none;
+            transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+        }
+
+        select {
+            min-width: 78px;
+        }
+
+        input[type="file"] {
+            max-width: 185px;
+            background: #f8fafc;
+        }
+
+        select:hover,
+        button:hover,
+        input[type="file"]:hover {
+            background: #f8fafc;
+            border-color: #93c5fd;
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.13);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-capture,
+        .btn-vision,
+        .btn-technique,
+        .btn-effacer {
+            color: #ffffff;
+            border: none;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+        }
+
+        .btn-capture {
+            background: linear-gradient(135deg, #2563eb, #0ea5e9);
+        }
+
+        .btn-vision {
+            background: linear-gradient(135deg, #7c3aed, #db2777);
+        }
+
+        .btn-technique {
+            background: linear-gradient(135deg, #10b981, #14b8a6);
+            color: #04130e;
+        }
+
+        .btn-effacer {
+            background: linear-gradient(135deg, #ef4444, #f97316);
+        }
+
+        #chart-container {
+            flex: 1 1 auto;
+            width: calc(100% - 24px);
+            height: calc(100vh - 72px);
+            min-height: 520px;
+            margin: 12px;
+            background: #ffffff;
+            position: relative;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: var(--shadow-strong);
+        }
+#chart-container canvas {
+            background: #ffffff !important;
+            display: block !important;
+            position: relative;
+            z-index: 0;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .result-panel {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            width: min(640px, calc(100vw - 36px));
+            max-height: 45vh;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 18px;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.38);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 20;
+            backdrop-filter: blur(14px);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 12px;
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.45), rgba(124, 58, 237, 0.42));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+        }
+
+        .result-header strong {
+            color: #ffffff;
+            font-size: 13px;
+            letter-spacing: 0.04em;
+        }
+
+        .result-header button {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.26);
+        }
+
+        .status-line {
+            color: #cbd5e1;
+            font-size: 11px;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            white-space: pre-wrap;
+        }
+
+        #resultat-analyse {
+            margin: 0;
+            padding: 12px;
+            color: #dbeafe;
+            font-family: Consolas, monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+
+        #resultat-analyse::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        #resultat-analyse::-webkit-scrollbar-thumb {
+            background: rgba(147, 197, 253, 0.45);
+            border-radius: 999px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                overflow: auto;
+            }
+
+            .header-pro {
+                align-items: stretch;
+                padding: 10px;
+            }
+
+            .control-group {
+                width: 100%;
+                border-radius: 14px;
+                justify-content: space-between;
+            }
+
+            h1 {
+                width: 100%;
+                order: -1;
+                margin-bottom: 4px;
+            }
+
+            select,
+            button,
+            input[type="file"] {
+                flex: 1;
+                min-width: 0;
+            }
+
+            #chart-container {
+                width: calc(100% - 20px);
+                height: 65vh;
+                min-height: 420px;
+                margin: 10px;
+                border-radius: 14px;
+            }
+
+            .result-panel {
+                position: static;
+                width: calc(100% - 20px);
+                margin: 10px;
+                max-height: none;
+                border-radius: 14px;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -106,6 +414,7 @@
             </a>
 
             <button class="btn-effacer" onclick="effacerResultat()">Effacer</button>
+            <button type="button" onclick="diagnosticGraphique()">Diagnostic graphique</button>
         </div>
     </div>
 
@@ -143,34 +452,38 @@
 
         function getChartSize() {
             const container = document.getElementById('chart-container');
-            const rect = container.getBoundingClientRect();
+
+            const width = container && container.clientWidth
+                ? container.clientWidth
+                : window.innerWidth;
+
+            const height = container && container.clientHeight
+                ? container.clientHeight
+                : Math.max(520, window.innerHeight - 72);
 
             return {
-                width: Math.max(320, Math.floor(rect.width || window.innerWidth)),
-                height: Math.max(420, Math.floor(rect.height || (window.innerHeight - 60)))
+                width: Math.max(320, Math.floor(width)),
+                height: Math.max(420, Math.floor(height))
             };
         }
 
-        function appliquerThemeGraphiqueClairTradingView() {
+        function appliquerThemeGraphiqueClair() {
             if (!chart) return;
 
             chart.applyOptions({
                 layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#ffffff'
-                    },
-                    textColor: '#1f2937'
+                    background: { color: '#ffffff' },
+                    textColor: '#111827'
                 },
                 grid: {
-                    vertLines: { color: '#d9dee8' },
-                    horzLines: { color: '#d9dee8' }
+                    vertLines: { color: '#e7edf5' },
+                    horzLines: { color: '#e7edf5' }
                 },
                 rightPriceScale: {
-                    borderColor: '#cbd5e1'
+                    borderColor: '#d1d5db'
                 },
                 timeScale: {
-                    borderColor: '#cbd5e1',
+                    borderColor: '#d1d5db',
                     timeVisible: true
                 },
                 crosshair: {
@@ -183,25 +496,27 @@
             const container = document.getElementById('chart-container');
             const size = getChartSize();
 
+            if (!container) {
+                console.error("Conteneur graphique introuvable.");
+                return;
+            }
+
             chart = LightweightCharts.createChart(container, {
                 width: size.width,
                 height: size.height,
                 layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#ffffff'
-                    },
-                    textColor: '#1f2937'
+                    background: { color: '#ffffff' },
+                    textColor: '#111827'
                 },
                 grid: {
-                    vertLines: { color: '#d9dee8' },
-                    horzLines: { color: '#d9dee8' }
+                    vertLines: { color: '#e7edf5' },
+                    horzLines: { color: '#e7edf5' }
                 },
                 rightPriceScale: {
-                    borderColor: '#cbd5e1'
+                    borderColor: '#d1d5db'
                 },
                 timeScale: {
-                    borderColor: '#cbd5e1',
+                    borderColor: '#d1d5db',
                     borderVisible: true,
                     timeVisible: true
                 },
@@ -211,8 +526,23 @@
             });
 
             changerStyleGraphique();
-            appliquerThemeGraphiqueClairTradingView();
+            appliquerThemeGraphiqueClair();
             actualiserGraphique();
+
+            setTimeout(() => {
+                if (chart) {
+                    const newSize = getChartSize();
+                    chart.applyOptions({
+                        width: newSize.width,
+                        height: newSize.height
+                    });
+                    appliquerThemeGraphiqueClair();
+                    if (mainSeries && currentData.length > 0) {
+                        mainSeries.setData(currentData);
+                        chart.timeScale().fitContent();
+                    }
+                }
+            }, 250);
         }
 
         function afficherStatus(message) {
@@ -376,17 +706,17 @@
             if (type === 'candles') {
                 mainSeries = chart.addCandlestickSeries({
                     ...commonOptions,
-                    upColor: '#16a085',
-                    downColor: '#e74c3c',
+                    upColor: '#2ebd85',
+                    downColor: '#f6465d',
                     borderVisible: false,
-                    wickUpColor: '#16a085',
-                    wickDownColor: '#e74c3c'
+                    wickUpColor: '#2ebd85',
+                    wickDownColor: '#f6465d'
                 });
             } else if (type === 'bars') {
                 mainSeries = chart.addBarSeries({
                     ...commonOptions,
-                    upColor: '#16a085',
-                    downColor: '#e74c3c'
+                    upColor: '#2ebd85',
+                    downColor: '#f6465d'
                 });
             } else if (type === 'line') {
                 mainSeries = chart.addLineSeries({
@@ -408,7 +738,7 @@
                 mainSeries.setData(currentData);
             }
 
-            appliquerThemeGraphiqueClairTradingView();
+            appliquerThemeGraphiqueClair();
         }
 
         async function actualiserGraphique() {
@@ -457,7 +787,7 @@
                 }
 
                 chart.timeScale().fitContent();
-                appliquerThemeGraphiqueClairTradingView();
+                appliquerThemeGraphiqueClair();
 
                 socket = new WebSocket(
                     `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
@@ -497,6 +827,11 @@
             } catch (err) {
                 console.error("Erreur API/Socket :", err);
                 afficherStatus("Erreur API Binance : " + err.message);
+
+                if (mainSeries) {
+                    currentData = [];
+                    mainSeries.setData(currentData);
+                }
             }
         }
 
@@ -723,6 +1058,26 @@
             return lignes.join("\n");
         }
 
+
+        function diagnosticGraphique() {
+            const container = document.getElementById('chart-container');
+            const infos = {
+                conteneurExiste: Boolean(container),
+                largeur: container ? container.clientWidth : null,
+                hauteur: container ? container.clientHeight : null,
+                chartExiste: Boolean(chart),
+                mainSeriesExiste: Boolean(mainSeries),
+                nombreBougies: currentData.length,
+                actif: document.getElementById('asset-selector')?.value || null,
+                intervalle: document.getElementById('interval-selector')?.value || null
+            };
+
+            afficherResultat(infos);
+            afficherStatus("Diagnostic graphique affiché.");
+            console.log("Diagnostic graphique :", infos);
+        }
+
+
         window.onload = init;
 
         window.onresize = () => {
@@ -734,7 +1089,7 @@
                     height: size.height
                 });
 
-                appliquerThemeGraphiqueClairTradingView();
+                appliquerThemeGraphiqueClair();
             }
         };
     </script>
