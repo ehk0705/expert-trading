@@ -483,6 +483,14 @@
                 </button>
 
                 <button 
+                    class="btn-analyze-multiple" 
+                    id="btn-openai-diagnostic" 
+                    title="Vérifier la configuration OpenAI côté serveur"
+                    onclick="testerDiagnosticOpenAI()">
+                    Diagnostic OpenAI
+                </button>
+
+                <button 
                     class="btn-save" 
                     id="btn-save-report"
                     title="Archiver le rapport affiché"
@@ -585,16 +593,44 @@
                 throw new Error(
                     "Le serveur n'a pas retourné du JSON valide.\n\n" +
                     "Statut HTTP : " + response.status + "\n\n" +
-                    rawText
+                    "Réponse brute :\n" + rawText
                 );
             }
 
-            if (!response.ok) {
-                const message = data.message || data.error || data.details || "Erreur serveur inconnue.";
-                throw new Error(
-                    "Statut HTTP : " + response.status + "\n\n" +
-                    "Réponse serveur :\n" + message
-                );
+            if (!response.ok || data.ok === false) {
+                const lignes = [];
+
+                lignes.push("Statut HTTP : " + response.status);
+                lignes.push("");
+                lignes.push("Message : " + (data.message || data.error || "Erreur serveur inconnue."));
+
+                if (data.details) {
+                    lignes.push("");
+                    lignes.push("Détails :");
+                    lignes.push(String(data.details));
+                }
+
+                if (data.model) {
+                    lignes.push("");
+                    lignes.push("Modèle : " + data.model);
+                }
+
+                if (data.source_marche) {
+                    lignes.push("");
+                    lignes.push("Source marché : " + data.source_marche);
+                }
+
+                if (data.erreurs_sources) {
+                    lignes.push("");
+                    lignes.push("Erreurs sources :");
+                    lignes.push(JSON.stringify(data.erreurs_sources, null, 2));
+                }
+
+                lignes.push("");
+                lignes.push("Réponse JSON complète :");
+                lignes.push(JSON.stringify(data, null, 2));
+
+                throw new Error(lignes.join("\n"));
             }
 
             return data;
@@ -1273,6 +1309,35 @@
             barEl.style.width = Math.max(0, Math.min(100, confidence)) + "%";
             document.getElementById('ai-percent').innerText = Math.max(0, Math.min(100, confidence)) + "%";
             document.getElementById('ai-reasoning').innerText = "> ANALYSE TERMINÉE :\n" + reasoning;
+        }
+
+
+        async function testerDiagnosticOpenAI() {
+            try {
+                setLoadingState(true, "DIAGNOSTIC OPENAI...");
+
+                const response = await fetch(getApiUrl('/api/openai-diagnostic'));
+                const data = await readResponseAsJson(response);
+
+                const texte =
+                    "> DIAGNOSTIC OPENAI\n" +
+                    JSON.stringify(data, null, 2);
+
+                document.getElementById('ai-panel').style.display = "grid";
+                document.getElementById('ai-reasoning').innerText = texte;
+
+                alert(
+                    "Diagnostic terminé.\n\n" +
+                    "has_responses_create : " + data.has_responses_create + "\n" +
+                    "has_chat_completions_create : " + data.has_chat_completions_create + "\n" +
+                    "OPENAI_API_KEY : " + data.openai_key_configuree
+                );
+
+            } catch (error) {
+                alert("Erreur diagnostic OpenAI.\n\n" + error.message);
+            } finally {
+                setLoadingState(false);
+            }
         }
 
         async function saveNotes() {
