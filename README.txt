@@ -1,12 +1,14 @@
-index.html avec affichage proche de TradingView.
+index.html corrigé.
 
-Modifications :
-- fond graphique #131722 ;
-- grille #2a2e39 ;
-- texte #d1d4dc ;
-- bougies vert/rouge TradingView ;
-- barre supérieure sombre moderne ;
-- boutons contrastés ;
-- suppression du problème fond graphique / background identiques en clair.
+Objectif :
+- conserver un CSS moderne ;
+- rétablir l'affichage du graphique ;
+- supprimer l'effet CSS qui pouvait recouvrir le canvas ;
+- forcer une hauteur visible du conteneur ;
+- ajouter un bouton Diagnostic graphique.
 
-Les fonctions JavaScript existantes sont conservées.
+À faire :
+1. Remplacer index.html.
+2. Redéployer Render.
+3. Faire Ctrl + F5.
+4. Si le graphique reste vide, cliquer sur Diagnostic graphique et lire nombreBougies.
