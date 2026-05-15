@@ -477,7 +477,7 @@
                 <button 
                     class="btn-analyze-pro" 
                     id="btn-trigger-concrete-ai" 
-                    title="Analyse concrète avec OpenAI Vision, Binance et calculs techniques"
+                    title="Analyse concrète avec OpenAI Vision, Binance, OKX, CoinGecko et calculs techniques"
                     onclick="triggerConcreteAIAnalysis()">
                     Vision + Marché
                 </button>
@@ -535,7 +535,7 @@
                     <button 
                         class="btn-analyze-pro" 
                         id="btn-trigger-concrete-ai-bottom" 
-                        title="Analyse concrète avec OpenAI Vision, Binance et calculs techniques"
+                        title="Analyse concrète avec OpenAI Vision, Binance, OKX, CoinGecko et calculs techniques"
                         onclick="triggerConcreteAIAnalysis()">
                         Vision + Marché
                     </button>
@@ -785,7 +785,280 @@
             document.getElementById('ai-reasoning').innerText = "> En attente du déclenchement de l'analyse...";
         }
 
+
+        function getActifDepuisMetaOuNomFichierPro(fileName) {
+            const metaActif = document.querySelector("#meta-content .meta-item:nth-child(2) span");
+
+            if (metaActif && metaActif.innerText && metaActif.innerText.trim() !== "N/A") {
+                const actifMeta = metaActif.innerText.trim().toUpperCase();
+
+                if (actifMeta.includes(":")) {
+                    return actifMeta;
+                }
+
+                if (actifMeta.includes("BTC")) return "BINANCE:BTCUSDT";
+                if (actifMeta.includes("ETH")) return "BINANCE:ETHUSDT";
+                if (actifMeta.includes("SOL")) return "BINANCE:SOLUSDT";
+                if (actifMeta.includes("BNB")) return "BINANCE:BNBUSDT";
+                if (actifMeta.includes("XRP")) return "BINANCE:XRPUSDT";
+            }
+
+            const nom = String(fileName || "").toUpperCase();
+
+            if (nom.includes("ETH")) return "BINANCE:ETHUSDT";
+            if (nom.includes("SOL")) return "BINANCE:SOLUSDT";
+            if (nom.includes("BNB")) return "BINANCE:BNBUSDT";
+            if (nom.includes("XRP")) return "BINANCE:XRPUSDT";
+
+            return "BINANCE:BTCUSDT";
+        }
+
+        function getIntervalleDepuisMetaOuNomFichierPro(fileName) {
+            const metaIntervalle = document.querySelector("#meta-content .meta-item:nth-child(3) span");
+
+            if (metaIntervalle && metaIntervalle.innerText && metaIntervalle.innerText.trim() !== "N/A") {
+                return metaIntervalle.innerText.trim();
+            }
+
+            const nom = String(fileName || "").toLowerCase();
+
+            if (nom.includes("1m")) return "1m";
+            if (nom.includes("3m")) return "3m";
+            if (nom.includes("5m")) return "5m";
+            if (nom.includes("15m")) return "15m";
+            if (nom.includes("30m")) return "30m";
+            if (nom.includes("60") || nom.includes("1h")) return "1h";
+            if (nom.includes("120") || nom.includes("2h")) return "2h";
+            if (nom.includes("240") || nom.includes("4h")) return "4h";
+            if (nom.includes("1d") || nom.includes("daily") || nom.includes("jour") || nom.includes("_d_")) return "1d";
+            if (nom.includes("1w") || nom.includes("week") || nom.includes("_w_")) return "1w";
+
+            return "1h";
+        }
+
+        function actifCompatibleMarchePro(actif) {
+            const valeur = String(actif || "").toUpperCase();
+
+            return (
+                valeur.includes("BTC") ||
+                valeur.includes("ETH") ||
+                valeur.includes("SOL") ||
+                valeur.includes("BNB") ||
+                valeur.includes("XRP") ||
+                valeur.includes("ADA") ||
+                valeur.includes("DOGE") ||
+                valeur.includes("AVAX") ||
+                valeur.includes("LINK") ||
+                valeur.includes("DOT")
+            );
+        }
+
+        async function chargerImageEnBase64DepuisSrcPro(src) {
+            if (!src) {
+                throw new Error("Image absente.");
+            }
+
+            if (src.startsWith("data:image/")) {
+                return src;
+            }
+
+            const reponse = await fetch(src);
+
+            if (!reponse.ok) {
+                throw new Error("Impossible de charger l'image affichée. HTTP " + reponse.status);
+            }
+
+            const blob = await reponse.blob();
+
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error("Impossible de convertir l'image en base64."));
+
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function adapterAnalyseProPourAffichage(analyse) {
+            if (!analyse) {
+                return {
+                    decision: "ATTENDRE",
+                    confidence: 0,
+                    reasoning: "Aucune analyse reçue."
+                };
+            }
+
+            const decision = String(analyse.decision || analyse.signal || "ATTENDRE").toUpperCase();
+
+            let confidence = Number(analyse.confidence ?? analyse.confiance ?? 0);
+
+            if (!Number.isFinite(confidence)) {
+                confidence = 0;
+            }
+
+            if (confidence <= 1) {
+                confidence = confidence * 100;
+            }
+
+            confidence = Math.round(Math.max(0, Math.min(100, confidence)));
+
+            const lignes = [];
+
+            lignes.push("ANALYSE CONCRÈTE VISION + MARCHÉ");
+            lignes.push("================================");
+            lignes.push("");
+            lignes.push("Décision : " + decision);
+            lignes.push("Confiance : " + confidence + "%");
+            lignes.push("Tendance : " + (analyse.tendance || "N/A"));
+            lignes.push("Actif : " + (analyse.actif || "N/A"));
+            lignes.push("Intervalle : " + (analyse.intervalle || "N/A"));
+            lignes.push("Source marché : " + (analyse.source_marche || "N/A"));
+            lignes.push("Symbole marché : " + (analyse.symbole_marche || "N/A"));
+            lignes.push("Prix actuel : " + (analyse.prix_actuel ?? "N/A"));
+            lignes.push("Support principal : " + (analyse.support_principal ?? "N/A"));
+            lignes.push("Résistance principale : " + (analyse.resistance_principale ?? "N/A"));
+            lignes.push("Stop loss : " + (analyse.stop_loss ?? "N/A"));
+            lignes.push("Objectif 1 : " + (analyse.take_profit_1 ?? "N/A"));
+            lignes.push("Objectif 2 : " + (analyse.take_profit_2 ?? "N/A"));
+
+            if (analyse.resume) {
+                lignes.push("");
+                lignes.push("Résumé :");
+                lignes.push(analyse.resume);
+            }
+
+            if (Array.isArray(analyse.raisons) && analyse.raisons.length > 0) {
+                lignes.push("");
+                lignes.push("Raisons :");
+                analyse.raisons.forEach(item => lignes.push("- " + item));
+            }
+
+            if (Array.isArray(analyse.risques) && analyse.risques.length > 0) {
+                lignes.push("");
+                lignes.push("Risques :");
+                analyse.risques.forEach(item => lignes.push("- " + item));
+            }
+
+            if (Array.isArray(analyse.recommandations) && analyse.recommandations.length > 0) {
+                lignes.push("");
+                lignes.push("Recommandations :");
+                analyse.recommandations.forEach(item => lignes.push("- " + item));
+            }
+
+            if (Array.isArray(analyse.erreurs_sources) && analyse.erreurs_sources.length > 0) {
+                lignes.push("");
+                lignes.push("Sources écartées :");
+                analyse.erreurs_sources.forEach(item => {
+                    lignes.push("- " + item.source + " : " + item.message);
+                });
+            }
+
+            if (analyse.analyse_technique) {
+                lignes.push("");
+                lignes.push("Indicateurs serveur :");
+                lignes.push("RSI : " + (analyse.analyse_technique.rsi ?? "N/A"));
+                lignes.push("EMA20 : " + (analyse.analyse_technique.ema20 ?? "N/A"));
+                lignes.push("EMA50 : " + (analyse.analyse_technique.ema50 ?? "N/A"));
+                lignes.push("EMA200 : " + (analyse.analyse_technique.ema200 ?? "N/A"));
+                lignes.push("ATR : " + (analyse.analyse_technique.atr ?? "N/A"));
+                lignes.push("MACD histogramme : " + (analyse.analyse_technique.macd?.histogramme ?? "N/A"));
+            }
+
+            return {
+                decision: decision,
+                confidence: confidence,
+                reasoning: lignes.join("\n")
+            };
+        }
+
+        /*
+            Nouveau comportement du bouton "Analyser".
+            Il utilise maintenant la route fiable :
+            POST /api/analyze-vision-pro
+        */
         async function triggerAIAnalysis() {
+            return triggerConcreteAIAnalysis();
+        }
+
+        async function triggerConcreteAIAnalysis() {
+            if (!currentFileName) {
+                alert("Veuillez d'abord sélectionner un graphique à analyser.");
+                return;
+            }
+
+            if (!viewer || !viewer.src) {
+                alert("Aucune image n'est affichée.");
+                return;
+            }
+
+            setLoadingState(true, "ANALYSE VISION + MARCHÉ...");
+
+            try {
+                const actif = getActifDepuisMetaOuNomFichierPro(currentFileName);
+                const intervalle = getIntervalleDepuisMetaOuNomFichierPro(currentFileName);
+
+                if (!actifCompatibleMarchePro(actif)) {
+                    alert("L'analyse Vision + Marché nécessite un actif crypto reconnu : BTC, ETH, SOL, BNB, XRP, ADA, DOGE, AVAX, LINK ou DOT.");
+                    return;
+                }
+
+                const imageBase64 = await chargerImageEnBase64DepuisSrcPro(viewer.src);
+
+                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        actif: actif,
+                        intervalle: intervalle,
+                        imageBase64: imageBase64,
+                        configuration: {
+                            origine: "analyse.html",
+                            fileName: currentFileName,
+                            notes: userNotes ? userNotes.value : "",
+                            route: "/api/analyze-vision-pro"
+                        }
+                    })
+                });
+
+                const data = await readResponseAsJson(response);
+                const analyse = data.analysis || data.analyse;
+
+                if (!analyse) {
+                    throw new Error("La réponse du serveur ne contient pas le bloc analysis.");
+                }
+
+                const affichage = adapterAnalyseProPourAffichage(analyse);
+
+                renderAIResults(affichage);
+
+                userNotes.value +=
+                    "\n\n==================================================" +
+                    "\n[ANALYSE CONCRÈTE VISION + MARCHÉ]" +
+                    "\nCapture : " + currentFileName +
+                    "\nActif : " + actif +
+                    "\nIntervalle : " + intervalle +
+                    "\nSource marché : " + (analyse.source_marche || "N/A") +
+                    "\nDécision : " + affichage.decision +
+                    "\nConfiance : " + affichage.confidence + "%" +
+                    "\n\n" + affichage.reasoning +
+                    "\n==================================================\n";
+
+                document.getElementById('dynamic-advice').innerText =
+                    "Analyse Vision + Marché terminée pour : " + currentFileName;
+
+                alert("Analyse Vision + Marché terminée.");
+
+            } catch (err) {
+                console.error("ERREUR ANALYSE VISION + MARCHÉ :", err);
+                alert("Erreur analyse Vision + Marché.\n\n" + err.message);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+
+        async function triggerAIAnalysisAncienneRoute() {
             if (!currentFileName) {
                 alert("Veuillez d'abord sélectionner un graphique à analyser.");
                 return;
@@ -1001,243 +1274,6 @@
             document.getElementById('ai-percent').innerText = Math.max(0, Math.min(100, confidence)) + "%";
             document.getElementById('ai-reasoning').innerText = "> ANALYSE TERMINÉE :\n" + reasoning;
         }
-
-
-        function getActifDepuisMetaOuNomFichierPro(fileName) {
-            const metaActif = document.querySelector("#meta-content .meta-item:nth-child(2) span");
-
-            if (metaActif && metaActif.innerText && metaActif.innerText.trim() !== "N/A") {
-                const actifMeta = metaActif.innerText.trim().toUpperCase();
-
-                if (actifMeta.includes(":")) {
-                    return actifMeta;
-                }
-
-                if (actifMeta.includes("BTC")) return "BINANCE:BTCUSDT";
-                if (actifMeta.includes("ETH")) return "BINANCE:ETHUSDT";
-                if (actifMeta.includes("SOL")) return "BINANCE:SOLUSDT";
-                if (actifMeta.includes("BNB")) return "BINANCE:BNBUSDT";
-                if (actifMeta.includes("XRP")) return "BINANCE:XRPUSDT";
-            }
-
-            const nom = String(fileName || "").toUpperCase();
-
-            if (nom.includes("ETH")) return "BINANCE:ETHUSDT";
-            if (nom.includes("SOL")) return "BINANCE:SOLUSDT";
-            if (nom.includes("BNB")) return "BINANCE:BNBUSDT";
-            if (nom.includes("XRP")) return "BINANCE:XRPUSDT";
-
-            return "BINANCE:BTCUSDT";
-        }
-
-        function getIntervalleDepuisMetaOuNomFichierPro(fileName) {
-            const metaIntervalle = document.querySelector("#meta-content .meta-item:nth-child(3) span");
-
-            if (metaIntervalle && metaIntervalle.innerText && metaIntervalle.innerText.trim() !== "N/A") {
-                return metaIntervalle.innerText.trim();
-            }
-
-            const nom = String(fileName || "").toLowerCase();
-
-            if (nom.includes("1m")) return "1m";
-            if (nom.includes("3m")) return "3m";
-            if (nom.includes("5m")) return "5m";
-            if (nom.includes("15m")) return "15m";
-            if (nom.includes("30m")) return "30m";
-            if (nom.includes("60") || nom.includes("1h")) return "1h";
-            if (nom.includes("240") || nom.includes("4h")) return "4h";
-            if (nom.includes("1d") || nom.includes("daily") || nom.includes("jour")) return "1d";
-            if (nom.includes("1w") || nom.includes("week")) return "1w";
-
-            return "1h";
-        }
-
-        function actifCompatibleBinancePro(actif) {
-            return String(actif || "").toUpperCase().startsWith("BINANCE:");
-        }
-
-        async function chargerImageEnBase64DepuisSrcPro(src) {
-            if (!src) {
-                throw new Error("Image absente.");
-            }
-
-            if (src.startsWith("data:image/")) {
-                return src;
-            }
-
-            const reponse = await fetch(src);
-
-            if (!reponse.ok) {
-                throw new Error("Impossible de charger l'image affichée. HTTP " + reponse.status);
-            }
-
-            const blob = await reponse.blob();
-
-            return await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error("Impossible de convertir l'image en base64."));
-
-                reader.readAsDataURL(blob);
-            });
-        }
-
-        function adapterAnalyseProPourAffichage(analyse) {
-            if (!analyse) {
-                return {
-                    decision: "ATTENDRE",
-                    confidence: 0,
-                    reasoning: "Aucune analyse reçue."
-                };
-            }
-
-            const decision = String(analyse.decision || analyse.signal || "ATTENDRE").toUpperCase();
-
-            let confidence = Number(analyse.confidence ?? analyse.confiance ?? 0);
-
-            if (!Number.isFinite(confidence)) {
-                confidence = 0;
-            }
-
-            if (confidence <= 1) {
-                confidence = confidence * 100;
-            }
-
-            confidence = Math.round(Math.max(0, Math.min(100, confidence)));
-
-            const lignes = [];
-
-            lignes.push("ANALYSE CONCRÈTE VISION + MARCHÉ");
-            lignes.push("================================");
-            lignes.push("");
-            lignes.push("Décision : " + decision);
-            lignes.push("Confiance : " + confidence + "%");
-            lignes.push("Tendance : " + (analyse.tendance || "N/A"));
-            lignes.push("Actif : " + (analyse.actif || "N/A"));
-            lignes.push("Intervalle : " + (analyse.intervalle || "N/A"));
-            lignes.push("Prix actuel : " + (analyse.prix_actuel ?? "N/A"));
-            lignes.push("Support principal : " + (analyse.support_principal ?? "N/A"));
-            lignes.push("Résistance principale : " + (analyse.resistance_principale ?? "N/A"));
-            lignes.push("Stop loss : " + (analyse.stop_loss ?? "N/A"));
-            lignes.push("Objectif 1 : " + (analyse.take_profit_1 ?? "N/A"));
-            lignes.push("Objectif 2 : " + (analyse.take_profit_2 ?? "N/A"));
-
-            if (analyse.resume) {
-                lignes.push("");
-                lignes.push("Résumé :");
-                lignes.push(analyse.resume);
-            }
-
-            if (Array.isArray(analyse.raisons) && analyse.raisons.length > 0) {
-                lignes.push("");
-                lignes.push("Raisons :");
-                analyse.raisons.forEach(item => lignes.push("- " + item));
-            }
-
-            if (Array.isArray(analyse.risques) && analyse.risques.length > 0) {
-                lignes.push("");
-                lignes.push("Risques :");
-                analyse.risques.forEach(item => lignes.push("- " + item));
-            }
-
-            if (Array.isArray(analyse.recommandations) && analyse.recommandations.length > 0) {
-                lignes.push("");
-                lignes.push("Recommandations :");
-                analyse.recommandations.forEach(item => lignes.push("- " + item));
-            }
-
-            if (analyse.analyse_technique) {
-                lignes.push("");
-                lignes.push("Indicateurs serveur :");
-                lignes.push("RSI : " + (analyse.analyse_technique.rsi ?? "N/A"));
-                lignes.push("EMA20 : " + (analyse.analyse_technique.ema20 ?? "N/A"));
-                lignes.push("EMA50 : " + (analyse.analyse_technique.ema50 ?? "N/A"));
-                lignes.push("EMA200 : " + (analyse.analyse_technique.ema200 ?? "N/A"));
-                lignes.push("ATR : " + (analyse.analyse_technique.atr ?? "N/A"));
-            }
-
-            return {
-                decision: decision,
-                confidence: confidence,
-                reasoning: lignes.join("\n")
-            };
-        }
-
-        async function triggerConcreteAIAnalysis() {
-            if (!currentFileName) {
-                alert("Veuillez d'abord sélectionner un graphique à analyser.");
-                return;
-            }
-
-            if (!viewer || !viewer.src) {
-                alert("Aucune image n'est affichée.");
-                return;
-            }
-
-            setLoadingState(true, "ANALYSE VISION + MARCHÉ...");
-
-            try {
-                const actif = getActifDepuisMetaOuNomFichierPro(currentFileName);
-                const intervalle = getIntervalleDepuisMetaOuNomFichierPro(currentFileName);
-
-                if (!actifCompatibleBinancePro(actif)) {
-                    alert("L'analyse Vision + Marché utilise Binance. La capture doit correspondre à un actif BINANCE.");
-                    return;
-                }
-
-                const imageBase64 = await chargerImageEnBase64DepuisSrcPro(viewer.src);
-
-                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        actif: actif,
-                        intervalle: intervalle,
-                        imageBase64: imageBase64,
-                        configuration: {
-                            origine: "analyse.html",
-                            fileName: currentFileName,
-                            notes: userNotes ? userNotes.value : ""
-                        }
-                    })
-                });
-
-                const data = await readResponseAsJson(response);
-                const analyse = data.analysis || data.analyse;
-
-                if (!analyse) {
-                    throw new Error("La réponse du serveur ne contient pas le bloc analysis.");
-                }
-
-                const affichage = adapterAnalyseProPourAffichage(analyse);
-
-                renderAIResults(affichage);
-
-                userNotes.value +=
-                    "\n\n==================================================" +
-                    "\n[ANALYSE CONCRÈTE VISION + MARCHÉ]" +
-                    "\nCapture : " + currentFileName +
-                    "\nActif : " + actif +
-                    "\nIntervalle : " + intervalle +
-                    "\nDécision : " + affichage.decision +
-                    "\nConfiance : " + affichage.confidence + "%" +
-                    "\n\n" + affichage.reasoning +
-                    "\n==================================================\n";
-
-                document.getElementById('dynamic-advice').innerText =
-                    "Analyse Vision + Marché terminée pour : " + currentFileName;
-
-                alert("Analyse Vision + Marché terminée.");
-
-            } catch (err) {
-                console.error("ERREUR ANALYSE VISION + MARCHÉ :", err);
-                alert("Erreur analyse Vision + Marché.\n\n" + err.message);
-            } finally {
-                setLoadingState(false);
-            }
-        }
-
 
         async function saveNotes() {
             if (!currentFileName) {

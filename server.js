@@ -832,20 +832,62 @@ Règles :
 - Ne donne pas d'ordre ferme.
 `;
 
-    const response = await client.responses.create({
-        model: OPENAI_MODEL,
-        input: [
-            {
-                role: "user",
-                content: [
-                    { type: "input_text", text: prompt },
-                    { type: "input_image", image_url: imageInputUrl }
-                ]
-            }
-        ]
-    });
+    /*
+        Compatibilité OpenAI :
+        - Les versions récentes acceptent client.responses.create(...)
+        - Certaines installations Render ont une version où client.responses est absent
+        - Dans ce cas, on utilise client.chat.completions.create(...)
+    */
 
-    return extraireJsonDepuisTexte(response.output_text || "");
+    if (client.responses && typeof client.responses.create === "function") {
+        const response = await client.responses.create({
+            model: OPENAI_MODEL,
+            input: [
+                {
+                    role: "user",
+                    content: [
+                        { type: "input_text", text: prompt },
+                        { type: "input_image", image_url: imageInputUrl }
+                    ]
+                }
+            ]
+        });
+
+        return extraireJsonDepuisTexte(response.output_text || "");
+    }
+
+    if (client.chat && client.chat.completions && typeof client.chat.completions.create === "function") {
+        const response = await client.chat.completions.create({
+            model: OPENAI_MODEL,
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: prompt
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: imageInputUrl
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature: 0.2
+        });
+
+        const contenu = response.choices?.[0]?.message?.content || "";
+
+        return extraireJsonDepuisTexte(contenu);
+    }
+
+    throw new Error(
+        "Le module openai installé sur Render ne contient ni responses.create ni chat.completions.create. " +
+        "Vérifier package.json et redéployer avec openai >= 4."
+    );
 }
 
 /* ============================================================
@@ -1292,6 +1334,36 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
         });
     }
 });
+
+
+app.get("/api/openai-diagnostic", (req, res) => {
+    try {
+        const OpenAI = require("openai");
+        const client = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY || "clé_absente"
+        });
+
+        res.json({
+            ok: true,
+            openai_key_configuree: Boolean(process.env.OPENAI_API_KEY),
+            model: OPENAI_MODEL,
+            has_responses_create: Boolean(client.responses && typeof client.responses.create === "function"),
+            has_chat_completions_create: Boolean(
+                client.chat &&
+                client.chat.completions &&
+                typeof client.chat.completions.create === "function"
+            ),
+            date: maintenantIso()
+        });
+    } catch (erreur) {
+        res.status(500).json({
+            ok: false,
+            message: "Diagnostic OpenAI impossible.",
+            details: erreur.message
+        });
+    }
+});
+
 
 /* ============================================================
    ROUTE 404
