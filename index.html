@@ -10,10 +10,17 @@
 :root {
     --bg-color: #ffffff;
     --header-bg: #f3f4f6;
+    --chart-bg: #ffffff;
+    --chart-grid: #e5e7eb;
+    --chart-text: #111827;
     --text-main: #111827;
+    --text-muted: #4b5563;
     --accent: #2962ff;
     --border: #d1d5db;
     --yellow-pro: #b77900;
+    --buy-green: #2ebd85;
+    --sell-red: #f6465d;
+    --purple-pro: #7c3aed;
 }
 
         * {
@@ -22,7 +29,7 @@
 
         body {
             font-family: 'Inter', Arial, sans-serif;
-            background: var(--bg-color);
+            background: #ffffff;
             color: var(--text-main);
             margin: 0;
             display: flex;
@@ -78,9 +85,9 @@
         select,
         button,
         input[type="file"] {
-            background: #2b3139;
-            color: #fff;
-            border: 1px solid #474d57;
+            background: #ffffff;
+            color: #111827;
+            border: 1px solid #d1d5db;
             padding: 4px 6px;
             border-radius: 3px;
             font-size: 10px;
@@ -94,7 +101,7 @@
 
         select:hover,
         button:hover {
-            background: #363c4e;
+            background: #f3f4f6;
         }
 
         button:disabled {
@@ -130,6 +137,11 @@
         #chart-container {
             flex-grow: 1;
             width: 100%;
+            background: #ffffff !important;
+        }
+
+        #chart-container canvas {
+            background: #ffffff !important;
         }
 
         a {
@@ -371,20 +383,54 @@
             return API_BASE_URL + route;
         }
 
+        function appliquerThemeGraphiqueClair() {
+            if (!chart) return;
+
+            chart.applyOptions({
+                layout: {
+                    background: { color: '#ffffff' },
+                    textColor: '#111827'
+                },
+                grid: {
+                    vertLines: { color: '#e5e7eb' },
+                    horzLines: { color: '#e5e7eb' }
+                },
+                rightPriceScale: {
+                    borderColor: '#d1d5db'
+                },
+                timeScale: {
+                    borderColor: '#d1d5db',
+                    timeVisible: true
+                },
+                crosshair: {
+                    mode: 0
+                }
+            });
+
+            const container = document.getElementById('chart-container');
+            if (container) {
+                container.style.backgroundColor = '#ffffff';
+            }
+        }
+
+
         function init() {
             const hauteur = Math.max(420, window.innerHeight - 50);
 
             chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
                 width: window.innerWidth,
                 height: hauteur,
-layout: {
-    background: { color: '#ffffff' },
-    textColor: '#111827'
-},
-grid: {
-    vertLines: { color: '#e5e7eb' },
-    horzLines: { color: '#e5e7eb' }
-},
+                layout: {
+                    background: { color: '#ffffff' },
+                    textColor: '#111827'
+                },
+                grid: {
+                    vertLines: { color: '#e5e7eb' },
+                    horzLines: { color: '#e5e7eb' }
+                },
+                rightPriceScale: {
+                    borderColor: '#d1d5db'
+                },
                 timeScale: {
                     borderVisible: false,
                     timeVisible: true
@@ -394,8 +440,10 @@ grid: {
                 }
             });
 
+            appliquerThemeGraphiqueClair();
             changerStyleGraphique();
             actualiserGraphique();
+            appliquerThemeGraphiqueClair();
         }
 
         function afficherStatus(message) {
@@ -580,7 +628,7 @@ grid: {
                 mainSeries = chart.addAreaSeries({
                     ...commonOptions,
                     topColor: 'rgba(41, 98, 255, 0.4)',
-                    bottomColor: 'rgba(41, 98, 255, 0.0)',
+                    bottomColor: 'rgba(255, 255, 255, 1)',
                     lineColor: '#2962ff',
                     lineWidth: 2
                 });
@@ -589,6 +637,8 @@ grid: {
             if (currentData.length > 0 && mainSeries) {
                 mainSeries.setData(currentData);
             }
+
+            appliquerThemeGraphiqueClair();
         }
 
         async function actualiserGraphique() {
@@ -635,6 +685,8 @@ grid: {
                 if (mainSeries) {
                     mainSeries.setData(currentData);
                 }
+
+                appliquerThemeGraphiqueClair();
 
                 socket = new WebSocket(
                     `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
@@ -906,6 +958,7 @@ grid: {
                     width: window.innerWidth,
                     height: Math.max(420, window.innerHeight - 50)
                 });
+                appliquerThemeGraphiqueClair();
             }
         };
     </script>
