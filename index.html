@@ -6,303 +6,184 @@
     <title>Expert Trading Pro v2.0 - Full Interface</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
-            <style>
-        :root {
-            /*
-                Palette volontairement contrastée :
-                - page gris bleuté
-                - graphique blanc pur
-                - grille visible
-                - texte foncé
-            */
-            --page-bg: #e2e8f0;
-            --header-bg: #ffffff;
-            --toolbar-bg: #f8fafc;
+    <style>
+    :root {
+        /* Palette Contrastée : Page Gris Bleuté / Graphique Blanc */
+        --page-bg: #e2e8f0;
+        --header-bg: #ffffff;
+        --toolbar-bg: #f8fafc;
 
-            --chart-bg: #ffffff;
-            --chart-grid: #cbd5e1;
-            --chart-text: #111827;
+        --chart-bg: #ffffff;
+        --chart-grid: #cbd5e1;
+        --chart-text: #111827;
 
-            --text-main: #111827;
-            --text-muted: #475569;
+        --text-main: #111827;
+        --text-muted: #475569;
 
-            --accent: #2563eb;
-            --border: #94a3b8;
-            --yellow-pro: #b77900;
-            --buy-green: #16a085;
-            --sell-red: #e74c3c;
-            --purple-pro: #7c3aed;
+        --accent: #2563eb;
+        --border: #94a3b8;
+        --yellow-pro: #b77900;
+        --buy-green: #16a085;
+        --sell-red: #e74c3c;
+        --purple-pro: #7c3aed;
 
-            --shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.12);
-            --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.20);
-        }
+        --shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.12);
+        --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.20);
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    * {
+        box-sizing: border-box;
+    }
 
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-        }
+    html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
 
-        body {
-            font-family: Inter, Arial, sans-serif;
-            background: var(--page-bg);
-            color: var(--text-main);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+    body {
+        font-family: 'Inter', -apple-system, Arial, sans-serif;
+        background: var(--page-bg);
+        color: var(--text-main);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* Empêche le scroll global sur desktop */
+    }
 
-        .header-pro {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--header-bg);
-            padding: 8px 10px;
-            border-bottom: 1px solid var(--border);
-            gap: 8px;
-            flex-wrap: wrap;
-            z-index: 10;
-            flex-shrink: 0;
-            box-shadow: var(--shadow-soft);
-        }
+    /* Header & Navigation */
+    .header-pro {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--header-bg);
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        gap: 10px;
+        z-index: 10;
+        flex-shrink: 0;
+        box-shadow: var(--shadow-soft);
+    }
 
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            padding: 6px 8px;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            background: var(--toolbar-bg);
-        }
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: var(--toolbar-bg);
+    }
 
-        .control-group:last-child {
-            border-right: 1px solid #cbd5e1;
-        }
+    label {
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
-        label {
-            font-size: 10px;
-            font-weight: 900;
-            color: var(--text-muted);
-            white-space: nowrap;
-            letter-spacing: 0.04em;
-        }
+    h1 {
+        font-size: 14px;
+        margin: 0;
+        color: var(--text-main);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        flex-grow: 1;
+        text-align: center;
+    }
 
-        h1 {
-            font-size: 15px;
-            margin: 0;
-            color: #111827;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1.4px;
-            flex-grow: 1;
-            text-align: center;
-            min-width: 160px;
-        }
+    /* Elements d'interface */
+    select, button, input[type="file"] {
+        background: #ffffff;
+        color: var(--text-main);
+        border: 1px solid #cbd5e1;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
 
-        select,
-        button,
-        input[type="file"] {
-            background: #ffffff;
-            color: #111827;
-            border: 1px solid #cbd5e1;
-            padding: 7px 10px;
-            border-radius: 8px;
-            font-size: 11px;
-            cursor: pointer;
-            outline: none;
-            transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
-        }
+    select:hover, button:hover, input[type="file"]:hover {
+        background: #f1f5f9;
+        border-color: var(--accent);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.1);
+    }
 
-        select {
-            min-width: 82px;
-        }
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+    }
 
-        input[type="file"] {
-            max-width: 185px;
-            background: #ffffff;
-        }
+    /* Boutons de couleur */
+    .btn-capture { background: var(--accent); color: white; border: none; }
+    .btn-vision { background: var(--purple-pro); color: white; border: none; }
+    .btn-technique { background: var(--buy-green); color: white; border: none; }
+    .btn-effacer { background: var(--sell-red); color: white; border: none; }
 
-        select:hover,
-        button:hover,
-        input[type="file"]:hover {
-            background: #f1f5f9;
-            border-color: #2563eb;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
-        }
+    /* Conteneur Graphique */
+    #chart-container {
+        flex: 1;
+        margin: 15px;
+        background: var(--chart-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-strong);
+    }
 
-        button:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
+    #chart-container canvas {
+        display: block;
+    }
 
-        .btn-capture,
-        .btn-vision,
-        .btn-technique,
-        .btn-effacer {
-            color: #ffffff;
-            border: none;
-            font-weight: 900;
-            letter-spacing: 0.02em;
-        }
+    /* Panneau de résultats */
+    .result-panel {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        width: min(600px, calc(100vw - 40px));
+        max-height: 40vh;
+        background: #ffffff;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow-strong);
+        display: flex;
+        flex-direction: column;
+        z-index: 20;
+    }
 
-        .btn-capture {
-            background: #2563eb;
-        }
+    .result-header {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 15px;
+        background: #f1f5f9;
+        border-bottom: 1px solid #cbd5e1;
+    }
 
-        .btn-vision {
-            background: #7c3aed;
-        }
+    #resultat-analyse {
+        padding: 15px;
+        font-family: 'Cascadia Code', Consolas, monospace;
+        font-size: 11.5px;
+        line-height: 1.6;
+        overflow-y: auto;
+        color: var(--text-main);
+    }
 
-        .btn-technique {
-            background: #16a085;
-        }
+    .hidden { display: none; }
 
-        .btn-effacer {
-            background: #e74c3c;
-        }
-
-        /*
-            Important :
-            le fond du graphique est blanc,
-            le fond de page est gris bleuté.
-            Les deux ne sont donc pas identiques.
-        */
-        #chart-container {
-            flex: 1 1 auto;
-            width: calc(100% - 24px);
-            height: calc(100vh - 76px);
-            min-height: 520px;
-            margin: 12px;
-            background: var(--chart-bg);
-            position: relative;
-            border: 2px solid #94a3b8;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: var(--shadow-strong);
-        }
-
-        #chart-container canvas {
-            background: var(--chart-bg) !important;
-            display: block !important;
-        }
-
-        a {
-            text-decoration: none;
-        }
-
-        .result-panel {
-            position: fixed;
-            right: 18px;
-            bottom: 18px;
-            width: min(640px, calc(100vw - 36px));
-            max-height: 45vh;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 16px;
-            box-shadow: var(--shadow-strong);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 20;
-        }
-
-        .result-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 10px 12px;
-            background: #f1f5f9;
-            border-bottom: 1px solid #cbd5e1;
-        }
-
-        .result-header strong {
-            color: #111827;
-            font-size: 13px;
-            letter-spacing: 0.04em;
-        }
-
-        .status-line {
-            color: var(--text-muted);
-            font-size: 11px;
-            padding: 8px 12px;
-            border-bottom: 1px solid #cbd5e1;
-            white-space: pre-wrap;
-        }
-
-        #resultat-analyse {
-            margin: 0;
-            padding: 12px;
-            color: #111827;
-            font-family: Consolas, monospace;
-            font-size: 11px;
-            line-height: 1.5;
-            overflow: auto;
-            white-space: pre-wrap;
-            background: #ffffff;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        @media (max-width: 900px) {
-            body {
-                height: auto;
-                min-height: 100vh;
-                overflow: auto;
-            }
-
-            .header-pro {
-                align-items: stretch;
-                padding: 10px;
-            }
-
-            .control-group {
-                width: 100%;
-                border-radius: 12px;
-                justify-content: space-between;
-            }
-
-            h1 {
-                width: 100%;
-                order: -1;
-                margin-bottom: 4px;
-            }
-
-            select,
-            button,
-            input[type="file"] {
-                flex: 1;
-                min-width: 0;
-            }
-
-            #chart-container {
-                width: calc(100% - 20px);
-                height: 65vh;
-                min-height: 420px;
-                margin: 10px;
-                border-radius: 12px;
-            }
-
-            .result-panel {
-                position: static;
-                width: calc(100% - 20px);
-                margin: 10px;
-                max-height: none;
-                border-radius: 12px;
-            }
-        }
-    </style>
+    /* Responsive */
+    @media (max-width: 900px) {
+        body { overflow-y: auto; }
+        .header-pro { flex-direction: column; align-items: stretch; }
+        #chart-container { height: 60vh; min-height: 400px; margin: 10px; }
+        .result-panel { position: static; width: auto; margin: 10px; max-height: none; }
+    }
+</style>
 </head>
 
 <body>
