@@ -1,20 +1,20 @@
 /* ============================================================
    Expert Trading Pro v2.0
    Fichier : style.css
-   Version corrigée : graphique visible, contraste fort
+   Version corrigée : graphique visible, gris clair contrasté
    ============================================================ */
 
 :root {
     /* Page */
-    --page-bg: #e2e8f0;
+    --page-bg: #d6dde8;
     --header-bg: #ffffff;
     --toolbar-bg: #f8fafc;
 
-    /* Graphique : fond sombre pour éviter blanc sur blanc */
-    --chart-bg: #131722;
-    --chart-border: #2a2e39;
-    --chart-grid: #2a2e39;
-    --chart-text: #d1d4dc;
+    /* Graphique : ni blanc pur, ni noir */
+    --chart-bg: #f3f6fb;
+    --chart-border: #7c8aa0;
+    --chart-grid: #aeb8c8;
+    --chart-text: #111827;
 
     /* Texte */
     --text-main: #111827;
@@ -23,17 +23,19 @@
     /* Actions */
     --accent: #2563eb;
     --purple-pro: #7c3aed;
-    --buy-green: #26a69a;
-    --sell-red: #ef5350;
+    --buy-green: #059669;
+    --sell-red: #dc2626;
     --yellow-pro: #b77900;
 
     /* Bordures et ombres */
     --border: #cbd5e1;
     --shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.12);
-    --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.22);
+    --shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.20);
 }
 
-/* Base */
+/* ============================================================
+   Base
+   ============================================================ */
 
 * {
     box-sizing: border-box;
@@ -59,7 +61,9 @@ a {
     text-decoration: none;
 }
 
-/* Barre supérieure */
+/* ============================================================
+   Barre supérieure
+   ============================================================ */
 
 .header-pro {
     display: flex;
@@ -108,7 +112,9 @@ h1 {
     color: var(--text-main);
 }
 
-/* Formulaires et boutons */
+/* ============================================================
+   Formulaires et boutons
+   ============================================================ */
 
 select,
 button,
@@ -182,7 +188,9 @@ button:disabled {
     background: var(--sell-red);
 }
 
-/* Graphique */
+/* ============================================================
+   Graphique
+   ============================================================ */
 
 #chart-container {
     flex: 1 1 auto;
@@ -201,9 +209,8 @@ button:disabled {
 }
 
 /*
-   Important :
-   on force le fond du canvas en sombre.
-   Cela évite le problème blanc sur blanc.
+   Le fond du canvas doit être identique au fond du graphique,
+   mais différent du fond général de la page.
 */
 #chart-container canvas {
     display: block !important;
@@ -218,13 +225,15 @@ button:disabled {
     top: 18px;
     z-index: 2;
 
-    color: rgba(209, 212, 220, 0.08);
+    color: rgba(17, 24, 39, 0.07);
     font-size: 28px;
     font-weight: 900;
     pointer-events: none;
 }
 
-/* Panneau de résultat IA */
+/* ============================================================
+   Panneau de résultat IA
+   ============================================================ */
 
 .result-panel {
     position: fixed;
@@ -290,7 +299,9 @@ button:disabled {
     display: none;
 }
 
-/* Responsive */
+/* ============================================================
+   Responsive
+   ============================================================ */
 
 @media (max-width: 900px) {
     body {

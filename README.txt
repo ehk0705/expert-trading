@@ -1,24 +1,17 @@
-Correction style.css
+style.css corrigé
 
-Problème :
-le fond du graphique était blanc comme le fond du canvas, ce qui rendait le graphique invisible.
+Problème constaté :
+le graphique était invisible, car le fond du graphique était trop sombre ou trop proche du fond des éléments affichés.
 
 Correction :
-- fond de page gris bleuté ;
-- fond du graphique sombre type TradingView ;
-- bordure sombre du graphique ;
-- filigrane discret ;
-- boutons conservés ;
-- structure CSS nettoyée.
+- fond de page : gris bleuté moyen ;
+- fond du graphique : gris très clair ;
+- grille : gris plus foncé et visible ;
+- texte du graphique : foncé ;
+- bordure du graphique : plus nette.
 
 Important :
-si le JavaScript Lightweight Charts force encore le fond en blanc, il faut aussi remplacer dans index.html :
-
-layout: {
-    background: { color: '#131722' },
-    textColor: '#d1d4dc'
-},
-grid: {
-    vertLines: { color: '#2a2e39' },
-    horzLines: { color: '#2a2e39' }
-}
+si le graphique reste invisible, il faut aussi vérifier les couleurs JavaScript de Lightweight Charts dans index.html :
+layout.background doit être #f3f6fb
+grid doit être #aeb8c8
+textColor doit être #111827
