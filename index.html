@@ -9,19 +9,20 @@
 	
     <style>
         :root {
-            --bg-color: #ffffff;
-            --header-bg: #f3f4f6;
-            --chart-bg: #ffffff;
-            --chart-grid: #e5e7eb;
-            --chart-text: #111827;
-            --text-main: #111827;
-            --text-muted: #4b5563;
+            --bg-color: #0b1220;
+            --header-bg: #111827;
+            --chart-bg: #131722;
+            --chart-grid: #2a2e39;
+            --chart-text: #d1d4dc;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
             --accent: #2962ff;
-            --border: #d1d5db;
-            --yellow-pro: #b77900;
-            --buy-green: #2ebd85;
-            --sell-red: #f6465d;
-            --purple-pro: #7c3aed;
+            --border: #2a2e39;
+            --yellow-pro: #f6c343;
+            --buy-green: #26a69a;
+            --sell-red: #ef5350;
+            --purple-pro: #8b5cf6;
+            --panel-bg: #0f172a;
         }
 
         * {
@@ -36,7 +37,7 @@
 
         body {
             font-family: 'Inter', Arial, sans-serif;
-            background: #ffffff;
+            background: var(--bg-color);
             color: var(--text-main);
             margin: 0;
             display: flex;
@@ -72,7 +73,7 @@
         label {
             font-size: 9px;
             font-weight: bold;
-            color: #4b5563;
+            color: var(--chart-text);
             white-space: nowrap;
         }
 
@@ -92,9 +93,9 @@
         select,
         button,
         input[type="file"] {
-            background: #ffffff;
-            color: #111827;
-            border: 1px solid #d1d5db;
+            background: #1f2937;
+            color: #f3f4f6;
+            border: 1px solid var(--border);
             padding: 4px 6px;
             border-radius: 3px;
             font-size: 10px;
@@ -108,7 +109,7 @@
 
         select:hover,
         button:hover {
-            background: #f3f4f6;
+            background: #374151;
         }
 
         button:disabled {
@@ -132,7 +133,7 @@
 
         .btn-technique {
             background: var(--buy-green);
-            color: #06140e;
+            color: #ffffff;
             border: none;
             font-weight: 700;
         }
@@ -148,12 +149,13 @@
             flex: 1 1 auto;
             width: 100%;
             min-height: 420px;
-            background: #ffffff;
+            background: var(--chart-bg);
             position: relative;
+            border-top: 1px solid var(--border);
         }
 
         #chart-container canvas {
-            background: #ffffff !important;
+            background: var(--chart-bg) !important;
         }
 
         a {
@@ -182,7 +184,7 @@
             justify-content: space-between;
             gap: 8px;
             padding: 8px 10px;
-            background: #0f172a;
+            background: var(--panel-bg);
             border-bottom: 1px solid var(--border);
         }
 
@@ -401,26 +403,27 @@
             };
         }
 
-        function appliquerThemeGraphiqueClair() {
+        function appliquerThemeGraphiqueTradingView() {
             if (!chart) return;
 
             chart.applyOptions({
                 layout: {
                     background: {
                         type: 'solid',
-                        color: '#ffffff'
+                        color: '#131722'
                     },
-                    textColor: '#111827'
+                    textColor: '#d1d4dc'
                 },
                 grid: {
-                    vertLines: { color: '#e5e7eb' },
-                    horzLines: { color: '#e5e7eb' }
+                    vertLines: { color: '#2a2e39' },
+                    horzLines: { color: '#2a2e39' }
                 },
                 rightPriceScale: {
-                    borderColor: '#d1d5db'
+                    borderColor: '#363a45',
+                    textColor: '#d1d4dc'
                 },
                 timeScale: {
-                    borderColor: '#d1d5db',
+                    borderColor: '#363a45',
                     timeVisible: true
                 },
                 crosshair: {
@@ -439,19 +442,20 @@
                 layout: {
                     background: {
                         type: 'solid',
-                        color: '#ffffff'
+                        color: '#131722'
                     },
-                    textColor: '#111827'
+                    textColor: '#d1d4dc'
                 },
                 grid: {
-                    vertLines: { color: '#e5e7eb' },
-                    horzLines: { color: '#e5e7eb' }
+                    vertLines: { color: '#2a2e39' },
+                    horzLines: { color: '#2a2e39' }
                 },
                 rightPriceScale: {
-                    borderColor: '#d1d5db'
+                    borderColor: '#363a45',
+                    textColor: '#d1d4dc'
                 },
                 timeScale: {
-                    borderColor: '#d1d5db',
+                    borderColor: '#363a45',
                     borderVisible: true,
                     timeVisible: true
                 },
@@ -461,7 +465,7 @@
             });
 
             changerStyleGraphique();
-            appliquerThemeGraphiqueClair();
+            appliquerThemeGraphiqueTradingView();
             actualiserGraphique();
         }
 
@@ -626,17 +630,18 @@
             if (type === 'candles') {
                 mainSeries = chart.addCandlestickSeries({
                     ...commonOptions,
-                    upColor: '#2ebd85',
-                    downColor: '#f6465d',
-                    borderVisible: false,
-                    wickUpColor: '#2ebd85',
-                    wickDownColor: '#f6465d'
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    borderUpColor: '#26a69a',
+                    borderDownColor: '#ef5350',
+                    wickUpColor: '#26a69a',
+                    wickDownColor: '#ef5350'
                 });
             } else if (type === 'bars') {
                 mainSeries = chart.addBarSeries({
                     ...commonOptions,
-                    upColor: '#2ebd85',
-                    downColor: '#f6465d'
+                    upColor: '#26a69a',
+                    downColor: '#ef5350'
                 });
             } else if (type === 'line') {
                 mainSeries = chart.addLineSeries({
@@ -648,7 +653,7 @@
                 mainSeries = chart.addAreaSeries({
                     ...commonOptions,
                     topColor: 'rgba(41, 98, 255, 0.25)',
-                    bottomColor: 'rgba(255, 255, 255, 1)',
+                    bottomColor: 'rgba(41, 98, 255, 0.02)',
                     lineColor: '#2962ff',
                     lineWidth: 2
                 });
@@ -658,7 +663,7 @@
                 mainSeries.setData(currentData);
             }
 
-            appliquerThemeGraphiqueClair();
+            appliquerThemeGraphiqueTradingView();
         }
 
         async function actualiserGraphique() {
@@ -707,7 +712,7 @@
                 }
 
                 chart.timeScale().fitContent();
-                appliquerThemeGraphiqueClair();
+                appliquerThemeGraphiqueTradingView();
 
                 socket = new WebSocket(
                     `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
@@ -984,7 +989,7 @@
                     height: size.height
                 });
 
-                appliquerThemeGraphiqueClair();
+                appliquerThemeGraphiqueTradingView();
             }
         };
     </script>
