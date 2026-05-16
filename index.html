@@ -376,6 +376,8 @@
             ? "https://expert-trading.onrender.com"
             : "";
 
+        const API_BASE_URL_SECOURS = "https://trading-g8ie.onrender.com";
+
         let chart;
         let mainSeries;
         let socket;
@@ -504,6 +506,106 @@
             }
 
             return data;
+        }
+
+
+        function nettoyerNomFichier(valeur) {
+            return String(valeur || "non-defini")
+                .normalize("NFD")
+                .replace(/[̀-ͯ]/g, "")
+                .replace(/[^a-zA-Z0-9-_]/g, "-")
+                .replace(/-+/g, "-")
+                .replace(/^-|-$/g, "");
+        }
+
+        function genererTimestampFichier() {
+            const maintenant = new Date();
+            const annee = maintenant.getFullYear();
+            const mois = String(maintenant.getMonth() + 1).padStart(2, "0");
+            const jour = String(maintenant.getDate()).padStart(2, "0");
+            const heure = String(maintenant.getHours()).padStart(2, "0");
+            const minute = String(maintenant.getMinutes()).padStart(2, "0");
+            const seconde = String(maintenant.getSeconds()).padStart(2, "0");
+            return annee + mois + jour + "-" + heure + minute + seconde;
+        }
+
+        function creerPayloadCapturePostgres(configuration) {
+            const nomCapture =
+                nettoyerNomFichier(configuration.actif) + "-" +
+                nettoyerNomFichier(configuration.indicateur) + "-" +
+                nettoyerNomFichier(configuration.categorieAnalyseLibelle) + "-" +
+                genererTimestampFichier();
+
+            return {
+                actif: configuration.actif || "NON_RENSEIGNE",
+                indicateur: configuration.indicateur || null,
+                intervalle: configuration.intervalle || null,
+                actif_libelle: configuration.actif || null,
+                indicateur_libelle: configuration.indicateur || null,
+                intervalle_libelle: configuration.intervalle || null,
+                source_parametres: "widget_tradingview_tvjs",
+                lecture_directe_graphique: false,
+                type_bougie: configuration.style || null,
+                type_bougie_libelle: configuration.style || null,
+                nom_fichier: nomCapture,
+                nom_capture: nomCapture,
+                categorie_analyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
+                categorieAnalyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
+                configuration_json: configuration,
+                screenshot_base64: null
+            };
+        }
+
+        function obtenirUrlsSauvegardeCapture() {
+            const urls = [];
+
+            if (API_BASE_URL) {
+                urls.push(API_BASE_URL + "/api/captures");
+            }
+
+            urls.push(API_BASE_URL_SECOURS + "/api/captures");
+            urls.push("/api/captures");
+
+            return [...new Set(urls)];
+        }
+
+        async function enregistrerConfigurationSurServeur(configuration) {
+            const payloadCapture = creerPayloadCapturePostgres(configuration);
+            const urls = obtenirUrlsSauvegardeCapture();
+            let derniereErreur = null;
+
+            for (const url of urls) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        mode: "cors",
+                        credentials: "omit",
+                        cache: "no-store",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        },
+                        body: JSON.stringify(payloadCapture)
+                    });
+
+                    const data = await lireReponseJson(response);
+
+                    return {
+                        ok: true,
+                        routeUtilisee: url,
+                        payloadEnvoye: payloadCapture,
+                        reponseServeur: data
+                    };
+                } catch (erreur) {
+                    derniereErreur = erreur;
+                    console.warn("Sauvegarde échouée sur", url, erreur);
+                }
+            }
+
+            throw new Error(
+                "Aucune route de sauvegarde n'a accepté la configuration. Dernière erreur : " +
+                (derniereErreur ? derniereErreur.message : "inconnue")
+            );
         }
 
         function obtenirConfiguration() {
