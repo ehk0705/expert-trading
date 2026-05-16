@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expert Trading Pro v2.0 - Full Interface</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23020617'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-size='32' fill='%2300d9ff'%3ET%3C/text%3E%3C/svg%3E">
 
     <!-- Bibliothèque TradingView utilisée pour afficher le vrai graphique TV -->
     <script src="https://s3.tradingview.com/tv.js"></script>
@@ -255,7 +256,7 @@
 
     <div class="header-pro">
         <div class="control-group">
-            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()">📷 CAPTURE</button>
+            <button class="btn-capture" id="btn-capture" onclick="capturerEtEnregistrerConfiguration()">📷 CAPTURE</button>
             <input type="file" id="screenshot-file" accept="image/png,image/jpeg,image/webp">
             <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()">Vision + Marché</button>
         </div>
@@ -372,11 +373,12 @@
             CONFIGURATION API
             ============================================================
         */
-        const API_BASE_URL = window.location.hostname.includes("github.io")
-            ? "https://expert-trading.onrender.com"
-            : "";
+        const API_BASE_URL_PAR_DEFAUT = "https://trading-g8ie.onrender.com";
 
-        const API_BASE_URL_SECOURS = "https://trading-g8ie.onrender.com";
+        const API_BASE_URL = API_BASE_URL_PAR_DEFAUT;
+        const API_BASE_URL_SECOURS = API_BASE_URL_PAR_DEFAUT;
+
+        let configurationActuelle = null;
 
         let chart;
         let mainSeries;
@@ -386,7 +388,31 @@
         let widgetTradingView = null;
 
         function getApiUrl(route) {
-            return API_BASE_URL + route;
+            return API_BASE_URL_PAR_DEFAUT + route;
+        }
+
+        function nettoyerUrl(url) {
+            return String(url || "").trim().replace(/\/+$/, "");
+        }
+
+        function getApiBaseUrl() {
+            return nettoyerUrl(API_BASE_URL_PAR_DEFAUT);
+        }
+
+        function getApiMarcheUrl() {
+            return getApiBaseUrl() + "/api/marche";
+        }
+
+        function getApiCapturesUrl() {
+            return getApiBaseUrl() + "/api/captures";
+        }
+
+        function getApiAnalyseTechniqueUrl() {
+            return getApiBaseUrl() + "/api/analyse-technique-pro";
+        }
+
+        function getApiVisionUrl() {
+            return getApiBaseUrl() + "/api/analyze-vision-pro";
         }
 
         function getChartSize() {
@@ -834,29 +860,28 @@
                 };
 
                 try {
-                    const response = await fetch(getApiUrl('/api/save'), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
+                    /*
+                        Ancienne route conservée ci-dessous pour mémoire : /api/captures.
+                        Elle provoquait l'erreur de sauvegarde.
+                        La sauvegarde réelle doit passer par /api/captures,
+                        comme dans le fichier index-a.html.
+                    */
+                    const data = await enregistrerConfigurationSurServeur(configuration);
 
-                    const data = await lireReponseJson(response);
                     afficherResultat(data);
                     afficherStatus("Configuration TradingView enregistrée sur le serveur.");
-                    alert("✅ Configuration enregistrée.\n\nNote : la capture image directe du widget TradingView public n'est pas possible depuis une iframe externe.");
+                    alert("✅ Configuration enregistrée sur le serveur.\n\nRoute utilisée : " + data.routeUtilisee);
 
                 } catch (erreurServeur) {
                     afficherResultat({
                         ok: false,
                         message: "Configuration créée, mais sauvegarde serveur échouée.",
                         details: erreurServeur.message,
-                        route: getApiUrl('/api/save')
+                        routesEssayees: obtenirUrlsSauvegardeCapture()
                     });
 
                     afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Configuration créée localement, mais sauvegarde serveur échouée.");
+                    alert("Configuration créée localement, mais sauvegarde serveur échouée.\n\nDétail : " + erreurServeur.message);
                 }
 
                 return null;
@@ -875,7 +900,7 @@
 
                 afficherStatus("Test technique serveur en cours...");
 
-                const response = await fetch(getApiUrl('/api/analyse-technique-pro'), {
+                const response = await fetch(getApiAnalyseTechniqueUrl(), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -908,7 +933,7 @@
 
                 const imageBase64 = await obtenirImagePourAnalyse();
 
-                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                const response = await fetch(getApiVisionUrl(), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -986,6 +1011,499 @@
             lignes.push(JSON.stringify(data, null, 2));
 
             return lignes.join("\n");
+        }
+
+
+        /*
+            ============================================================
+            CIRCUIT DE CAPTURE QUI FONCTIONNAIT AVANT
+            ============================================================
+            Chaîne correcte :
+            capturerConfigurationTradingView(false)
+            -> enrichirConfigurationAvecDonneesMarche(false)
+            -> enregistrerCapturePostgres(true, false)
+
+            IMPORTANT :
+            Ne pas revenir à /api/captures. La sauvegarde doit passer par /api/captures.
+        */
+
+        function valeurElement(id, valeurDefaut = "") {
+            const element = document.getElementById(id);
+            return element ? element.value : valeurDefaut;
+        }
+
+        function libelleElement(id, valeurDefaut = "") {
+            const element = document.getElementById(id);
+            if (!element || element.selectedIndex < 0) return valeurDefaut;
+            return element.options[element.selectedIndex].text;
+        }
+
+        function getCategorieAnalyseBTC() {
+            return valeurElement("categorie-analyse-btc", "technique");
+        }
+
+        function getLibelleCategorieAnalyseBTC() {
+            return libelleElement("categorie-analyse-btc", "Technique");
+        }
+
+        function getDescriptionCategorieAnalyseBTC() {
+            const descriptions = {
+                macro: "Macroéconomie : taux, inflation, liquidité mondiale, dollar, obligations et bilan de la Fed.",
+                monnaie: "Monnaie Bitcoin : offre maximale, émission, halving et inflation de BTC.",
+                onchain: "Données on-chain : adresses, transactions, MVRV, realized price et flux des plateformes.",
+                minage: "Minage : taux de hachage, difficulté, revenus et ventes des mineurs.",
+                technique: "Analyse technique : graphiques, tendances, supports, résistances, RSI et moyennes mobiles.",
+                derives: "Dérivés : contrats à terme, options, funding rates, open interest et liquidations.",
+                liquidite: "Liquidité de marché : volumes, carnets d’ordres, spreads et profondeur de marché.",
+                inst: "Institutionnel : FNB Bitcoin, achats d’entreprises, fonds, banques et adoption officielle.",
+                sentiment: "Sentiment : réseaux sociaux, Google Trends, médias, peur et avidité.",
+                risques: "Réglementation et risques : lois, fiscalité, plateformes, garde et géopolitique."
+            };
+
+            return descriptions[getCategorieAnalyseBTC()] || descriptions.technique;
+        }
+
+        function afficherEtatServeur(type, message) {
+            console.log("État serveur :", type, message);
+        }
+
+        function afficherInfosServeur(texte) {
+            console.log("Infos serveur :", texte);
+        }
+
+        async function appelerJson(url, options = {}) {
+            const urlFinale = String(url || "").replace("https://https://", "https://");
+
+            console.log("APPEL JSON - URL :", urlFinale);
+            console.log("APPEL JSON - OPTIONS :", options);
+
+            const reponse = await fetch(urlFinale, {
+                ...options,
+                mode: "cors",
+                credentials: "omit",
+                cache: "no-store",
+                headers: {
+                    "Accept": "application/json",
+                    ...(options.headers || {})
+                }
+            });
+
+            const texte = await reponse.text();
+
+            console.log("STATUT HTTP :", reponse.status);
+            console.log("RÉPONSE BRUTE :", texte);
+
+            let json;
+
+            try {
+                json = JSON.parse(texte);
+            } catch (erreurJson) {
+                throw new Error("Le serveur n'a pas retourné du JSON. Réponse reçue : " + texte);
+            }
+
+            if (!reponse.ok || json.ok === false) {
+                throw new Error(json.detail || json.details || json.message || json.error || "Réponse HTTP " + reponse.status);
+            }
+
+            return json;
+        }
+
+        function lireParametresGraphiquesMasques() {
+            return {
+                actif: valeurElement("asset-selector", "BINANCE:BTCUSDT"),
+                actifLibelle: libelleElement("asset-selector", "BTC/USDT"),
+                intervalle: valeurElement("interval-selector", "D"),
+                intervalleLibelle: libelleElement("interval-selector", "1J"),
+                indicateur: valeurElement("indicator-selector", "EMA"),
+                indicateurLibelle: libelleElement("indicator-selector", "EMA"),
+                source: "widget_tradingview_tvjs",
+                lectureDirecte: false
+            };
+        }
+
+        function capturerParametresAvancesTradingView(parametresGraphiques) {
+            const dateCapture = new Date();
+            const conteneur = document.getElementById("tradingview_chart");
+            const rectangle = conteneur ? conteneur.getBoundingClientRect() : null;
+
+            return {
+                versionCapture: "tvjs_capture_reparee_v1",
+                dateCaptureIso: dateCapture.toISOString(),
+                sourcePrincipale: "widget_public_tradingview_tvjs",
+                lectureDirectePossible: false,
+                valeursPrincipales: {
+                    actif: parametresGraphiques.actif,
+                    actifLibelle: parametresGraphiques.actifLibelle,
+                    intervalle: parametresGraphiques.intervalle,
+                    intervalleLibelle: parametresGraphiques.intervalleLibelle,
+                    indicateur: parametresGraphiques.indicateur,
+                    indicateurLibelle: parametresGraphiques.indicateurLibelle,
+                    typeBougie: valeurElement("chart-type-selector", "candles"),
+                    typeBougieLibelle: libelleElement("chart-type-selector", "Bougies"),
+                    styleTradingView: obtenirStyleTradingView()
+                },
+                graphiqueTradingView: {
+                    widgetPresent: !!widgetTradingView,
+                    bibliotheque: "https://s3.tradingview.com/tv.js",
+                    theme: "dark",
+                    locale: "fr",
+                    timezoneConfiguree: "America/Toronto",
+                    allowSymbolChange: true,
+                    autosize: true,
+                    dimensions: rectangle ? {
+                        largeur: Math.round(rectangle.width),
+                        hauteur: Math.round(rectangle.height)
+                    } : null
+                },
+                environnementPage: {
+                    urlPage: window.location.href,
+                    origine: window.location.origin,
+                    chemin: window.location.pathname,
+                    largeurFenetre: window.innerWidth,
+                    hauteurFenetre: window.innerHeight,
+                    heureLocale: dateCapture.toLocaleString("fr-CA")
+                },
+                limites: {
+                    remarque: "Le widget public TradingView tv.js affiche le graphique, mais ne donne pas un accès complet aux bougies internes ni aux dessins."
+                }
+            };
+        }
+
+        function capturerConfigurationTradingView(afficherAlerte = true) {
+            const parametresGraphiques = lireParametresGraphiquesMasques();
+            const parametresAvancesTradingView = capturerParametresAvancesTradingView(parametresGraphiques);
+
+            configurationActuelle = {
+                nom: "Configuration TradingView IA",
+                dateCapture: new Date().toISOString(),
+                serveur: {
+                    apiMarche: getApiMarcheUrl(),
+                    apiCaptures: getApiCapturesUrl(),
+                    hebergeur: "Render",
+                    type: "Node.js"
+                },
+                graphique: {
+                    actif: parametresGraphiques.actif,
+                    actifLibelle: parametresGraphiques.actifLibelle,
+                    intervalle: parametresGraphiques.intervalle,
+                    intervalleLibelle: parametresGraphiques.intervalleLibelle,
+                    indicateur: parametresGraphiques.indicateur,
+                    indicateurLibelle: parametresGraphiques.indicateurLibelle,
+                    typeBougie: valeurElement("chart-type-selector", "candles"),
+                    typeBougieLibelle: libelleElement("chart-type-selector", "Bougies"),
+                    source: parametresGraphiques.source || "widget_tradingview_tvjs",
+                    sourceAffichage: "widget_tradingview_integre",
+                    lectureDirecteGraphique: parametresGraphiques.lectureDirecte === true,
+                    champsMasques: true,
+                    parametresAvances: parametresAvancesTradingView
+                },
+                tradingView: parametresAvancesTradingView,
+                analyseIA: {
+                    categorie: getCategorieAnalyseBTC(),
+                    categorieLibelle: getLibelleCategorieAnalyseBTC(),
+                    descriptionCategorie: getDescriptionCategorieAnalyseBTC(),
+                    statut: "pret_pour_analyse"
+                },
+                risque: {
+                    capitalInitial: null,
+                    risqueParPositionPourcent: null,
+                    stopLossPourcent: null,
+                    takeProfitPourcent: null,
+                    levier: null,
+                    sens: "achat_vente"
+                },
+                snapshot: {
+                    url: "",
+                    categorieAnalyse: getCategorieAnalyseBTC(),
+                    categorieAnalyseLibelle: getLibelleCategorieAnalyseBTC(),
+                    descriptionCategorieAnalyse: getDescriptionCategorieAnalyseBTC(),
+                    screenshotBase64: null
+                },
+                marche: null,
+                limites: {
+                    captureCompleteTradingView: false,
+                    dessinsInternesTradingView: false,
+                    remarque: "La page utilise le widget public TradingView. La sauvegarde concerne la configuration et les données de marché retournées par le serveur."
+                }
+            };
+
+            afficherResultat(configurationActuelle);
+            afficherStatus("Configuration capturée avec succès.");
+
+            if (afficherAlerte) alert("Configuration capturée.");
+
+            return configurationActuelle;
+        }
+
+        async function capturerEtEnregistrerConfiguration() {
+            try {
+                capturerConfigurationTradingView(false);
+
+                afficherStatus("Capture en cours, ajout des données de marché...");
+
+                await enrichirConfigurationAvecDonneesMarche(false);
+
+                await enregistrerCapturePostgres(true, false);
+
+            } catch (erreur) {
+                console.error("Erreur capture et enregistrement :", erreur);
+                afficherStatus("Erreur pendant la capture et l'enregistrement.");
+                afficherResultat({
+                    ok: false,
+                    message: "Erreur pendant la capture et l'enregistrement.",
+                    details: erreur.message
+                });
+                alert("Erreur pendant la capture et l'enregistrement : " + erreur.message);
+            }
+        }
+
+        async function enrichirConfigurationAvecDonneesMarche(afficherAlerte = true) {
+            if (!configurationActuelle) capturerConfigurationTradingView(false);
+
+            const urlMarche = getApiMarcheUrl();
+            afficherStatus("Récupération des données de marché...");
+            afficherEtatServeur("warning", "Appel /api/marche...");
+
+            try {
+                const donneesMarche = await appelerJson(urlMarche, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    cache: "no-store",
+                    body: JSON.stringify({
+                        actif: configurationActuelle.graphique.actif,
+                        intervalle: configurationActuelle.graphique.intervalle,
+                        indicateur: configurationActuelle.graphique.indicateur,
+                        categorieAnalyse: configurationActuelle.analyseIA.categorie,
+                        typeBougie: configurationActuelle.graphique.typeBougie,
+                        actifLibelle: configurationActuelle.graphique.actifLibelle,
+                        intervalleLibelle: configurationActuelle.graphique.intervalleLibelle,
+                        indicateurLibelle: configurationActuelle.graphique.indicateurLibelle
+                    })
+                });
+
+                configurationActuelle.marche = {
+                    prixActuel: donneesMarche.prixActuel ?? donneesMarche.prix_actuel ?? null,
+                    support: donneesMarche.support ?? donneesMarche.support_principal ?? null,
+                    resistance: donneesMarche.resistance ?? donneesMarche.resistance_principale ?? null,
+                    plusHautRecent: donneesMarche.plusHautRecent ?? null,
+                    plusBasRecent: donneesMarche.plusBasRecent ?? null,
+                    variationPourcent: donneesMarche.variationPourcent ?? null,
+                    rsi: donneesMarche.rsi ?? null,
+                    ema20: donneesMarche.ema20 ?? null,
+                    ema50: donneesMarche.ema50 ?? null,
+                    ema200: donneesMarche.ema200 ?? null,
+                    macd: donneesMarche.macd ?? null,
+                    signalMacd: donneesMarche.signalMacd ?? donneesMarche.macd?.signal ?? null,
+                    histogrammeMacd: donneesMarche.histogrammeMacd ?? donneesMarche.macd?.histogramme ?? null,
+                    atr14: donneesMarche.atr14 ?? donneesMarche.atr ?? null,
+                    volume: donneesMarche.volume ?? "neutre",
+                    volumeMoyen20: donneesMarche.volumeMoyen20 ?? donneesMarche.volume_moyen_20 ?? null,
+                    tendance: donneesMarche.tendance ?? "neutre",
+                    decisionTechniquePreliminaire: donneesMarche.decisionTechniquePreliminaire ?? donneesMarche.signal_technique ?? "attente",
+                    methodeSupportResistance: donneesMarche.methodeSupportResistance ?? null,
+                    source: donneesMarche.source ?? donneesMarche.source_marche ?? "serveur_nodejs",
+                    api: urlMarche,
+                    ok: donneesMarche.ok === true,
+                    statut: donneesMarche.statut || null,
+                    message: donneesMarche.message || null,
+                    donneesCompletes: donneesMarche,
+                    dateMiseAJour: new Date().toISOString()
+                };
+
+                localStorage.setItem("configurationTradingViewIA", JSON.stringify(configurationActuelle));
+                afficherResultat(configurationActuelle);
+                afficherEtatServeur("ok", "Données de marché reçues");
+                afficherStatus("Configuration enrichie avec les données de marché.");
+                afficherInfosServeur(JSON.stringify(donneesMarche, null, 4));
+
+                if (afficherAlerte) alert("Données de marché ajoutées.");
+            } catch (erreur) {
+                configurationActuelle.marche = {
+                    ok: false,
+                    api: urlMarche,
+                    erreur: erreur.message,
+                    dateMiseAJour: new Date().toISOString()
+                };
+
+                afficherEtatServeur("error", "Erreur /api/marche");
+                afficherStatus("Données de marché non récupérées. Sauvegarde de la configuration seule...");
+                afficherInfosServeur("ERREUR /api/marche\n-----------------\nAdresse : " + urlMarche + "\n\n" + erreur.message);
+
+                if (afficherAlerte) alert("Impossible d'ajouter les données de marché. La configuration sera quand même enregistrée.");
+            }
+        }
+
+        function genererNomCapturePostgres(configuration) {
+            const actif = nettoyerNomFichier(configuration.graphique.actif);
+            const indicateur = nettoyerNomFichier(configuration.graphique.indicateur);
+            const categorieAnalyse =
+                configuration?.analyseIA?.categorieLibelle ||
+                configuration?.analyseIA?.categorie ||
+                configuration?.snapshot?.categorieAnalyseLibelle ||
+                configuration?.snapshot?.categorieAnalyse ||
+                "Analyse technique";
+
+            const categorie = nettoyerNomFichier(categorieAnalyse);
+            const timestamp = genererTimestampFichier();
+
+            return actif + "-" + indicateur + "-" + categorie + "-" + timestamp;
+        }
+
+        async function enregistrerCapturePostgres(afficherAlerte = true, capturerAvant = true) {
+            try {
+                if (capturerAvant) {
+                    capturerConfigurationTradingView(false);
+                }
+
+                if (!configurationActuelle) {
+                    throw new Error("configurationActuelle est vide ou non définie.");
+                }
+
+                if (!configurationActuelle.graphique) {
+                    throw new Error("configurationActuelle.graphique est vide ou non défini.");
+                }
+
+                const parametresGraphiques = lireParametresGraphiquesMasques();
+
+                configurationActuelle.graphique.actif = parametresGraphiques.actif;
+                configurationActuelle.graphique.actifLibelle = parametresGraphiques.actifLibelle;
+                configurationActuelle.graphique.intervalle = parametresGraphiques.intervalle;
+                configurationActuelle.graphique.intervalleLibelle = parametresGraphiques.intervalleLibelle;
+                configurationActuelle.graphique.indicateur = parametresGraphiques.indicateur;
+                configurationActuelle.graphique.indicateurLibelle = parametresGraphiques.indicateurLibelle;
+                configurationActuelle.graphique.source = parametresGraphiques.source || "widget_tradingview_tvjs";
+                configurationActuelle.graphique.lectureDirecteGraphique = parametresGraphiques.lectureDirecte === true;
+                configurationActuelle.graphique.champsMasques = true;
+
+                const parametresAvancesTradingView = capturerParametresAvancesTradingView(parametresGraphiques);
+                configurationActuelle.tradingView = parametresAvancesTradingView;
+                configurationActuelle.graphique.parametresAvances = parametresAvancesTradingView;
+
+                const urlCaptures = getApiCapturesUrl();
+                const nomCapture = genererNomCapturePostgres(configurationActuelle);
+
+                configurationActuelle.nomCapture = nomCapture;
+
+                const categorieAnalyse =
+                    configurationActuelle?.analyseIA?.categorieLibelle ||
+                    configurationActuelle?.analyseIA?.categorie ||
+                    configurationActuelle?.snapshot?.categorieAnalyseLibelle ||
+                    configurationActuelle?.snapshot?.categorieAnalyse ||
+                    "Analyse technique";
+
+                const donneesAEnregistrer = {
+                    actif: configurationActuelle.graphique.actif || "NON_RENSEIGNE",
+                    indicateur: configurationActuelle.graphique.indicateur || null,
+                    intervalle: configurationActuelle.graphique.intervalle || null,
+                    actif_libelle: configurationActuelle.graphique.actifLibelle || null,
+                    indicateur_libelle: configurationActuelle.graphique.indicateurLibelle || null,
+                    intervalle_libelle: configurationActuelle.graphique.intervalleLibelle || null,
+                    source_parametres: configurationActuelle.graphique.source || null,
+                    lecture_directe_graphique: configurationActuelle.graphique.lectureDirecteGraphique === true,
+                    type_bougie: configurationActuelle.graphique.typeBougie || null,
+                    type_bougie_libelle: configurationActuelle.graphique.typeBougieLibelle || null,
+                    nom_fichier: nomCapture || ("capture-" + new Date().toISOString()),
+                    nom_capture: nomCapture || ("capture-" + new Date().toISOString()),
+                    categorie_analyse: categorieAnalyse,
+                    categorieAnalyse: categorieAnalyse,
+                    configuration_json: configurationActuelle,
+                    screenshot_base64: null
+                };
+
+                console.log("URL PostgreSQL :", urlCaptures);
+                console.log("Données envoyées :", donneesAEnregistrer);
+
+                afficherStatus("Enregistrement dans PostgreSQL...");
+                afficherEtatServeur("warning", "Envoi vers PostgreSQL...");
+                afficherInfosServeur(
+                    "ENVOI EN COURS\n" +
+                    "--------------\n" +
+                    "Route : " + urlCaptures + "\n" +
+                    "Table : trading_capture\n" +
+                    "Nom capture : " + donneesAEnregistrer.nom_capture
+                );
+
+                const reponse = await fetch(urlCaptures, {
+                    method: "POST",
+                    mode: "cors",
+                    credentials: "omit",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store",
+                    body: JSON.stringify(donneesAEnregistrer)
+                });
+
+                const texte = await reponse.text();
+
+                console.log("Statut HTTP :", reponse.status);
+                console.log("Réponse brute serveur :", texte);
+
+                let resultat;
+
+                try {
+                    resultat = JSON.parse(texte);
+                } catch (erreurJson) {
+                    throw new Error("Réponse non JSON du serveur : " + texte);
+                }
+
+                if (!reponse.ok || resultat.ok !== true) {
+                    throw new Error(resultat.detail || resultat.details || resultat.message || resultat.error || "Erreur serveur inconnue.");
+                }
+
+                localStorage.setItem("configurationTradingViewIA", JSON.stringify(configurationActuelle));
+
+                afficherStatus("Configuration enregistrée dans PostgreSQL.");
+                afficherEtatServeur("ok", "Enregistrement réussi");
+                afficherInfosServeur(
+                    "ENREGISTREMENT RÉUSSI\n" +
+                    "----------------------\n" +
+                    JSON.stringify(resultat, null, 4)
+                );
+                afficherResultat({
+                    ok: true,
+                    message: "Configuration enregistrée dans PostgreSQL.",
+                    nom_capture: donneesAEnregistrer.nom_capture,
+                    route: urlCaptures,
+                    reponseServeur: resultat,
+                    configuration: configurationActuelle
+                });
+
+                if (afficherAlerte) {
+                    alert(
+                        "Configuration enregistrée dans la base de données.\n\n" +
+                        "Nom de la capture : " + donneesAEnregistrer.nom_capture
+                    );
+                }
+
+            } catch (erreur) {
+                console.error("Erreur complète d'enregistrement PostgreSQL :", erreur);
+
+                afficherStatus("Erreur lors de l'enregistrement.");
+                afficherEtatServeur("error", "Erreur base de données");
+                afficherInfosServeur(
+                    "ERREUR D'ENREGISTREMENT\n" +
+                    "-----------------------\n" +
+                    erreur.message
+                );
+                afficherResultat({
+                    ok: false,
+                    message: "Impossible d'enregistrer dans la base de données.",
+                    details: erreur.message,
+                    route: getApiCapturesUrl()
+                });
+
+                alert("Impossible d'enregistrer dans la base de données : " + erreur.message);
+            }
+        }
+
+        /*
+            Compatibilité : si un ancien bouton ou le cache appelle encore takeScreenshot(),
+            on redirige vers la vraie fonction qui fonctionnait avant.
+        */
+        async function takeScreenshot() {
+            return await capturerEtEnregistrerConfiguration();
         }
 
         window.onload = init;
