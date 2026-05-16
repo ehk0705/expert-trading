@@ -145,7 +145,9 @@
                 <button type="button">Analyser</button>
             </a>
 
-           <button class="btn-effacer" disabled>Effacer</button>
+           <button class="btn-effacer" type="button" onclick="viderCaptures()">
+				Vider les captures
+		   </button>
         </div>
     </div>
 
@@ -980,6 +982,56 @@
                 appliquerThemeGraphiqueTradingView();
             }
         };
+		
+		
+	async function viderCaptures() {
+    const confirmation = confirm(
+        "Voulez-vous vraiment supprimer toutes les captures ?\n\nCette action est irréversible."
+    );
+
+    if (!confirmation) return;
+
+    const motDePasse = prompt("Mot de passe administrateur :");
+
+    if (!motDePasse || motDePasse.trim() === "") {
+        alert("Suppression annulée : mot de passe absent.");
+        return;
+    }
+
+    try {
+        const response = await fetch("https://trading-g8ie.onrender.com/api/vider-captures", {
+            method: "POST",
+            mode: "cors",
+            credentials: "omit",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cache: "no-store",
+            body: JSON.stringify({
+                motDePasse: motDePasse.trim()
+            })
+        });
+
+        const texte = await response.text();
+        const resultat = JSON.parse(texte);
+
+        if (!response.ok || resultat.ok !== true) {
+            throw new Error(resultat.message || resultat.details || "Erreur inconnue.");
+        }
+
+        alert("Les captures ont été supprimées.");
+
+        const zone = document.getElementById("resultat-analyse");
+        if (zone) {
+            zone.textContent = "Toutes les captures ont été supprimées.";
+        }
+
+    } catch (erreur) {
+        console.error("Erreur suppression captures :", erreur);
+        alert("Impossible de supprimer les captures.\n\nDétail : " + erreur.message);
+    }
+}
     </script>
 </body>
 </html>

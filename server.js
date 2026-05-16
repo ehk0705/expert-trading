@@ -427,6 +427,40 @@ app.post("/api/analyze-vision", async (req,res)=>{
     }
 });
 
+app.post("/api/vider-captures", (req, res) => {
+    try {
+        const motDePasse = req.body.motDePasse;
+
+        if (!process.env.ADMIN_DELETE_PASSWORD) {
+            return res.status(500).json({
+                ok: false,
+                message: "ADMIN_DELETE_PASSWORD n'est pas configuré sur Render."
+            });
+        }
+
+        if (motDePasse !== process.env.ADMIN_DELETE_PASSWORD) {
+            return res.status(403).json({
+                ok: false,
+                message: "Mot de passe incorrect."
+            });
+        }
+
+        captures = [];
+
+        return res.json({
+            ok: true,
+            message: "Toutes les captures ont été supprimées."
+        });
+
+    } catch (erreur) {
+        return res.status(500).json({
+            ok: false,
+            message: "Erreur lors de la suppression des captures.",
+            details: erreur.message
+        });
+    }
+});
+
 app.use((req,res)=>res.status(404).json({ok:false,message:"Route introuvable",methode:req.method,routeDemandee:req.originalUrl,date:maintenantIso()}));
 
 app.listen(PORT,"0.0.0.0",()=>console.log("Serveur Expert Trading Pro actif sur port",PORT));
