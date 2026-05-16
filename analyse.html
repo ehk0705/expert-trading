@@ -555,12 +555,17 @@
 
     <script>
         let currentFileName = "";
+        let currentCapture = null;
         let allFiles = [];
+        let allCaptures = [];
         const selectedFiles = new Set();
+        const captureMap = new Map();
 
-        const API_BASE_URL = window.location.hostname.includes("github.io")
+        const API_BASE_URL_PRINCIPAL = window.location.hostname.includes("github.io")
             ? "https://expert-trading.onrender.com"
             : "";
+
+        const API_BASE_URL_SECOURS = "https://trading-g8ie.onrender.com";
 
         const viewer = document.getElementById('viewer');
         const metaContent = document.getElementById('meta-content');
@@ -568,11 +573,63 @@
         const userNotes = document.getElementById('user-notes');
 
         function getApiUrl(route) {
-            return API_BASE_URL + route;
+            return API_BASE_URL_PRINCIPAL + route;
+        }
+
+        function getApiUrls(route) {
+            const urls = [];
+
+            if (API_BASE_URL_PRINCIPAL) {
+                urls.push(API_BASE_URL_PRINCIPAL + route);
+            }
+
+            urls.push(API_BASE_URL_SECOURS + route);
+            urls.push(route);
+
+            return [...new Set(urls)];
+        }
+
+        async function fetchJsonAvecSecours(route, options = {}) {
+            const urls = getApiUrls(route);
+            let derniereErreur = null;
+
+            for (const url of urls) {
+                try {
+                    const response = await fetch(url, {
+                        ...options,
+                        mode: "cors",
+                        credentials: "omit",
+                        cache: "no-store",
+                        headers: {
+                            "Accept": "application/json",
+                            ...(options.headers || {})
+                        }
+                    });
+
+                    const data = await readResponseAsJson(response);
+
+                    return {
+                        data: data,
+                        url: url
+                    };
+                } catch (error) {
+                    derniereErreur = error;
+                    console.warn("Route indisponible :", url, error);
+                }
+            }
+
+            throw derniereErreur || new Error("Aucune route disponible pour " + route);
         }
 
         function safeDomId(fileName) {
-            return fileName.replace(/[^a-zA-Z0-9_-]/g, "-");
+            return String(fileName || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+        }
+
+        function texteCourt(valeur, defaut = "N/A") {
+            if (valeur === undefined || valeur === null || String(valeur).trim() === "") {
+                return defaut;
+            }
+            return String(valeur);
         }
 
         async function readResponseAsJson(response) {
@@ -681,29 +738,76 @@
             updateSelectionCount();
         }
 
+        function normaliserCapture(capture) {
+            const configuration = capture.configuration_json || capture.configuration || {};
+            const graphique = configuration.graphique || {};
+
+            return {
+                id: capture.id,
+                key: "capture:" + capture.id,
+                nom: capture.nom_capture || capture.nom_fichier || (
+                    (capture.actif || graphique.actif || "capture") + "-" +
+                    (capture.indicateur || graphique.indicateur || "indicateur") + "-" +
+                    (capture.intervalle || graphique.intervalle || "intervalle")
+                ),
+                date: capture.date_capture || capture.created_at || configuration.dateConfiguration || configuration.dateCapture || null,
+                actif: capture.actif || graphique.actif || configuration.actif || "N/A",
+                indicateur: capture.indicateur || graphique.indicateur || configuration.indicateur || "N/A",
+                intervalle: capture.intervalle || graphique.intervalle || configuration.intervalle || "N/A",
+                categorie: capture.categorie_analyse || configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "N/A",
+                screenshot: capture.screenshot_base64 || configuration?.snapshot?.screenshotBase64 || null,
+                configuration: configuration,
+                brute: capture
+            };
+        }
+
         async function loadGallery() {
+            const galleryList = document.getElementById('gallery-list');
+            galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Chargement des captures...</p>";
+
+            selectedFiles.clear();
+            captureMap.clear();
+            allFiles = [];
+            allCaptures = [];
+
             try {
-                const response = await fetch(getApiUrl('/api/list'));
-                const files = await readResponseAsJson(response);
+                /*
+                    Correction importante :
+                    index.html enregistre les captures via /api/captures.
+                    L'ancien analyse.html lisait /api/list et /screenshots.
+                    Cette page lit maintenant d'abord /api/captures.
+                */
+                const resultat = await fetchJsonAvecSecours('/api/captures', { method: "GET" });
+                const data = resultat.data;
+                const captures = Array.isArray(data.captures) ? data.captures : [];
 
-                allFiles = Array.isArray(files) ? files : [];
-
-                const galleryList = document.getElementById('gallery-list');
-
-                if (!allFiles || allFiles.length === 0) {
-                    galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucun setup archivé.</p>";
+                if (captures.length === 0) {
+                    galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucune capture enregistrée dans /api/captures.</p>";
+                    updateSelectionCount();
                     return;
                 }
 
+                allCaptures = captures.map(normaliserCapture);
+                allFiles = allCaptures.map(capture => capture.key);
+
                 galleryList.innerHTML = "";
 
-                allFiles.forEach(fileName => {
+                allCaptures.forEach(capture => {
+                    captureMap.set(capture.key, capture);
+
                     const container = document.createElement('div');
-                    const domId = safeDomId(fileName);
+                    const domId = safeDomId(capture.key);
+                    const dateCapture = capture.date ? new Date(capture.date).toLocaleString("fr-CA") : "date inconnue";
 
                     container.className = 'thumb-container';
                     container.id = 'thumb-' + domId;
-                    container.setAttribute("data-file", fileName);
+                    container.setAttribute("data-file", capture.key);
+
+                    const apercu = capture.screenshot
+                        ? `<img src="${capture.screenshot}" alt="${capture.nom}">`
+                        : `<div style="height:135px;display:flex;align-items:center;justify-content:center;color:#facc15;background:#020617;padding:12px;text-align:center;font-size:12px;">
+                                Capture sans image<br>Configuration disponible
+                           </div>`;
 
                     container.innerHTML = `
                         <div class="thumb-check-zone" onclick="event.stopPropagation();">
@@ -712,28 +816,85 @@
                                 class="thumb-selector" 
                                 id="check-${domId}"
                                 title="Sélectionner cette capture"
-                                onchange="toggleSelection('${fileName.replace(/'/g, "\\'")}', this.checked)">
+                                onchange="toggleSelection('${capture.key}', this.checked)">
                             <span>Sélection</span>
                         </div>
-                        <img src="${getApiUrl('/screenshots/' + encodeURIComponent(fileName))}" alt="${fileName}">
-                        <div class="thumb-label">${fileName}</div>
+                        ${apercu}
+                        <div class="thumb-label">
+                            ${capture.nom}<br>
+                            ${capture.actif} / ${capture.intervalle}<br>
+                            ${dateCapture}
+                        </div>
                     `;
 
-                    container.onclick = () => selectImage(fileName);
+                    container.onclick = () => selectImage(capture.key);
                     galleryList.appendChild(container);
                 });
 
+                document.getElementById('dynamic-advice').innerText =
+                    "Captures chargées depuis : " + resultat.url;
+
                 updateSelectionCount();
 
-            } catch (error) {
-                console.error(error);
-                document.getElementById('gallery-list').innerHTML =
-                    "<p style='color:#f6465d; padding:20px;'>Erreur lors du chargement des captures.</p>";
+            } catch (errorCaptures) {
+                console.warn("Lecture /api/captures impossible, tentative ancienne route /api/list :", errorCaptures);
+
+                try {
+                    const resultatLegacy = await fetchJsonAvecSecours('/api/list', { method: "GET" });
+                    const files = Array.isArray(resultatLegacy.data) ? resultatLegacy.data : [];
+
+                    allFiles = files;
+                    galleryList.innerHTML = "";
+
+                    if (!files.length) {
+                        galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucun setup archivé.</p>";
+                        updateSelectionCount();
+                        return;
+                    }
+
+                    files.forEach(fileName => {
+                        const container = document.createElement('div');
+                        const domId = safeDomId(fileName);
+
+                        container.className = 'thumb-container';
+                        container.id = 'thumb-' + domId;
+                        container.setAttribute("data-file", fileName);
+
+                        container.innerHTML = `
+                            <div class="thumb-check-zone" onclick="event.stopPropagation();">
+                                <input 
+                                    type="checkbox" 
+                                    class="thumb-selector" 
+                                    id="check-${domId}"
+                                    title="Sélectionner cette capture"
+                                    onchange="toggleSelection('${fileName.replace(/'/g, "\\'")}', this.checked)">
+                                <span>Sélection</span>
+                            </div>
+                            <img src="${getApiUrls('/screenshots/' + encodeURIComponent(fileName))[0]}" alt="${fileName}">
+                            <div class="thumb-label">${fileName}</div>
+                        `;
+
+                        container.onclick = () => selectImage(fileName);
+                        galleryList.appendChild(container);
+                    });
+
+                    document.getElementById('dynamic-advice').innerText =
+                        "Captures chargées depuis l'ancienne route : " + resultatLegacy.url;
+
+                    updateSelectionCount();
+
+                } catch (errorLegacy) {
+                    console.error(errorLegacy);
+                    galleryList.innerHTML =
+                        "<p style='color:#f6465d; padding:20px;'>Erreur lors du chargement des captures.<br><br>" +
+                        String(errorLegacy.message).replace(/</g, "&lt;") + "</p>";
+                }
             }
         }
 
         async function selectImage(fileName) {
             currentFileName = fileName;
+            currentCapture = captureMap.get(fileName) || null;
 
             document.querySelectorAll('.thumb-container').forEach(t => t.classList.remove('active'));
 
@@ -742,10 +903,48 @@
                 thumb.classList.add('active');
             }
 
-            viewer.src = getApiUrl('/screenshots/' + encodeURIComponent(fileName));
-            viewer.style.display = "block";
             notesSection.style.display = "block";
             document.getElementById('ai-panel').style.display = "grid";
+
+            if (currentCapture) {
+                if (currentCapture.screenshot) {
+                    viewer.src = currentCapture.screenshot;
+                    viewer.style.display = "block";
+                } else {
+                    viewer.removeAttribute("src");
+                    viewer.style.display = "none";
+                }
+
+                const dateCapture = currentCapture.date
+                    ? new Date(currentCapture.date).toLocaleString("fr-CA")
+                    : "N/A";
+
+                metaContent.innerHTML = `
+                    <div class="meta-item"><b>Date</b><span>${dateCapture}</span></div>
+                    <div class="meta-item"><b>Actif</b><span style="color:var(--accent)">${texteCourt(currentCapture.actif)}</span></div>
+                    <div class="meta-item"><b>Intervalle</b><span>${texteCourt(currentCapture.intervalle)}</span></div>
+                    <div class="meta-item"><b>Indicateur</b><span>${texteCourt(currentCapture.indicateur)}</span></div>
+                    <div class="meta-item"><b>Catégorie</b><span>${texteCourt(currentCapture.categorie)}</span></div>
+                    <div class="meta-item"><b>Source</b><span>/api/captures</span></div>
+                `;
+
+                userNotes.value =
+                    currentCapture.configuration?.notes ||
+                    "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+
+                resetAIResults();
+
+                document.getElementById('dynamic-advice').innerText =
+                    "Capture sélectionnée : " + currentCapture.nom;
+
+                return;
+            }
+
+            /*
+                Compatibilité avec l'ancienne logique par fichiers PNG.
+            */
+            viewer.src = getApiUrl('/screenshots/' + encodeURIComponent(fileName));
+            viewer.style.display = "block";
 
             document.getElementById('dynamic-advice').innerText =
                 "Capture sélectionnée : " + fileName;
@@ -764,7 +963,7 @@
                     `;
 
                     userNotes.value = meta.notes || "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
-                    
+
                     if (meta.ai_analysis) {
                         renderAIResults(meta.ai_analysis);
                     } else {
@@ -795,8 +994,9 @@
             document.getElementById('ai-reasoning').innerText = "> En attente du déclenchement de l'analyse...";
         }
 
-
         function getActifDepuisMetaOuNomFichierPro(fileName) {
+            if (currentCapture) return currentCapture.actif || "BINANCE:BTCUSDT";
+
             const metaActif = document.querySelector("#meta-content .meta-item:nth-child(2) span");
             if (metaActif && metaActif.innerText && metaActif.innerText.trim() !== "N/A") {
                 const actifMeta = metaActif.innerText.trim().toUpperCase();
@@ -817,6 +1017,8 @@
         }
 
         function getIntervalleDepuisMetaOuNomFichierPro(fileName) {
+            if (currentCapture) return currentCapture.intervalle || "D";
+
             const metaIntervalle = document.querySelector("#meta-content .meta-item:nth-child(3) span");
             if (metaIntervalle && metaIntervalle.innerText && metaIntervalle.innerText.trim() !== "N/A") {
                 return metaIntervalle.innerText.trim();
@@ -888,10 +1090,23 @@
                 const actif = getActifDepuisMetaOuNomFichierPro(currentFileName);
                 const intervalle = getIntervalleDepuisMetaOuNomFichierPro(currentFileName);
 
-                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                const payload = currentCapture
+                    ? {
+                        captureId: currentCapture.id,
+                        fileName: currentCapture.nom,
+                        actif: actif,
+                        intervalle: intervalle,
+                        imageBase64: currentCapture.screenshot || null,
+                        configuration: {
+                            origine: "analyse.html",
+                            source: "api_captures",
+                            captureId: currentCapture.id,
+                            capture: currentCapture.brute,
+                            configurationCapture: currentCapture.configuration,
+                            notes: userNotes ? userNotes.value : ""
+                        }
+                    }
+                    : {
                         fileName: currentFileName,
                         actif: actif,
                         intervalle: intervalle,
@@ -901,7 +1116,12 @@
                             route: "/api/analyze-vision-pro",
                             notes: userNotes ? userNotes.value : ""
                         }
-                    })
+                    };
+
+                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await readResponseAsJson(response);
@@ -914,7 +1134,7 @@
                 userNotes.value +=
                     "\n\n==================================================" +
                     "\n[ANALYSE CONCRÈTE VISION + MARCHÉ]" +
-                    "\nCapture : " + currentFileName +
+                    "\nCapture : " + (currentCapture ? currentCapture.nom : currentFileName) +
                     "\nActif : " + actif +
                     "\nIntervalle : " + intervalle +
                     "\nSource marché : " + (analyse.source_marche || "N/A") +
@@ -924,7 +1144,7 @@
                     "\n==================================================\n";
 
                 document.getElementById('dynamic-advice').innerText =
-                    "Analyse Vision + Marché terminée pour : " + currentFileName;
+                    "Analyse Vision + Marché terminée pour : " + (currentCapture ? currentCapture.nom : currentFileName);
 
                 alert("Analyse Vision + Marché terminée.");
 
@@ -939,6 +1159,15 @@
         async function testerCaptureServeur() {
             if (!currentFileName) {
                 alert("Veuillez d'abord sélectionner une capture.");
+                return;
+            }
+
+            if (currentCapture) {
+                document.getElementById('ai-panel').style.display = "grid";
+                document.getElementById('ai-reasoning').innerText =
+                    "> CAPTURE CHARGÉE DEPUIS /api/captures\n" +
+                    JSON.stringify(currentCapture.brute, null, 2);
+                alert("Capture disponible dans /api/captures.");
                 return;
             }
 
@@ -1021,22 +1250,38 @@
                     );
 
                     try {
-                        const response = await fetch(getApiUrl('/api/analyze-vision'), {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ fileName: fileName })
-                        });
+                        const capture = captureMap.get(fileName);
 
-                        const data = await readResponseAsJson(response);
+                        if (capture) {
+                            currentFileName = fileName;
+                            currentCapture = capture;
+                            await triggerConcreteAIAnalysis();
+                            results.push({
+                                fileName: capture.nom,
+                                analysis: {
+                                    decision: document.getElementById('ai-decision').innerText,
+                                    confidence: Number(document.getElementById('ai-percent').innerText.replace("%", "")) || 0,
+                                    reasoning: document.getElementById('ai-reasoning').innerText
+                                }
+                            });
+                        } else {
+                            const response = await fetch(getApiUrl('/api/analyze-vision'), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ fileName: fileName })
+                            });
 
-                        if (!data.analysis) {
-                            throw new Error("Réponse reçue sans bloc analysis.");
+                            const data = await readResponseAsJson(response);
+
+                            if (!data.analysis) {
+                                throw new Error("Réponse reçue sans bloc analysis.");
+                            }
+
+                            results.push({
+                                fileName: fileName,
+                                analysis: data.analysis
+                            });
                         }
-
-                        results.push({
-                            fileName: fileName,
-                            analysis: data.analysis
-                        });
 
                     } catch (singleError) {
                         errors.push({
@@ -1171,7 +1416,7 @@
                 decision === "ACHETER"
                     ? "var(--buy-green)"
                     : (decision === "VENDRE" ? "var(--sell-red)" : "var(--yellow-pro)");
-            
+
             barEl.style.width = Math.max(0, Math.min(100, confidence)) + "%";
             document.getElementById('ai-percent').innerText = Math.max(0, Math.min(100, confidence)) + "%";
             document.getElementById('ai-reasoning').innerText = "> ANALYSE TERMINÉE :\n" + reasoning;
@@ -1180,6 +1425,19 @@
         async function saveNotes() {
             if (!currentFileName) {
                 alert("Veuillez d'abord sélectionner une capture avant d'archiver le rapport.");
+                return;
+            }
+
+            if (currentCapture) {
+                const configuration = currentCapture.configuration || {};
+                configuration.notes = userNotes.value;
+                localStorage.setItem("rapportCapture-" + currentCapture.id, JSON.stringify({
+                    captureId: currentCapture.id,
+                    nom: currentCapture.nom,
+                    notes: userNotes.value,
+                    date: new Date().toISOString()
+                }));
+                alert("Rapport archivé localement pour cette capture.");
                 return;
             }
 
