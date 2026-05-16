@@ -755,7 +755,17 @@
                 indicateur: capture.indicateur || graphique.indicateur || configuration.indicateur || "N/A",
                 intervalle: capture.intervalle || graphique.intervalle || configuration.intervalle || "N/A",
                 categorie: capture.categorie_analyse || configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "N/A",
-                screenshot: capture.screenshot_base64 || configuration?.snapshot?.screenshotBase64 || null,
+                screenshot:
+                    capture.screenshot_base64 ||
+                    capture.screenshotBase64 ||
+                    capture.image ||
+                    capture.screenshot ||
+                    configuration?.screenshot_base64 ||
+                    configuration?.screenshotBase64 ||
+                    configuration?.image ||
+                    configuration?.snapshot?.screenshotBase64 ||
+                    configuration?.snapshot?.screenshot_base64 ||
+                    null,
                 configuration: configuration,
                 brute: capture
             };
@@ -806,7 +816,7 @@
                     const apercu = capture.screenshot
                         ? `<img src="${capture.screenshot}" alt="${capture.nom}">`
                         : `<div style="height:135px;display:flex;align-items:center;justify-content:center;color:#facc15;background:#020617;padding:12px;text-align:center;font-size:12px;">
-                                Capture sans image<br>Configuration disponible
+                                Capture sans image<br>Importer une capture dans index.html
                            </div>`;
 
                     container.innerHTML = `

@@ -312,7 +312,21 @@
                 categorie_analyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
                 categorieAnalyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
                 configuration_json: configuration,
-                screenshot_base64: null
+                screenshot_base64:
+                    dernierScreenshotBase64 ||
+                    configuration?.snapshot?.screenshotBase64 ||
+                    configuration?.screenshot_base64 ||
+                    null,
+                screenshotBase64:
+                    dernierScreenshotBase64 ||
+                    configuration?.snapshot?.screenshotBase64 ||
+                    configuration?.screenshot_base64 ||
+                    null,
+                image:
+                    dernierScreenshotBase64 ||
+                    configuration?.snapshot?.screenshotBase64 ||
+                    configuration?.screenshot_base64 ||
+                    null
             };
         }
 
@@ -577,14 +591,33 @@
             try {
                 afficherStatus("Capture de configuration en cours...");
 
+                const inputCapture = document.getElementById("screenshot-file");
+
+                if (inputCapture && inputCapture.files && inputCapture.files.length > 0) {
+                    dernierScreenshotBase64 = await convertirFichierImageEnBase64(inputCapture.files[0]);
+                }
+
                 const configuration = obtenirConfiguration();
+
+                configuration.snapshot = configuration.snapshot || {};
+                configuration.snapshot.screenshotBase64 = dernierScreenshotBase64 || null;
+                configuration.screenshot_base64 = dernierScreenshotBase64 || null;
 
                 try {
                     const resultatSauvegarde = await enregistrerConfigurationSurServeur(configuration);
 
                     afficherResultat(resultatSauvegarde);
-                    afficherStatus("Configuration TradingView enregistrée dans la liste des captures.");
-                    alert("✅ Configuration enregistrée dans la liste des captures.");
+                    afficherStatus(
+                        dernierScreenshotBase64
+                            ? "Configuration et image enregistrées dans la liste des captures."
+                            : "Configuration enregistrée sans image. Pour voir une image dans analyse.html, importer d'abord une capture PNG/JPG/WebP."
+                    );
+
+                    alert(
+                        dernierScreenshotBase64
+                            ? "✅ Configuration et image enregistrées dans la liste des captures."
+                            : "✅ Configuration enregistrée sans image.\n\nPour voir l'image dans analyse.html, importer d'abord une capture PNG/JPG/WebP avec le champ fichier."
+                    );
 
                 } catch (erreurServeur) {
                     afficherResultat({
