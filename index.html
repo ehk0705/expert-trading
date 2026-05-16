@@ -4,30 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expert Trading Pro v2.0 - Full Interface</title>
-    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-	<!--<script src="https://s3.tradingview.com/tv.js"></script>-->
-	
+
+    <!-- Bibliothèque TradingView utilisée pour afficher le vrai graphique TV -->
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <!--<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>-->
+
     <style>
         :root {
-            --bg-color: #0b1220;
-            --header-bg: #111827;
-            --chart-bg: #131722;
-            --chart-grid: #2a2e39;
-            --chart-text: #d1d4dc;
-            --text-main: #f3f4f6;
+            --bg-color: #ffffff;
+            --header-bg: #0f172a;
+            --chart-bg: #020617;
+            --chart-grid: #263244;
+            --chart-text: #d1d5db;
+            --text-main: #111827;
             --text-muted: #9ca3af;
             --accent: #2962ff;
-            --border: #2a2e39;
-            --yellow-pro: #f6c343;
-            --buy-green: #26a69a;
-            --sell-red: #ef5350;
+            --border: #263244;
+            --yellow-pro: #facc15;
+            --buy-green: #22c55e;
+            --sell-red: #ef4444;
             --purple-pro: #8b5cf6;
-            --panel-bg: #0f172a;
+            --cyan-pro: #00d9ff;
+            --panel-bg: #111827;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         html,
         body {
@@ -36,7 +37,7 @@
         }
 
         body {
-            font-family: 'Inter', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             background: var(--bg-color);
             color: var(--text-main);
             margin: 0;
@@ -50,9 +51,9 @@
             align-items: center;
             justify-content: space-between;
             background: var(--header-bg);
-            padding: 5px 10px;
-            border-bottom: 1px solid var(--border);
-            gap: 5px;
+            padding: 8px 12px;
+            border-bottom: 2px solid var(--cyan-pro);
+            gap: 8px;
             flex-wrap: wrap;
             z-index: 10;
             flex-shrink: 0;
@@ -61,24 +62,22 @@
         .control-group {
             display: flex;
             align-items: center;
-            gap: 5px;
-            border-right: 1px solid var(--border);
+            gap: 6px;
+            border-right: 1px solid #334155;
             padding-right: 8px;
         }
 
-        .control-group:last-child {
-            border-right: none;
-        }
+        .control-group:last-child { border-right: none; }
 
         label {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: bold;
-            color: var(--chart-text);
+            color: var(--cyan-pro);
             white-space: nowrap;
         }
 
         h1 {
-            font-size: 13px;
+            font-size: 15px;
             margin: 0;
             color: var(--yellow-pro);
             font-weight: 800;
@@ -86,102 +85,73 @@
             letter-spacing: 1px;
             flex-grow: 1;
             text-align: center;
-            text-shadow: none;
-            min-width: 120px;
+            min-width: 170px;
         }
 
         select,
         button,
         input[type="file"] {
-            background: #1f2937;
-            color: #f3f4f6;
-            border: 1px solid var(--border);
-            padding: 4px 6px;
-            border-radius: 3px;
-            font-size: 10px;
+            background: #020617;
+            color: #ffffff;
+            border: 1px solid #334155;
+            padding: 7px 8px;
+            border-radius: 6px;
+            font-size: 12px;
             cursor: pointer;
             outline: none;
         }
 
-        input[type="file"] {
-            max-width: 175px;
-        }
+        input[type="file"] { max-width: 185px; }
 
         select:hover,
-        button:hover {
-            background: #374151;
-        }
+        button:hover { opacity: 0.88; }
 
         button:disabled {
             opacity: 0.45;
             cursor: not-allowed;
         }
 
-        .btn-capture {
-            background: var(--accent);
-            color: #ffffff;
-            border: none;
-            font-weight: 700;
-        }
-
-        .btn-vision {
-            background: var(--purple-pro);
-            color: #ffffff;
-            border: none;
-            font-weight: 700;
-        }
-
-        .btn-technique {
-            background: var(--buy-green);
-            color: #ffffff;
-            border: none;
-            font-weight: 700;
-        }
-
-        .btn-effacer {
-            background: var(--sell-red);
-            color: #ffffff;
-            border: none;
-            font-weight: 700;
-        }
+        .btn-capture { background: #00d9ff; color: #00111a; border: none; font-weight: 700; }
+        .btn-vision { background: var(--purple-pro); color: #ffffff; border: none; font-weight: 700; }
+        .btn-technique { background: var(--buy-green); color: #03130a; border: none; font-weight: 700; }
+        .btn-effacer { background: var(--sell-red); color: #ffffff; border: none; font-weight: 700; }
+        .btn-tv { background: var(--accent); color: #ffffff; border: none; font-weight: 700; }
 
         #chart-container {
             flex: 1 1 auto;
             width: 100%;
-            min-height: 420px;
+            min-height: 520px;
             background: var(--chart-bg);
             position: relative;
             border-top: 1px solid var(--border);
+            padding: 12px;
         }
 
-        #chart-container canvas {
-            background: var(--chart-bg) !important;
+        #tradingview_chart {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--chart-bg);
+            border: 1px solid var(--border);
         }
-
 
         .chart-message {
             position: absolute;
-            left: 14px;
-            top: 14px;
-            z-index: 5;
-            max-width: min(520px, calc(100vw - 28px));
-            padding: 10px 12px;
-            border: 1px solid #363a45;
+            left: 24px;
+            top: 24px;
+            z-index: 2;
+            color: #facc15;
+            background: rgba(2, 6, 23, 0.84);
+            border: 1px solid #334155;
             border-radius: 8px;
-            background: rgba(19, 23, 34, 0.92);
-            color: #d1d4dc;
-            font-size: 12px;
-            line-height: 1.45;
-            pointer-events: none;
+            padding: 10px 12px;
+            font-size: 13px;
+            max-width: calc(100% - 48px);
         }
 
-        .chart-message.hidden {
-            display: none;
-        }
-
-        a {
-            text-decoration: none;
-        }
+        a { text-decoration: none; }
 
         .result-panel {
             position: fixed;
@@ -209,13 +179,10 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .result-header strong {
-            color: var(--yellow-pro);
-            font-size: 12px;
-        }
+        .result-header strong { color: var(--yellow-pro); font-size: 12px; }
 
         .status-line {
-            color: var(--text-muted);
+            color: #cbd5e1;
             font-size: 11px;
             padding: 7px 10px;
             border-bottom: 1px solid var(--border);
@@ -233,9 +200,7 @@
             white-space: pre-wrap;
         }
 
-        .hidden {
-            display: none;
-        }
+        .hidden { display: none; }
 
         @media (max-width: 900px) {
             body {
@@ -244,14 +209,12 @@
                 overflow: auto;
             }
 
-            .header-pro {
-                align-items: stretch;
-            }
+            .header-pro { align-items: stretch; }
 
             .control-group {
                 width: 100%;
                 border-right: none;
-                border-bottom: 1px solid var(--border);
+                border-bottom: 1px solid #334155;
                 padding-bottom: 5px;
             }
 
@@ -270,7 +233,12 @@
 
             #chart-container {
                 height: 65vh;
-                min-height: 420px;
+                min-height: 460px;
+                padding: 8px;
+            }
+
+            #tradingview_chart {
+                min-height: 440px;
             }
 
             .result-panel {
@@ -281,7 +249,6 @@
             }
         }
     </style>
-	<!--<link rel="stylesheet" href="style.css">-->
 </head>
 
 <body>
@@ -374,6 +341,8 @@
         <div class="control-group">
             <button class="btn-technique" onclick="testerAnalyseTechnique()">Tester technique</button>
 
+            <button class="btn-tv" type="button" onclick="ouvrirTradingView()">Ouvrir TV</button>
+
             <a href="analyse.html" title="Analyser la capture">
                 <button type="button">Analyser</button>
             </a>
@@ -383,7 +352,8 @@
     </div>
 
     <div id="chart-container">
-        <div id="chart-message" class="chart-message hidden"></div>
+        <div id="chart-message" class="chart-message">Chargement du graphique TradingView...</div>
+        <div id="tradingview_chart"></div>
     </div>
 
     <div class="result-panel" id="result-panel">
@@ -411,6 +381,7 @@
         let socket;
         let currentData = [];
         let dernierScreenshotBase64 = null;
+        let widgetTradingView = null;
 
         function getApiUrl(route) {
             return API_BASE_URL + route;
@@ -426,70 +397,36 @@
             };
         }
 
-        function appliquerThemeGraphiqueTradingView() {
-            if (!chart) return;
+        function afficherMessageGraphique(message, type) {
+            const zone = document.getElementById("chart-message");
+            if (!zone) return;
 
-            chart.applyOptions({
-                layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#131722'
-                    },
-                    textColor: '#d1d4dc'
-                },
-                grid: {
-                    vertLines: { color: '#2a2e39' },
-                    horzLines: { color: '#2a2e39' }
-                },
-                rightPriceScale: {
-                    borderColor: '#363a45',
-                    textColor: '#d1d4dc'
-                },
-                timeScale: {
-                    borderColor: '#363a45',
-                    timeVisible: true
-                },
-                crosshair: {
-                    mode: 0
-                }
-            });
+            zone.textContent = message || "";
+            zone.style.display = message ? "block" : "none";
+
+            if (type === "erreur") {
+                zone.style.color = "#fecaca";
+                zone.style.borderColor = "#7f1d1d";
+            } else if (type === "ok") {
+                zone.style.color = "#86efac";
+                zone.style.borderColor = "#064e3b";
+            } else {
+                zone.style.color = "#facc15";
+                zone.style.borderColor = "#334155";
+            }
+        }
+
+        function appliquerThemeGraphiqueTradingView() {
+            const container = document.getElementById("tradingview_chart");
+            if (container) {
+                container.style.background = "#020617";
+            }
         }
 
         function init() {
-            const container = document.getElementById('chart-container');
-            const size = getChartSize();
-
-            chart = LightweightCharts.createChart(container, {
-                width: size.width,
-                height: size.height,
-                layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#131722'
-                    },
-                    textColor: '#d1d4dc'
-                },
-                grid: {
-                    vertLines: { color: '#2a2e39' },
-                    horzLines: { color: '#2a2e39' }
-                },
-                rightPriceScale: {
-                    borderColor: '#363a45',
-                    textColor: '#d1d4dc'
-                },
-                timeScale: {
-                    borderColor: '#363a45',
-                    borderVisible: true,
-                    timeVisible: true
-                },
-                crosshair: {
-                    mode: 0
-                }
-            });
-
-            changerStyleGraphique();
+            creerWidgetTradingView();
             appliquerThemeGraphiqueTradingView();
-            actualiserGraphique();
+            afficherStatus("Graphique TradingView chargé ou en cours de chargement.");
         }
 
         function afficherStatus(message) {
@@ -591,11 +528,17 @@
                     intervalle: intervalle,
                     indicateur: indicateur,
                     style: style,
-                    source: "lightweight_charts_binance_okx_fallback"
+                    source: "tradingview_widget_tvjs"
                 },
                 marcheLocal: {
                     derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
                     nombreBougies: currentData.length
+                },
+                tradingView: {
+                    widgetPresent: !!widgetTradingView,
+                    bibliotheque: "https://s3.tradingview.com/tv.js",
+                    theme: "dark",
+                    timezone: "America/Toronto"
                 },
                 dateConfiguration: new Date().toISOString()
             };
@@ -634,299 +577,99 @@
             return String(actif || "").toUpperCase().startsWith("BINANCE:");
         }
 
-        function afficherMessageGraphique(message) {
-            const zone = document.getElementById("chart-message");
+        function obtenirStyleTradingView() {
+            const type = document.getElementById('chart-type-selector').value;
 
-            if (!zone) return;
+            if (type === "bars") return "0";
+            if (type === "candles") return "1";
+            if (type === "line") return "3";
+            if (type === "area") return "3";
 
-            if (!message) {
-                zone.textContent = "";
-                zone.classList.add("hidden");
+            return "1";
+        }
+
+        function choisirEtudeTradingView() {
+            const indicateur = document.getElementById('indicator-selector').value;
+
+            if (indicateur === "RSI") return ["RSI@tv-basicstudies"];
+            if (indicateur === "MACD") return ["MACD@tv-basicstudies"];
+            if (indicateur === "EMA") return ["MASimple@tv-basicstudies"];
+            if (indicateur === "BOLLINGER") return ["BB@tv-basicstudies"];
+            if (indicateur === "VOLUME") return ["Volume@tv-basicstudies"];
+
+            return [];
+        }
+
+        function creerWidgetTradingView(tentative = 0) {
+            const conteneur = document.getElementById("tradingview_chart");
+            if (!conteneur) return;
+
+            afficherMessageGraphique("Chargement du graphique TradingView...", "attente");
+
+            if (typeof TradingView === "undefined" || !TradingView.widget) {
+                if (tentative < 20) {
+                    setTimeout(function () {
+                        creerWidgetTradingView(tentative + 1);
+                    }, 500);
+                } else {
+                    afficherMessageGraphique("Impossible de charger TradingView. Vérifier la connexion Internet ou le bloqueur de scripts.", "erreur");
+                    afficherStatus("Erreur : bibliothèque TradingView indisponible.");
+                }
                 return;
             }
 
-            zone.textContent = message;
-            zone.classList.remove("hidden");
-        }
+            const symbole = document.getElementById('asset-selector').value || "BINANCE:BTCUSDT";
+            const intervalle = document.getElementById('interval-selector').value || "D";
 
-        function convertirIntervallePourOKX(intervalleTradingView) {
-            const interval = String(intervalleTradingView || "60");
-
-            if (interval === "1") return "1m";
-            if (interval === "5") return "5m";
-            if (interval === "15") return "15m";
-            if (interval === "30") return "30m";
-            if (interval === "60") return "1H";
-            if (interval === "240") return "4H";
-            if (interval === "D") return "1D";
-            if (interval === "W") return "1W";
-            if (interval === "M") return "1M";
-
-            return "1H";
-        }
-
-        function obtenirSymboleOKXDepuisActif(actif) {
-            const brut = String(actif || "BINANCE:BTCUSDT").toUpperCase();
-
-            if (brut.includes("BTC")) return "BTC-USDT";
-            if (brut.includes("ETH")) return "ETH-USDT";
-            if (brut.includes("SOL")) return "SOL-USDT";
-            if (brut.includes("BNB")) return "BNB-USDT";
-            if (brut.includes("XRP")) return "XRP-USDT";
-
-            return "BTC-USDT";
-        }
-
-        async function recupererBougiesBinance(symbol, interval) {
-            const res = await fetch(
-                `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`
-            );
-
-            const texte = await res.text();
-
-            if (!res.ok) {
-                throw new Error("Binance HTTP " + res.status + " : " + texte);
-            }
-
-            let history;
+            conteneur.innerHTML = "";
 
             try {
-                history = JSON.parse(texte);
+                widgetTradingView = new TradingView.widget({
+                    autosize: true,
+                    symbol: symbole,
+                    interval: intervalle,
+                    timezone: "America/Toronto",
+                    theme: "dark",
+                    style: obtenirStyleTradingView(),
+                    locale: "fr",
+                    toolbar_bg: "#0f172a",
+                    enable_publishing: false,
+                    allow_symbol_change: true,
+                    container_id: "tradingview_chart",
+                    hide_side_toolbar: false,
+                    details: true,
+                    hotlist: true,
+                    calendar: false,
+                    studies: choisirEtudeTradingView()
+                });
+
+                setTimeout(function () {
+                    afficherMessageGraphique("", "ok");
+                }, 2500);
+
+                afficherStatus("Graphique TradingView affiché : " + symbole + " / " + intervalle);
             } catch (erreur) {
-                throw new Error("Réponse Binance non JSON : " + texte);
+                console.error("Erreur TradingView :", erreur);
+                afficherMessageGraphique("Erreur lors du chargement du graphique TradingView.", "erreur");
+                afficherStatus("Erreur TradingView : " + erreur.message);
             }
-
-            if (!Array.isArray(history)) {
-                throw new Error("Réponse Binance inattendue : " + JSON.stringify(history));
-            }
-
-            return history.map(d => ({
-                time: d[0] / 1000,
-                open: parseFloat(d[1]),
-                high: parseFloat(d[2]),
-                low: parseFloat(d[3]),
-                close: parseFloat(d[4]),
-                value: parseFloat(d[4])
-            }));
-        }
-
-        async function recupererBougiesOKX(symbol, interval) {
-            const res = await fetch(
-                `https://www.okx.com/api/v5/market/candles?instId=${symbol}&bar=${interval}&limit=500`
-            );
-
-            const texte = await res.text();
-
-            if (!res.ok) {
-                throw new Error("OKX HTTP " + res.status + " : " + texte);
-            }
-
-            let json;
-
-            try {
-                json = JSON.parse(texte);
-            } catch (erreur) {
-                throw new Error("Réponse OKX non JSON : " + texte);
-            }
-
-            if (!json || json.code !== "0" || !Array.isArray(json.data)) {
-                throw new Error("Réponse OKX inattendue : " + JSON.stringify(json));
-            }
-
-            return json.data
-                .map(d => ({
-                    time: Number(d[0]) / 1000,
-                    open: parseFloat(d[1]),
-                    high: parseFloat(d[2]),
-                    low: parseFloat(d[3]),
-                    close: parseFloat(d[4]),
-                    value: parseFloat(d[4])
-                }))
-                .reverse();
-        }
-
-        function demarrerWebSocketBinance(symbol, interval) {
-            socket = new WebSocket(
-                `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
-            );
-
-            socket.onmessage = (e) => {
-                const k = JSON.parse(e.data).k;
-
-                const update = {
-                    time: k.t / 1000,
-                    open: parseFloat(k.o),
-                    high: parseFloat(k.h),
-                    low: parseFloat(k.l),
-                    close: parseFloat(k.c),
-                    value: parseFloat(k.c)
-                };
-
-                if (mainSeries) {
-                    mainSeries.update(update);
-                }
-
-                const lastIdx = currentData.length - 1;
-
-                if (currentData[lastIdx] && currentData[lastIdx].time === update.time) {
-                    currentData[lastIdx] = update;
-                } else {
-                    currentData.push(update);
-                }
-            };
-
-            socket.onerror = () => {
-                afficherStatus("WebSocket Binance indisponible. Les bougies historiques restent visibles.");
-            };
         }
 
         function changerStyleGraphique() {
-            const type = document.getElementById('chart-type-selector').value;
-
-            if (mainSeries) {
-                chart.removeSeries(mainSeries);
-                mainSeries = null;
-            }
-
-            const commonOptions = {
-                priceFormat: {
-                    type: 'price',
-                    precision: 2,
-                    minMove: 0.01
-                }
-            };
-
-            if (type === 'candles') {
-                mainSeries = chart.addCandlestickSeries({
-                    ...commonOptions,
-                    upColor: '#26a69a',
-                    downColor: '#ef5350',
-                    borderUpColor: '#26a69a',
-                    borderDownColor: '#ef5350',
-                    wickUpColor: '#26a69a',
-                    wickDownColor: '#ef5350'
-                });
-            } else if (type === 'bars') {
-                mainSeries = chart.addBarSeries({
-                    ...commonOptions,
-                    upColor: '#26a69a',
-                    downColor: '#ef5350'
-                });
-            } else if (type === 'line') {
-                mainSeries = chart.addLineSeries({
-                    ...commonOptions,
-                    color: '#2962ff',
-                    lineWidth: 2
-                });
-            } else if (type === 'area') {
-                mainSeries = chart.addAreaSeries({
-                    ...commonOptions,
-                    topColor: 'rgba(41, 98, 255, 0.25)',
-                    bottomColor: 'rgba(41, 98, 255, 0.02)',
-                    lineColor: '#2962ff',
-                    lineWidth: 2
-                });
-            }
-
-            if (currentData.length > 0 && mainSeries) {
-                mainSeries.setData(currentData);
-            }
-
+            creerWidgetTradingView();
             appliquerThemeGraphiqueTradingView();
         }
 
         async function actualiserGraphique() {
-            const rawAsset = document.getElementById('asset-selector').value;
+            creerWidgetTradingView();
+            afficherStatus("Graphique TradingView actualisé.");
+        }
 
-            const symbolBinance = obtenirSymboleBinanceDepuisActif(rawAsset);
-            const intervalBinance = convertirIntervallePourBinance(document.getElementById('interval-selector').value);
-
-            const symbolOKX = obtenirSymboleOKXDepuisActif(rawAsset);
-            const intervalOKX = convertirIntervallePourOKX(document.getElementById('interval-selector').value);
-
-            let sourceUtilisee = "Binance";
-            let erreurBinance = null;
-
-            if (socket) {
-                socket.close();
-                socket = null;
-            }
-
-            afficherMessageGraphique("Chargement du graphique...");
-
-            try {
-                afficherStatus("Chargement Binance : " + symbolBinance + " / " + intervalBinance);
-
-                currentData = await recupererBougiesBinance(symbolBinance, intervalBinance);
-
-                sourceUtilisee = "Binance";
-
-                if (mainSeries) {
-                    mainSeries.setData(currentData);
-                }
-
-                chart.timeScale().fitContent();
-                appliquerThemeGraphiqueTradingView();
-                demarrerWebSocketBinance(symbolBinance, intervalBinance);
-
-                afficherMessageGraphique("");
-                afficherStatus("Graphique chargé : " + symbolBinance + " / " + intervalBinance + " / source Binance");
-
-            } catch (errBinance) {
-                erreurBinance = errBinance;
-                console.warn("Binance indisponible, bascule vers OKX :", errBinance);
-
-                try {
-                    afficherStatus(
-                        "Binance indisponible. Bascule vers OKX : " +
-                        symbolOKX + " / " + intervalOKX
-                    );
-
-                    currentData = await recupererBougiesOKX(symbolOKX, intervalOKX);
-
-                    sourceUtilisee = "OKX";
-
-                    if (mainSeries) {
-                        mainSeries.setData(currentData);
-                    }
-
-                    chart.timeScale().fitContent();
-                    appliquerThemeGraphiqueTradingView();
-
-                    afficherMessageGraphique("");
-                    afficherStatus(
-                        "Graphique chargé avec OKX : " +
-                        symbolOKX + " / " + intervalOKX +
-                        "\nBinance ignoré : " + erreurBinance.message
-                    );
-
-                } catch (errOKX) {
-                    console.error("Erreur Binance :", erreurBinance);
-                    console.error("Erreur OKX :", errOKX);
-
-                    currentData = [];
-
-                    if (mainSeries) {
-                        mainSeries.setData([]);
-                    }
-
-                    appliquerThemeGraphiqueTradingView();
-
-                    afficherMessageGraphique(
-                        "Aucune bougie chargée.\n" +
-                        "Binance est indisponible et OKX n'a pas répondu.\n" +
-                        "Erreur OKX : " + errOKX.message
-                    );
-
-                    afficherStatus(
-                        "Erreur graphique.\n" +
-                        "Binance : " + erreurBinance.message + "\n" +
-                        "OKX : " + errOKX.message
-                    );
-                }
-            }
-
-            return sourceUtilisee;
+        function ouvrirTradingView() {
+            const symbole = document.getElementById('asset-selector').value || "BINANCE:BTCUSDT";
+            const intervalle = document.getElementById('interval-selector').value || "D";
+            const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(symbole) + "&interval=" + encodeURIComponent(intervalle);
+            window.open(url, "_blank");
         }
 
         async function convertirFichierImageEnBase64(fichier) {
@@ -944,7 +687,11 @@
             const canvas = document.querySelector('#chart-container canvas');
 
             if (!canvas) {
-                throw new Error("Canvas du graphique introuvable.");
+                throw new Error(
+                    "Le widget TradingView public est chargé dans une iframe externe. " +
+                    "La capture automatique directe du graphique est bloquée par le navigateur. " +
+                    "Utiliser le champ fichier pour importer une capture PNG/JPG/WebP."
+                );
             }
 
             return canvas.toDataURL('image/png');
@@ -966,16 +713,13 @@
 
         async function takeScreenshot() {
             try {
-                afficherStatus("Capture en cours...");
-
-                const dataURL = capturerCanvasEnBase64();
-                dernierScreenshotBase64 = dataURL;
+                afficherStatus("Capture de configuration en cours...");
 
                 const configuration = obtenirConfiguration();
 
                 const payload = {
-                    image: dataURL,
-                    screenshot_base64: dataURL,
+                    image: null,
+                    screenshot_base64: null,
                     metadata: {
                         asset: configuration.actif,
                         interval: configuration.intervalle,
@@ -998,22 +742,22 @@
 
                     const data = await lireReponseJson(response);
                     afficherResultat(data);
-                    afficherStatus("Capture enregistrée sur le serveur.");
-                    alert("✅ Capture enregistrée.");
+                    afficherStatus("Configuration TradingView enregistrée sur le serveur.");
+                    alert("✅ Configuration enregistrée.\n\nNote : la capture image directe du widget TradingView public n'est pas possible depuis une iframe externe.");
 
                 } catch (erreurServeur) {
                     afficherResultat({
                         ok: false,
-                        message: "Capture créée, mais sauvegarde serveur échouée.",
+                        message: "Configuration créée, mais sauvegarde serveur échouée.",
                         details: erreurServeur.message,
                         route: getApiUrl('/api/save')
                     });
 
-                    afficherStatus("Capture créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Capture créée localement, mais sauvegarde serveur échouée.");
+                    afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
+                    alert("Configuration créée localement, mais sauvegarde serveur échouée.");
                 }
 
-                return dataURL;
+                return null;
 
             } catch (err) {
                 console.error("Erreur capture :", err);
@@ -1026,11 +770,6 @@
         async function testerAnalyseTechnique() {
             try {
                 const configuration = obtenirConfiguration();
-
-                if (!actifCompatibleBinance(configuration.actif)) {
-                    alert("La route technique utilise Binance. Choisir un actif BINANCE.");
-                    return;
-                }
 
                 afficherStatus("Test technique serveur en cours...");
 
@@ -1061,11 +800,6 @@
         async function analyserVisionMarche() {
             try {
                 const configuration = obtenirConfiguration();
-
-                if (!actifCompatibleBinance(configuration.actif)) {
-                    alert("L'analyse Vision + Marché utilise Binance. Choisir un actif BINANCE.");
-                    return;
-                }
 
                 setBoutonsActifs(false);
                 afficherStatus("Analyse Vision + Marché en cours...");
@@ -1155,16 +889,7 @@
         window.onload = init;
 
         window.onresize = () => {
-            if (chart) {
-                const size = getChartSize();
-
-                chart.applyOptions({
-                    width: size.width,
-                    height: size.height
-                });
-
-                appliquerThemeGraphiqueTradingView();
-            }
+            appliquerThemeGraphiqueTradingView();
         };
     </script>
 </body>
