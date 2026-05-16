@@ -779,6 +779,40 @@
             updateSelectionCount();
         }
 
+        function normaliserImageBase64(valeur) {
+            if (valeur === undefined || valeur === null) return null;
+
+            const texte = String(valeur).trim();
+            if (!texte || texte === "null" || texte === "undefined") return null;
+
+            if (texte.startsWith("data:image/")) return texte;
+
+            /*
+                Certains serveurs renvoient seulement le bloc Base64, sans préfixe.
+                Dans ce cas, on reconstruit une vraie source d'image utilisable par <img>.
+            */
+            if (/^[A-Za-z0-9+/=\r\n]+$/.test(texte) && texte.length > 200) {
+                return "data:image/png;base64," + texte.replace(/\s+/g, "");
+            }
+
+            return texte;
+        }
+
+        function extraireImageCapture(capture, configuration) {
+            return normaliserImageBase64(
+                capture.screenshot_base64 ||
+                capture.screenshotBase64 ||
+                capture.image ||
+                capture.screenshot ||
+                configuration?.screenshot_base64 ||
+                configuration?.screenshotBase64 ||
+                configuration?.image ||
+                configuration?.snapshot?.screenshotBase64 ||
+                configuration?.snapshot?.screenshot_base64 ||
+                null
+            );
+        }
+
         function normaliserCapture(capture) {
             const configuration = capture.configuration_json || capture.configuration || {};
             const graphique = configuration.graphique || {};
@@ -796,20 +830,37 @@
                 indicateur: capture.indicateur || graphique.indicateur || configuration.indicateur || "N/A",
                 intervalle: capture.intervalle || graphique.intervalle || configuration.intervalle || "N/A",
                 categorie: capture.categorie_analyse || configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "N/A",
-                screenshot:
-                    capture.screenshot_base64 ||
-                    capture.screenshotBase64 ||
-                    capture.image ||
-                    capture.screenshot ||
-                    configuration?.screenshot_base64 ||
-                    configuration?.screenshotBase64 ||
-                    configuration?.image ||
-                    configuration?.snapshot?.screenshotBase64 ||
-                    configuration?.snapshot?.screenshot_base64 ||
-                    null,
+                screenshot: extraireImageCapture(capture, configuration),
                 configuration: configuration,
                 brute: capture
             };
+        }
+
+        async function chargerDetailCaptureSiNecessaire(capture) {
+            if (!capture || capture.screenshot || !capture.id) return capture;
+
+            try {
+                const resultatDetail = await fetchJsonAvecSecours(
+                    "/api/captures/" + encodeURIComponent(capture.id),
+                    { method: "GET" }
+                );
+
+                const brutDetail = resultatDetail.data.capture || resultatDetail.data;
+                const captureDetail = normaliserCapture({
+                    ...capture.brute,
+                    ...brutDetail
+                });
+
+                capture.screenshot = captureDetail.screenshot;
+                capture.configuration = captureDetail.configuration;
+                capture.brute = { ...capture.brute, ...brutDetail };
+
+                captureMap.set(capture.key, capture);
+                return capture;
+            } catch (erreur) {
+                console.warn("Impossible de charger l'image détaillée de la capture", capture.id, erreur);
+                return capture;
+            }
         }
 
         async function loadGallery() {
@@ -839,6 +890,15 @@
                 }
 
                 allCaptures = captures.map(normaliserCapture);
+
+                /*
+                    La route /api/captures renvoie parfois seulement les métadonnées.
+                    On recharge chaque capture par /api/captures/:id pour récupérer screenshot_base64.
+                */
+                allCaptures = await Promise.all(
+                    allCaptures.map(capture => chargerDetailCaptureSiNecessaire(capture))
+                );
+
                 allFiles = allCaptures.map(capture => capture.key);
 
                 galleryList.innerHTML = "";
@@ -857,7 +917,7 @@
                     const apercu = capture.screenshot
                         ? `<img src="${capture.screenshot}" alt="${capture.nom}">`
                         : `<div style="height:135px;display:flex;align-items:center;justify-content:center;color:#facc15;background:#020617;padding:12px;text-align:center;font-size:12px;">
-                                Capture sans image<br>Importer une capture dans index.html
+                                Capture sans image<br>Détail image absent
                            </div>`;
 
                     container.innerHTML = `
@@ -958,6 +1018,8 @@
             document.getElementById('ai-panel').style.display = "grid";
 
             if (currentCapture) {
+                currentCapture = await chargerDetailCaptureSiNecessaire(currentCapture);
+
                 if (currentCapture.screenshot) {
                     viewer.src = currentCapture.screenshot;
                     viewer.style.display = "block";

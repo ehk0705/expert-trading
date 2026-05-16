@@ -145,7 +145,7 @@
                 <button type="button">Analyser</button>
             </a>
 
-            <button class="btn-effacer" onclick="effacerResultat()">Effacer</button>
+           <button class="btn-effacer" disabled>Effacer</button>
         </div>
     </div>
 
@@ -763,11 +763,42 @@
         }
 
         function capturerCanvasEnBase64() {
-            const canvas = document.querySelector("#tradingview_chart canvas") || document.querySelector("#chart-container canvas");
+            const zone = document.getElementById("tradingview_chart") || document.getElementById("chart-container");
+            if (!zone) throw new Error("Zone du graphique introuvable.");
 
-            if (!canvas) throw new Error("Canvas du graphique introuvable.");
+            const canvases = Array.from(zone.querySelectorAll("canvas"));
+            if (!canvases.length) throw new Error("Canvas du graphique introuvable.");
 
-            return canvas.toDataURL("image/png");
+            /*
+                lightweight-charts utilise souvent plusieurs canvas superposés.
+                Capturer seulement le premier canvas peut produire une image vide ou partielle.
+                On recompose donc tous les canvas visibles dans une seule image PNG.
+            */
+            const zoneRect = zone.getBoundingClientRect();
+            const largeur = Math.max(320, Math.round(zoneRect.width || zone.clientWidth || 800));
+            const hauteur = Math.max(320, Math.round(zoneRect.height || zone.clientHeight || 520));
+            const ratio = Math.max(1, window.devicePixelRatio || 1);
+
+            const sortie = document.createElement("canvas");
+            sortie.width = Math.round(largeur * ratio);
+            sortie.height = Math.round(hauteur * ratio);
+
+            const ctx = sortie.getContext("2d");
+            ctx.scale(ratio, ratio);
+            ctx.fillStyle = "#020617";
+            ctx.fillRect(0, 0, largeur, hauteur);
+
+            canvases.forEach(canvas => {
+                const rect = canvas.getBoundingClientRect();
+                const x = rect.left - zoneRect.left;
+                const y = rect.top - zoneRect.top;
+
+                if (rect.width > 0 && rect.height > 0) {
+                    ctx.drawImage(canvas, x, y, rect.width, rect.height);
+                }
+            });
+
+            return sortie.toDataURL("image/png");
         }
 
         async function obtenirImagePourAnalyse() {
