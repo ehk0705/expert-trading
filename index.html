@@ -10,6 +10,43 @@
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* Sécurité minimale si style.css ne définit pas ces blocs */
+        #chart-container {
+            flex: 1 1 auto;
+            width: 100%;
+            min-height: 520px;
+            background: #020617;
+            position: relative;
+            border-top: 1px solid #263244;
+            padding: 12px;
+        }
+
+        #tradingview_chart {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #020617;
+            border: 1px solid #263244;
+        }
+
+        .chart-message {
+            position: absolute;
+            left: 24px;
+            top: 24px;
+            z-index: 2;
+            color: #facc15;
+            background: rgba(2, 6, 23, 0.84);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            max-width: calc(100% - 48px);
+        }
+    </style>
 </head>
 
 <body>
@@ -113,7 +150,7 @@
     </div>
 
     <div id="chart-container">
-        <div id="chart-message" class="chart-message">Chargement du graphique TradingView...</div>
+        <div id="chart-message" class="chart-message">Chargement du graphique local...</div>
         <div id="tradingview_chart"></div>
     </div>
 
@@ -128,35 +165,29 @@
     </div>
 
     <script>
-        /*
-            ============================================================
-            CONFIGURATION API
-            ============================================================
-        */
         const API_BASE_URL = window.location.hostname.includes("github.io")
             ? "https://expert-trading.onrender.com"
             : "";
 
         const API_BASE_URL_SECOURS = "https://trading-g8ie.onrender.com";
 
-        let chart;
-        let mainSeries;
-        let socket;
+        let chart = null;
+        let mainSeries = null;
         let currentData = [];
         let dernierScreenshotBase64 = null;
-        let widgetTradingView = null;
+        let derniereSourceMarche = null;
 
         function getApiUrl(route) {
             return API_BASE_URL + route;
         }
 
         function getChartSize() {
-            const container = document.getElementById('chart-container');
+            const container = document.getElementById("tradingview_chart") || document.getElementById("chart-container");
             const rect = container.getBoundingClientRect();
 
             return {
                 width: Math.max(320, Math.floor(rect.width || window.innerWidth)),
-                height: Math.max(420, Math.floor(rect.height || (window.innerHeight - 60)))
+                height: Math.max(420, Math.floor(rect.height || (window.innerHeight - 80)))
             };
         }
 
@@ -180,36 +211,50 @@
         }
 
         function appliquerThemeGraphiqueTradingView() {
-            const container = document.getElementById("tradingview_chart");
-            if (container) {
-                container.style.background = "#020617";
-            }
+            if (!chart) return;
+
+            chart.applyOptions({
+                layout: {
+                    background: { type: "solid", color: "#020617" },
+                    textColor: "#d1d5db"
+                },
+                grid: {
+                    vertLines: { color: "#1f2937" },
+                    horzLines: { color: "#1f2937" }
+                },
+                rightPriceScale: {
+                    borderColor: "#334155"
+                },
+                timeScale: {
+                    borderColor: "#334155",
+                    timeVisible: true,
+                    secondsVisible: false
+                }
+            });
         }
 
         function init() {
-            creerWidgetTradingView();
+            if (typeof LightweightCharts === "undefined") {
+                afficherMessageGraphique("La bibliothèque lightweight-charts n'est pas chargée.", "erreur");
+                afficherStatus("Erreur : bibliothèque graphique absente.");
+                return;
+            }
+
+            creerGraphiqueLightweight();
             appliquerThemeGraphiqueTradingView();
-            afficherStatus("Graphique TradingView chargé ou en cours de chargement.");
+            actualiserGraphique();
         }
 
         function afficherStatus(message) {
             const status = document.getElementById("status");
-
-            if (status) {
-                status.textContent = message;
-            }
+            if (status) status.textContent = message;
         }
 
         function afficherResultat(data) {
             const zone = document.getElementById("resultat-analyse");
-
             if (!zone) return;
 
-            if (typeof data === "string") {
-                zone.textContent = data;
-            } else {
-                zone.textContent = JSON.stringify(data, null, 2);
-            }
+            zone.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
         }
 
         function togglePanel() {
@@ -228,17 +273,9 @@
         }
 
         function setBoutonsActifs(actif) {
-            const ids = [
-                "btn-capture",
-                "btn-vision"
-            ];
-
-            ids.forEach(id => {
+            ["btn-capture", "btn-vision"].forEach(id => {
                 const bouton = document.getElementById(id);
-
-                if (bouton) {
-                    bouton.disabled = !actif;
-                }
+                if (bouton) bouton.disabled = !actif;
             });
         }
 
@@ -246,7 +283,6 @@
             const texte = await response.text();
 
             let data;
-
             try {
                 data = JSON.parse(texte);
             } catch (erreur) {
@@ -268,7 +304,6 @@
 
             return data;
         }
-
 
         function nettoyerNomFichier(valeur) {
             return String(valeur || "non-defini")
@@ -297,6 +332,12 @@
                 nettoyerNomFichier(configuration.categorieAnalyseLibelle) + "-" +
                 genererTimestampFichier();
 
+            const imageCapture =
+                dernierScreenshotBase64 ||
+                configuration?.snapshot?.screenshotBase64 ||
+                configuration?.screenshot_base64 ||
+                null;
+
             return {
                 actif: configuration.actif || "NON_RENSEIGNE",
                 indicateur: configuration.indicateur || null,
@@ -304,7 +345,7 @@
                 actif_libelle: configuration.actif || null,
                 indicateur_libelle: configuration.indicateur || null,
                 intervalle_libelle: configuration.intervalle || null,
-                source_parametres: "widget_tradingview_tvjs",
+                source_parametres: "lightweight_charts_canvas",
                 lecture_directe_graphique: false,
                 type_bougie: configuration.style || null,
                 type_bougie_libelle: configuration.style || null,
@@ -313,21 +354,9 @@
                 categorie_analyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
                 categorieAnalyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
                 configuration_json: configuration,
-                screenshot_base64:
-                    dernierScreenshotBase64 ||
-                    configuration?.snapshot?.screenshotBase64 ||
-                    configuration?.screenshot_base64 ||
-                    null,
-                screenshotBase64:
-                    dernierScreenshotBase64 ||
-                    configuration?.snapshot?.screenshotBase64 ||
-                    configuration?.screenshot_base64 ||
-                    null,
-                image:
-                    dernierScreenshotBase64 ||
-                    configuration?.snapshot?.screenshotBase64 ||
-                    configuration?.screenshot_base64 ||
-                    null
+                screenshot_base64: imageCapture,
+                screenshotBase64: imageCapture,
+                image: imageCapture
             };
         }
 
@@ -384,20 +413,20 @@
         }
 
         function obtenirConfiguration() {
-            const cat = document.getElementById('categorie-analyse-btc');
+            const cat = document.getElementById("categorie-analyse-btc");
             const catText = cat.options[cat.selectedIndex].text;
 
-            const actif = document.getElementById('asset-selector').value;
-            const intervalle = document.getElementById('interval-selector').value;
-            const indicateur = document.getElementById('indicator-selector').value;
-            const style = document.getElementById('chart-type-selector').value;
+            const actif = document.getElementById("asset-selector").value;
+            const intervalle = document.getElementById("interval-selector").value;
+            const indicateur = document.getElementById("indicator-selector").value;
+            const style = document.getElementById("chart-type-selector").value;
 
             return {
                 nom: "Expert Trading Pro v2.0",
                 actif: actif,
                 intervalle: intervalle,
                 indicateur: indicateur,
-                categorieAnalyse: document.getElementById('categorie-analyse-btc').value,
+                categorieAnalyse: document.getElementById("categorie-analyse-btc").value,
                 categorieAnalyseLibelle: catText,
                 style: style,
                 graphique: {
@@ -405,17 +434,21 @@
                     intervalle: intervalle,
                     indicateur: indicateur,
                     style: style,
-                    source: "tradingview_widget_tvjs"
+                    source: "lightweight_charts_canvas"
                 },
                 marcheLocal: {
                     derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
-                    nombreBougies: currentData.length
+                    nombreBougies: currentData.length,
+                    source: derniereSourceMarche
                 },
                 tradingView: {
-                    widgetPresent: !!widgetTradingView,
-                    bibliotheque: "https://s3.tradingview.com/tv.js",
+                    widgetPresent: false,
+                    bibliotheque: "lightweight-charts",
                     theme: "dark",
-                    timezone: "America/Toronto"
+                    capturable: true
+                },
+                snapshot: {
+                    screenshotBase64: dernierScreenshotBase64 || null
                 },
                 dateConfiguration: new Date().toISOString()
             };
@@ -434,12 +467,26 @@
             return interval;
         }
 
+        function convertirIntervallePourOkx(intervalleTradingView) {
+            const interval = String(intervalleTradingView || "60");
+
+            if (interval === "1") return "1m";
+            if (interval === "5") return "5m";
+            if (interval === "15") return "15m";
+            if (interval === "30") return "30m";
+            if (interval === "60") return "1H";
+            if (interval === "240") return "4H";
+            if (interval === "D") return "1D";
+            if (interval === "W") return "1W";
+            if (interval === "M") return "1M";
+
+            return "1H";
+        }
+
         function obtenirSymboleBinanceDepuisActif(actif) {
             const brut = String(actif || "BINANCE:BTCUSDT").toUpperCase();
 
-            if (brut.includes("BINANCE:")) {
-                return brut.split(":")[1];
-            }
+            if (brut.includes("BINANCE:")) return brut.split(":")[1];
 
             if (brut.includes("BTC")) return "BTCUSDT";
             if (brut.includes("ETH")) return "ETHUSDT";
@@ -450,101 +497,256 @@
             return "BTCUSDT";
         }
 
-        function actifCompatibleBinance(actif) {
-            return String(actif || "").toUpperCase().startsWith("BINANCE:");
+        function obtenirSymboleOkxDepuisActif(actif) {
+            const brut = String(actif || "BINANCE:BTCUSDT").toUpperCase();
+
+            if (brut.includes("ETH")) return "ETH-USDT";
+            if (brut.includes("SOL")) return "SOL-USDT";
+            if (brut.includes("BNB")) return "BNB-USDT";
+            if (brut.includes("XRP")) return "XRP-USDT";
+            if (brut.includes("BTC")) return "BTC-USDT";
+
+            return "BTC-USDT";
         }
 
-        function obtenirStyleTradingView() {
-            const type = document.getElementById('chart-type-selector').value;
-
-            if (type === "bars") return "0";
-            if (type === "candles") return "1";
-            if (type === "line") return "3";
-            if (type === "area") return "3";
-
-            return "1";
+        function actifCompatibleCrypto(actif) {
+            const brut = String(actif || "").toUpperCase();
+            return (
+                brut.includes("BTC") ||
+                brut.includes("ETH") ||
+                brut.includes("SOL") ||
+                brut.includes("BNB") ||
+                brut.includes("XRP")
+            );
         }
 
-        function choisirEtudeTradingView() {
-            const indicateur = document.getElementById('indicator-selector').value;
-
-            if (indicateur === "RSI") return ["RSI@tv-basicstudies"];
-            if (indicateur === "MACD") return ["MACD@tv-basicstudies"];
-            if (indicateur === "EMA") return ["MASimple@tv-basicstudies"];
-            if (indicateur === "BOLLINGER") return ["BB@tv-basicstudies"];
-            if (indicateur === "VOLUME") return ["Volume@tv-basicstudies"];
-
-            return [];
-        }
-
-        function creerWidgetTradingView(tentative = 0) {
+        function creerGraphiqueLightweight() {
             const conteneur = document.getElementById("tradingview_chart");
             if (!conteneur) return;
 
-            afficherMessageGraphique("Chargement du graphique TradingView...", "attente");
-
-            if (typeof TradingView === "undefined" || !TradingView.widget) {
-                if (tentative < 20) {
-                    setTimeout(function () {
-                        creerWidgetTradingView(tentative + 1);
-                    }, 500);
-                } else {
-                    afficherMessageGraphique("Impossible de charger TradingView. Vérifier la connexion Internet ou le bloqueur de scripts.", "erreur");
-                    afficherStatus("Erreur : bibliothèque TradingView indisponible.");
-                }
-                return;
-            }
-
-            const symbole = document.getElementById('asset-selector').value || "BINANCE:BTCUSDT";
-            const intervalle = document.getElementById('interval-selector').value || "D";
-
             conteneur.innerHTML = "";
 
-            try {
-                widgetTradingView = new TradingView.widget({
-                    autosize: true,
-                    symbol: symbole,
-                    interval: intervalle,
-                    timezone: "America/Toronto",
-                    theme: "dark",
-                    style: obtenirStyleTradingView(),
-                    locale: "fr",
-                    toolbar_bg: "#0f172a",
-                    enable_publishing: false,
-                    allow_symbol_change: true,
-                    container_id: "tradingview_chart",
-                    hide_side_toolbar: false,
-                    details: true,
-                    hotlist: true,
-                    calendar: false,
-                    studies: choisirEtudeTradingView()
-                });
+            const size = getChartSize();
 
-                setTimeout(function () {
-                    afficherMessageGraphique("", "ok");
-                }, 2500);
+            chart = LightweightCharts.createChart(conteneur, {
+                width: size.width,
+                height: size.height,
+                layout: {
+                    background: { type: "solid", color: "#020617" },
+                    textColor: "#d1d5db"
+                },
+                grid: {
+                    vertLines: { color: "#1f2937" },
+                    horzLines: { color: "#1f2937" }
+                },
+                rightPriceScale: {
+                    borderColor: "#334155"
+                },
+                timeScale: {
+                    borderColor: "#334155",
+                    timeVisible: true,
+                    secondsVisible: false
+                }
+            });
 
-                afficherStatus("Graphique TradingView affiché : " + symbole + " / " + intervalle);
-            } catch (erreur) {
-                console.error("Erreur TradingView :", erreur);
-                afficherMessageGraphique("Erreur lors du chargement du graphique TradingView.", "erreur");
-                afficherStatus("Erreur TradingView : " + erreur.message);
-            }
-        }
-
-        function changerStyleGraphique() {
-            creerWidgetTradingView();
+            changerStyleGraphique(false);
             appliquerThemeGraphiqueTradingView();
         }
 
+        function changerStyleGraphique(rechargerDonnees = true) {
+            if (!chart) return;
+
+            const type = document.getElementById("chart-type-selector").value;
+
+            if (mainSeries) {
+                chart.removeSeries(mainSeries);
+                mainSeries = null;
+            }
+
+            const commonOptions = {
+                priceFormat: {
+                    type: "price",
+                    precision: 2,
+                    minMove: 0.01
+                }
+            };
+
+            if (type === "candles") {
+                mainSeries = chart.addCandlestickSeries({
+                    ...commonOptions,
+                    upColor: "#26a69a",
+                    downColor: "#ef5350",
+                    borderUpColor: "#26a69a",
+                    borderDownColor: "#ef5350",
+                    wickUpColor: "#26a69a",
+                    wickDownColor: "#ef5350"
+                });
+            } else if (type === "bars") {
+                mainSeries = chart.addBarSeries({
+                    ...commonOptions,
+                    upColor: "#26a69a",
+                    downColor: "#ef5350"
+                });
+            } else if (type === "line") {
+                mainSeries = chart.addLineSeries({
+                    ...commonOptions,
+                    color: "#38bdf8",
+                    lineWidth: 2
+                });
+            } else if (type === "area") {
+                mainSeries = chart.addAreaSeries({
+                    ...commonOptions,
+                    topColor: "rgba(56, 189, 248, 0.30)",
+                    bottomColor: "rgba(2, 6, 23, 0.05)",
+                    lineColor: "#38bdf8",
+                    lineWidth: 2
+                });
+            }
+
+            if (currentData.length > 0 && mainSeries) {
+                mainSeries.setData(currentData);
+                chart.timeScale().fitContent();
+            }
+
+            appliquerThemeGraphiqueTradingView();
+
+            if (rechargerDonnees) {
+                actualiserGraphique();
+            }
+        }
+
+        async function chargerDonneesBinance(actif, intervalle) {
+            const symbole = obtenirSymboleBinanceDepuisActif(actif);
+            const interval = convertirIntervallePourBinance(intervalle);
+
+            const response = await fetch(
+                "https://api.binance.com/api/v3/klines?symbol=" +
+                encodeURIComponent(symbole) +
+                "&interval=" +
+                encodeURIComponent(interval) +
+                "&limit=500"
+            );
+
+            const data = await response.json();
+
+            if (!response.ok || !Array.isArray(data)) {
+                throw new Error("Binance indisponible : " + JSON.stringify(data));
+            }
+
+            return {
+                source: "binance",
+                symbole: symbole,
+                data: data.map(d => ({
+                    time: Math.floor(Number(d[0]) / 1000),
+                    open: Number(d[1]),
+                    high: Number(d[2]),
+                    low: Number(d[3]),
+                    close: Number(d[4]),
+                    value: Number(d[4])
+                }))
+            };
+        }
+
+        async function chargerDonneesOkx(actif, intervalle) {
+            const symbole = obtenirSymboleOkxDepuisActif(actif);
+            const bar = convertirIntervallePourOkx(intervalle);
+
+            const response = await fetch(
+                "https://www.okx.com/api/v5/market/candles?instId=" +
+                encodeURIComponent(symbole) +
+                "&bar=" +
+                encodeURIComponent(bar) +
+                "&limit=300"
+            );
+
+            const json = await response.json();
+
+            if (!response.ok || json.code !== "0" || !Array.isArray(json.data)) {
+                throw new Error("OKX indisponible : " + JSON.stringify(json));
+            }
+
+            return {
+                source: "okx",
+                symbole: symbole,
+                data: json.data
+                    .slice()
+                    .reverse()
+                    .map(d => ({
+                        time: Math.floor(Number(d[0]) / 1000),
+                        open: Number(d[1]),
+                        high: Number(d[2]),
+                        low: Number(d[3]),
+                        close: Number(d[4]),
+                        value: Number(d[4])
+                    }))
+            };
+        }
+
         async function actualiserGraphique() {
-            creerWidgetTradingView();
-            afficherStatus("Graphique TradingView actualisé.");
+            const actif = document.getElementById("asset-selector").value;
+            const intervalle = document.getElementById("interval-selector").value;
+
+            if (!chart) creerGraphiqueLightweight();
+            if (!mainSeries) changerStyleGraphique(false);
+
+            if (!actifCompatibleCrypto(actif)) {
+                afficherMessageGraphique(
+                    "Cet affichage local ne récupère automatiquement que BTC, ETH, SOL, BNB et XRP. Pour les autres actifs, utiliser le bouton Ouvrir TV.",
+                    "erreur"
+                );
+                afficherStatus("Actif non compatible avec les données crypto locales.");
+                return;
+            }
+
+            afficherMessageGraphique("Chargement des données de marché...", "attente");
+            afficherStatus("Chargement du graphique...");
+
+            const erreurs = [];
+
+            try {
+                let resultat;
+
+                try {
+                    resultat = await chargerDonneesBinance(actif, intervalle);
+                } catch (erreurBinance) {
+                    erreurs.push(erreurBinance.message);
+                    resultat = await chargerDonneesOkx(actif, intervalle);
+                }
+
+                currentData = resultat.data;
+                derniereSourceMarche = {
+                    source: resultat.source,
+                    symbole: resultat.symbole
+                };
+
+                if (!currentData.length) {
+                    throw new Error("Aucune bougie reçue.");
+                }
+
+                if (mainSeries) mainSeries.setData(currentData);
+
+                chart.timeScale().fitContent();
+                appliquerThemeGraphiqueTradingView();
+
+                afficherMessageGraphique("", "ok");
+                afficherStatus(
+                    "Graphique chargé : " +
+                    resultat.symbole +
+                    " / source : " +
+                    resultat.source +
+                    (erreurs.length ? " / Binance indisponible, repli OKX." : "")
+                );
+
+            } catch (erreur) {
+                console.error("Erreur graphique :", erreur);
+                afficherMessageGraphique("Impossible de charger le graphique : " + erreur.message, "erreur");
+                afficherStatus("Erreur graphique : " + erreur.message);
+            }
         }
 
         function ouvrirTradingView() {
-            const symbole = document.getElementById('asset-selector').value || "BINANCE:BTCUSDT";
-            const intervalle = document.getElementById('interval-selector').value || "D";
+            const symbole = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const intervalle = document.getElementById("interval-selector").value || "D";
             const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(symbole) + "&interval=" + encodeURIComponent(intervalle);
             window.open(url, "_blank");
         }
@@ -561,17 +763,11 @@
         }
 
         function capturerCanvasEnBase64() {
-            const canvas = document.querySelector('#chart-container canvas');
+            const canvas = document.querySelector("#tradingview_chart canvas") || document.querySelector("#chart-container canvas");
 
-            if (!canvas) {
-                throw new Error(
-                    "Le widget TradingView public est chargé dans une iframe externe. " +
-                    "La capture automatique directe du graphique est bloquée par le navigateur. " +
-                    "Utiliser le champ fichier pour importer une capture PNG/JPG/WebP."
-                );
-            }
+            if (!canvas) throw new Error("Canvas du graphique introuvable.");
 
-            return canvas.toDataURL('image/png');
+            return canvas.toDataURL("image/png");
         }
 
         async function obtenirImagePourAnalyse() {
@@ -581,21 +777,21 @@
                 return await convertirFichierImageEnBase64(input.files[0]);
             }
 
-            if (dernierScreenshotBase64) {
-                return dernierScreenshotBase64;
-            }
+            if (dernierScreenshotBase64) return dernierScreenshotBase64;
 
             return capturerCanvasEnBase64();
         }
 
         async function takeScreenshot() {
             try {
-                afficherStatus("Capture de configuration en cours...");
+                afficherStatus("Capture du graphique en cours...");
 
                 const inputCapture = document.getElementById("screenshot-file");
 
                 if (inputCapture && inputCapture.files && inputCapture.files.length > 0) {
                     dernierScreenshotBase64 = await convertirFichierImageEnBase64(inputCapture.files[0]);
+                } else {
+                    dernierScreenshotBase64 = capturerCanvasEnBase64();
                 }
 
                 const configuration = obtenirConfiguration();
@@ -604,35 +800,13 @@
                 configuration.snapshot.screenshotBase64 = dernierScreenshotBase64 || null;
                 configuration.screenshot_base64 = dernierScreenshotBase64 || null;
 
-                try {
-                    const resultatSauvegarde = await enregistrerConfigurationSurServeur(configuration);
+                const resultatSauvegarde = await enregistrerConfigurationSurServeur(configuration);
 
-                    afficherResultat(resultatSauvegarde);
-                    afficherStatus(
-                        dernierScreenshotBase64
-                            ? "Configuration et image enregistrées dans la liste des captures."
-                            : "Configuration enregistrée sans image. Pour voir une image dans analyse.html, importer d'abord une capture PNG/JPG/WebP."
-                    );
+                afficherResultat(resultatSauvegarde);
+                afficherStatus("Configuration et image enregistrées dans la liste des captures.");
+                alert("✅ Configuration et image enregistrées dans la liste des captures.");
 
-                    alert(
-                        dernierScreenshotBase64
-                            ? "✅ Configuration et image enregistrées dans la liste des captures."
-                            : "✅ Configuration enregistrée sans image.\n\nPour voir l'image dans analyse.html, importer d'abord une capture PNG/JPG/WebP avec le champ fichier."
-                    );
-
-                } catch (erreurServeur) {
-                    afficherResultat({
-                        ok: false,
-                        message: "Configuration créée, mais sauvegarde serveur échouée.",
-                        details: erreurServeur.message,
-                        routesEssayees: obtenirUrlsSauvegardeCapture()
-                    });
-
-                    afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Configuration créée localement, mais sauvegarde serveur échouée.\n\nDétail : " + erreurServeur.message);
-                }
-
-                return null;
+                return dernierScreenshotBase64;
 
             } catch (err) {
                 console.error("Erreur capture :", err);
@@ -648,7 +822,7 @@
 
                 afficherStatus("Test technique serveur en cours...");
 
-                const response = await fetch(getApiUrl('/api/analyse-technique-pro'), {
+                const response = await fetch(getApiUrl("/api/analyse-technique-pro"), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -681,7 +855,7 @@
 
                 const imageBase64 = await obtenirImagePourAnalyse();
 
-                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                const response = await fetch(getApiUrl("/api/analyze-vision-pro"), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -764,7 +938,16 @@
         window.onload = init;
 
         window.onresize = () => {
-            appliquerThemeGraphiqueTradingView();
+            if (chart) {
+                const size = getChartSize();
+
+                chart.applyOptions({
+                    width: size.width,
+                    height: size.height
+                });
+
+                appliquerThemeGraphiqueTradingView();
+            }
         };
     </script>
 </body>
