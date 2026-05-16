@@ -729,12 +729,53 @@
         }
 
         function clearSelection() {
+            /*
+                Correction :
+                Le bouton "Vider la sélection" doit vider les cases cochées,
+                retirer les styles visuels, et remettre l'état courant à zéro.
+            */
             selectedFiles.clear();
 
             document.querySelectorAll(".thumb-selector").forEach(input => {
                 input.checked = false;
             });
 
+            document.querySelectorAll(".thumb-container").forEach(container => {
+                container.classList.remove("selected");
+                container.classList.remove("active");
+            });
+
+            currentFileName = "";
+            currentCapture = null;
+
+            if (viewer) {
+                viewer.removeAttribute("src");
+                viewer.style.display = "none";
+            }
+
+            if (notesSection) {
+                notesSection.style.display = "none";
+            }
+
+            const aiPanel = document.getElementById("ai-panel");
+            if (aiPanel) {
+                aiPanel.style.display = "none";
+            }
+
+            if (metaContent) {
+                metaContent.innerHTML = '<p id="placeholder-text" style="color: #787b86;">En attente de sélection...</p>';
+            }
+
+            if (userNotes) {
+                userNotes.value = "";
+            }
+
+            const dynamicAdvice = document.getElementById("dynamic-advice");
+            if (dynamicAdvice) {
+                dynamicAdvice.innerText = "Sélectionnez une capture pour générer les conseils d'ingénierie.";
+            }
+
+            resetAIResults();
             updateSelectionCount();
         }
 
