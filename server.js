@@ -5,6 +5,7 @@
     - /api/analyze-vision-pro accepte fileName
     - sources marché : Binance -> OKX -> CoinGecko
     - OpenAI compatible : responses.create ou chat.completions.create
+    - gestion claire des erreurs 429 / quota OpenAI API insuffisant
 */
 
 const express = require("express");
@@ -265,6 +266,60 @@ function normaliserDecision(j, t) {
     };
 }
 
+function estErreurQuotaOpenAI(error) {
+    const message = String(error?.message || error?.error?.message || "").toLowerCase();
+    const code = String(error?.code || error?.error?.code || "").toLowerCase();
+    const type = String(error?.type || error?.error?.type || "").toLowerCase();
+    const status = Number(error?.status || error?.httpStatus || error?.response?.status || 0);
+
+    return (
+        status === 429 ||
+        code.includes("insufficient_quota") ||
+        type.includes("insufficient_quota") ||
+        message.includes("exceeded your current quota") ||
+        message.includes("insufficient quota") ||
+        message.includes("billing") ||
+        message.includes("quota")
+    );
+}
+
+function reponseErreurQuotaOpenAI(res, error) {
+    return res.status(429).json({
+        ok: false,
+        statut: "quota_openai_insuffisant",
+        message: "Quota OpenAI API insuffisant.",
+        details:
+            "Le compte OpenAI API utilisé par le serveur n'a plus de crédit disponible, " +
+            "ou la clé API est liée à un projet sans quota actif.",
+        erreur_openai: String(error?.message || error?.error?.message || error || "Erreur OpenAI inconnue."),
+        solution:
+            "Ajouter du crédit sur platform.openai.com, vérifier que la clé OPENAI_API_KEY de Render " +
+            "appartient au bon projet OpenAI, puis redéployer le service Render.",
+        verification: {
+            billing: "https://platform.openai.com/settings/billing/overview",
+            cle_render: "Render > Environment > OPENAI_API_KEY",
+            modele: OPENAI_MODEL
+        },
+        model: OPENAI_MODEL,
+        date: maintenantIso()
+    });
+}
+
+function reponseErreurOpenAI(res, error, messageDefaut) {
+    if (estErreurQuotaOpenAI(error)) {
+        return reponseErreurQuotaOpenAI(res, error);
+    }
+
+    return res.status(error?.httpStatus || error?.status || 500).json({
+        ok: false,
+        statut: "erreur",
+        message: messageDefaut,
+        details: error?.message || String(error),
+        model: OPENAI_MODEL,
+        date: maintenantIso()
+    });
+}
+
 app.get("/", (req,res)=>{
     const p=path.join(__dirname,"index.html");
     if(fs.existsSync(p)) return res.sendFile(p);
@@ -349,7 +404,7 @@ app.post("/api/analyze-vision-pro", async (req,res)=>{
         res.json({ok:true,statut:"ok",analysis:final,analyse:final});
     }catch(e){
         console.error("Erreur /api/analyze-vision-pro:", e);
-        res.status(e.httpStatus||500).json({ok:false,statut:"erreur",message:"Échec de l'analyse Vision + Marché multi-sources.",details:e.message,model:OPENAI_MODEL,date:maintenantIso()});
+        return reponseErreurOpenAI(res, e, "Échec de l'analyse Vision + Marché multi-sources.");
     }
 });
 
@@ -366,7 +421,10 @@ app.post("/api/analyze-vision", async (req,res)=>{
         const ia=await openaiVision({imageBase64, analyseTechnique:tech, configuration:{fileName:safe}});
         const final=normaliserDecision(ia, tech);
         res.json({ok:true,analysis:{decision:final.decision,confidence:final.confiance,reasoning:final.resume||final.raisons.join("\n"),details:final},analyse:final});
-    }catch(e){res.status(500).json({ok:false,message:"Erreur analyse IA simple.",details:e.message});}
+    }catch(e){
+        console.error("Erreur /api/analyze-vision:", e);
+        return reponseErreurOpenAI(res, e, "Erreur analyse IA simple.");
+    }
 });
 
 app.use((req,res)=>res.status(404).json({ok:false,message:"Route introuvable",methode:req.method,routeDemandee:req.originalUrl,date:maintenantIso()}));
