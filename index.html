@@ -406,30 +406,25 @@
         function appliquerThemeGraphiqueTradingView() {
             if (!chart) return;
 
-            chart.applyOptions({
-                layout: {
-                    background: {
-                        type: 'solid',
-                        color: '#131722'
-                    },
-                    textColor: '#d1d4dc'
-                },
-                grid: {
-                    vertLines: { color: '#2a2e39' },
-                    horzLines: { color: '#2a2e39' }
-                },
-                rightPriceScale: {
-                    borderColor: '#363a45',
-                    textColor: '#d1d4dc'
-                },
-                timeScale: {
-                    borderColor: '#363a45',
-                    timeVisible: true
-                },
-                crosshair: {
-                    mode: 0
-                }
-            });
+chart.applyOptions({
+    layout: {
+        background: {
+            type: 'solid',
+            color: '#131722'
+        },
+        textColor: '#d1d4dc'
+    },
+    grid: {
+        vertLines: { color: '#2a2e39' },
+        horzLines: { color: '#2a2e39' }
+    },
+    rightPriceScale: {
+        borderColor: '#363a45'
+    },
+    timeScale: {
+        borderColor: '#363a45'
+    }
+});
         }
 
         function init() {
