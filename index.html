@@ -272,7 +272,7 @@
         function nettoyerNomFichier(valeur) {
             return String(valeur || "non-defini")
                 .normalize("NFD")
-                .replace(/[̀-ͯ]/g, "")
+                .replace(/[\u0300-\u036f]/g, "")
                 .replace(/[^a-zA-Z0-9-_]/g, "-")
                 .replace(/-+/g, "-")
                 .replace(/^-|-$/g, "");
@@ -595,9 +595,7 @@
                     });
 
                     afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Configuration créée localement, mais sauvegarde serveur échouée.
-
-Détail : " + erreurServeur.message);
+                    alert("Configuration créée localement, mais sauvegarde serveur échouée.\n\nDétail : " + erreurServeur.message);
                 }
 
                 return null;
@@ -605,9 +603,7 @@ Détail : " + erreurServeur.message);
             } catch (err) {
                 console.error("Erreur capture :", err);
                 afficherStatus("Erreur capture : " + err.message);
-                alert("Erreur capture.
-
-" + err.message);
+                alert("Erreur capture.\n\n" + err.message);
                 return null;
             }
         }
