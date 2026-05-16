@@ -834,29 +834,28 @@
                 };
 
                 try {
-                    const response = await fetch(getApiUrl('/api/save'), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
+                    /*
+                        Ancienne route conservée ci-dessous pour mémoire : /api/save.
+                        Elle provoquait l'erreur de sauvegarde.
+                        La sauvegarde réelle doit passer par /api/captures,
+                        comme dans le fichier index-a.html.
+                    */
+                    const data = await enregistrerConfigurationSurServeur(configuration);
 
-                    const data = await lireReponseJson(response);
                     afficherResultat(data);
                     afficherStatus("Configuration TradingView enregistrée sur le serveur.");
-                    alert("✅ Configuration enregistrée.\n\nNote : la capture image directe du widget TradingView public n'est pas possible depuis une iframe externe.");
+                    alert("✅ Configuration enregistrée sur le serveur.\n\nRoute utilisée : " + data.routeUtilisee);
 
                 } catch (erreurServeur) {
                     afficherResultat({
                         ok: false,
                         message: "Configuration créée, mais sauvegarde serveur échouée.",
                         details: erreurServeur.message,
-                        route: getApiUrl('/api/save')
+                        routesEssayees: obtenirUrlsSauvegardeCapture()
                     });
 
                     afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Configuration créée localement, mais sauvegarde serveur échouée.");
+                    alert("Configuration créée localement, mais sauvegarde serveur échouée.\n\nDétail : " + erreurServeur.message);
                 }
 
                 return null;
