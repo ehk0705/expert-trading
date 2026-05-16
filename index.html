@@ -158,6 +158,27 @@
             background: var(--chart-bg) !important;
         }
 
+
+        .chart-message {
+            position: absolute;
+            left: 14px;
+            top: 14px;
+            z-index: 5;
+            max-width: min(520px, calc(100vw - 28px));
+            padding: 10px 12px;
+            border: 1px solid #363a45;
+            border-radius: 8px;
+            background: rgba(19, 23, 34, 0.92);
+            color: #d1d4dc;
+            font-size: 12px;
+            line-height: 1.45;
+            pointer-events: none;
+        }
+
+        .chart-message.hidden {
+            display: none;
+        }
+
         a {
             text-decoration: none;
         }
@@ -361,7 +382,9 @@
         </div>
     </div>
 
-    <div id="chart-container"></div>
+    <div id="chart-container">
+        <div id="chart-message" class="chart-message hidden"></div>
+    </div>
 
     <div class="result-panel" id="result-panel">
         <div class="result-header">
@@ -406,25 +429,30 @@
         function appliquerThemeGraphiqueTradingView() {
             if (!chart) return;
 
-chart.applyOptions({
-    layout: {
-        background: {
-            type: 'solid',
-            color: '#131722'
-        },
-        textColor: '#d1d4dc'
-    },
-    grid: {
-        vertLines: { color: '#2a2e39' },
-        horzLines: { color: '#2a2e39' }
-    },
-    rightPriceScale: {
-        borderColor: '#363a45'
-    },
-    timeScale: {
-        borderColor: '#363a45'
-    }
-});
+            chart.applyOptions({
+                layout: {
+                    background: {
+                        type: 'solid',
+                        color: '#131722'
+                    },
+                    textColor: '#d1d4dc'
+                },
+                grid: {
+                    vertLines: { color: '#2a2e39' },
+                    horzLines: { color: '#2a2e39' }
+                },
+                rightPriceScale: {
+                    borderColor: '#363a45',
+                    textColor: '#d1d4dc'
+                },
+                timeScale: {
+                    borderColor: '#363a45',
+                    timeVisible: true
+                },
+                crosshair: {
+                    mode: 0
+                }
+            });
         }
 
         function init() {
@@ -563,7 +591,7 @@ chart.applyOptions({
                     intervalle: intervalle,
                     indicateur: indicateur,
                     style: style,
-                    source: "lightweight_charts_binance"
+                    source: "lightweight_charts_binance_okx_fallback"
                 },
                 marcheLocal: {
                     derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
@@ -604,6 +632,152 @@ chart.applyOptions({
 
         function actifCompatibleBinance(actif) {
             return String(actif || "").toUpperCase().startsWith("BINANCE:");
+        }
+
+        function afficherMessageGraphique(message) {
+            const zone = document.getElementById("chart-message");
+
+            if (!zone) return;
+
+            if (!message) {
+                zone.textContent = "";
+                zone.classList.add("hidden");
+                return;
+            }
+
+            zone.textContent = message;
+            zone.classList.remove("hidden");
+        }
+
+        function convertirIntervallePourOKX(intervalleTradingView) {
+            const interval = String(intervalleTradingView || "60");
+
+            if (interval === "1") return "1m";
+            if (interval === "5") return "5m";
+            if (interval === "15") return "15m";
+            if (interval === "30") return "30m";
+            if (interval === "60") return "1H";
+            if (interval === "240") return "4H";
+            if (interval === "D") return "1D";
+            if (interval === "W") return "1W";
+            if (interval === "M") return "1M";
+
+            return "1H";
+        }
+
+        function obtenirSymboleOKXDepuisActif(actif) {
+            const brut = String(actif || "BINANCE:BTCUSDT").toUpperCase();
+
+            if (brut.includes("BTC")) return "BTC-USDT";
+            if (brut.includes("ETH")) return "ETH-USDT";
+            if (brut.includes("SOL")) return "SOL-USDT";
+            if (brut.includes("BNB")) return "BNB-USDT";
+            if (brut.includes("XRP")) return "XRP-USDT";
+
+            return "BTC-USDT";
+        }
+
+        async function recupererBougiesBinance(symbol, interval) {
+            const res = await fetch(
+                `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`
+            );
+
+            const texte = await res.text();
+
+            if (!res.ok) {
+                throw new Error("Binance HTTP " + res.status + " : " + texte);
+            }
+
+            let history;
+
+            try {
+                history = JSON.parse(texte);
+            } catch (erreur) {
+                throw new Error("Réponse Binance non JSON : " + texte);
+            }
+
+            if (!Array.isArray(history)) {
+                throw new Error("Réponse Binance inattendue : " + JSON.stringify(history));
+            }
+
+            return history.map(d => ({
+                time: d[0] / 1000,
+                open: parseFloat(d[1]),
+                high: parseFloat(d[2]),
+                low: parseFloat(d[3]),
+                close: parseFloat(d[4]),
+                value: parseFloat(d[4])
+            }));
+        }
+
+        async function recupererBougiesOKX(symbol, interval) {
+            const res = await fetch(
+                `https://www.okx.com/api/v5/market/candles?instId=${symbol}&bar=${interval}&limit=500`
+            );
+
+            const texte = await res.text();
+
+            if (!res.ok) {
+                throw new Error("OKX HTTP " + res.status + " : " + texte);
+            }
+
+            let json;
+
+            try {
+                json = JSON.parse(texte);
+            } catch (erreur) {
+                throw new Error("Réponse OKX non JSON : " + texte);
+            }
+
+            if (!json || json.code !== "0" || !Array.isArray(json.data)) {
+                throw new Error("Réponse OKX inattendue : " + JSON.stringify(json));
+            }
+
+            return json.data
+                .map(d => ({
+                    time: Number(d[0]) / 1000,
+                    open: parseFloat(d[1]),
+                    high: parseFloat(d[2]),
+                    low: parseFloat(d[3]),
+                    close: parseFloat(d[4]),
+                    value: parseFloat(d[4])
+                }))
+                .reverse();
+        }
+
+        function demarrerWebSocketBinance(symbol, interval) {
+            socket = new WebSocket(
+                `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
+            );
+
+            socket.onmessage = (e) => {
+                const k = JSON.parse(e.data).k;
+
+                const update = {
+                    time: k.t / 1000,
+                    open: parseFloat(k.o),
+                    high: parseFloat(k.h),
+                    low: parseFloat(k.l),
+                    close: parseFloat(k.c),
+                    value: parseFloat(k.c)
+                };
+
+                if (mainSeries) {
+                    mainSeries.update(update);
+                }
+
+                const lastIdx = currentData.length - 1;
+
+                if (currentData[lastIdx] && currentData[lastIdx].time === update.time) {
+                    currentData[lastIdx] = update;
+                } else {
+                    currentData.push(update);
+                }
+            };
+
+            socket.onerror = () => {
+                afficherStatus("WebSocket Binance indisponible. Les bougies historiques restent visibles.");
+            };
         }
 
         function changerStyleGraphique() {
@@ -664,43 +838,28 @@ chart.applyOptions({
         async function actualiserGraphique() {
             const rawAsset = document.getElementById('asset-selector').value;
 
-            if (!actifCompatibleBinance(rawAsset)) {
-                afficherStatus(
-                    "Actif non compatible avec Binance dans cette version.\n" +
-                    "Choisir un actif BINANCE pour les données directes et l'analyse serveur."
-                );
-                return;
-            }
+            const symbolBinance = obtenirSymboleBinanceDepuisActif(rawAsset);
+            const intervalBinance = convertirIntervallePourBinance(document.getElementById('interval-selector').value);
 
-            const symbol = obtenirSymboleBinanceDepuisActif(rawAsset);
-            const interval = convertirIntervallePourBinance(document.getElementById('interval-selector').value);
+            const symbolOKX = obtenirSymboleOKXDepuisActif(rawAsset);
+            const intervalOKX = convertirIntervallePourOKX(document.getElementById('interval-selector').value);
+
+            let sourceUtilisee = "Binance";
+            let erreurBinance = null;
 
             if (socket) {
                 socket.close();
                 socket = null;
             }
 
+            afficherMessageGraphique("Chargement du graphique...");
+
             try {
-                afficherStatus("Chargement Binance : " + symbol + " / " + interval);
+                afficherStatus("Chargement Binance : " + symbolBinance + " / " + intervalBinance);
 
-                const res = await fetch(
-                    `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`
-                );
+                currentData = await recupererBougiesBinance(symbolBinance, intervalBinance);
 
-                const history = await res.json();
-
-                if (!Array.isArray(history)) {
-                    throw new Error("Réponse Binance inattendue : " + JSON.stringify(history));
-                }
-
-                currentData = history.map(d => ({
-                    time: d[0] / 1000,
-                    open: parseFloat(d[1]),
-                    high: parseFloat(d[2]),
-                    low: parseFloat(d[3]),
-                    close: parseFloat(d[4]),
-                    value: parseFloat(d[4])
-                }));
+                sourceUtilisee = "Binance";
 
                 if (mainSeries) {
                     mainSeries.setData(currentData);
@@ -708,46 +867,66 @@ chart.applyOptions({
 
                 chart.timeScale().fitContent();
                 appliquerThemeGraphiqueTradingView();
+                demarrerWebSocketBinance(symbolBinance, intervalBinance);
 
-                socket = new WebSocket(
-                    `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${interval}`
-                );
+                afficherMessageGraphique("");
+                afficherStatus("Graphique chargé : " + symbolBinance + " / " + intervalBinance + " / source Binance");
 
-                socket.onmessage = (e) => {
-                    const k = JSON.parse(e.data).k;
+            } catch (errBinance) {
+                erreurBinance = errBinance;
+                console.warn("Binance indisponible, bascule vers OKX :", errBinance);
 
-                    const update = {
-                        time: k.t / 1000,
-                        open: parseFloat(k.o),
-                        high: parseFloat(k.h),
-                        low: parseFloat(k.l),
-                        close: parseFloat(k.c),
-                        value: parseFloat(k.c)
-                    };
+                try {
+                    afficherStatus(
+                        "Binance indisponible. Bascule vers OKX : " +
+                        symbolOKX + " / " + intervalOKX
+                    );
+
+                    currentData = await recupererBougiesOKX(symbolOKX, intervalOKX);
+
+                    sourceUtilisee = "OKX";
 
                     if (mainSeries) {
-                        mainSeries.update(update);
+                        mainSeries.setData(currentData);
                     }
 
-                    const lastIdx = currentData.length - 1;
+                    chart.timeScale().fitContent();
+                    appliquerThemeGraphiqueTradingView();
 
-                    if (currentData[lastIdx] && currentData[lastIdx].time === update.time) {
-                        currentData[lastIdx] = update;
-                    } else {
-                        currentData.push(update);
+                    afficherMessageGraphique("");
+                    afficherStatus(
+                        "Graphique chargé avec OKX : " +
+                        symbolOKX + " / " + intervalOKX +
+                        "\nBinance ignoré : " + erreurBinance.message
+                    );
+
+                } catch (errOKX) {
+                    console.error("Erreur Binance :", erreurBinance);
+                    console.error("Erreur OKX :", errOKX);
+
+                    currentData = [];
+
+                    if (mainSeries) {
+                        mainSeries.setData([]);
                     }
-                };
 
-                socket.onerror = () => {
-                    afficherStatus("WebSocket Binance indisponible. Les bougies historiques restent visibles.");
-                };
+                    appliquerThemeGraphiqueTradingView();
 
-                afficherStatus("Graphique chargé : " + symbol + " / " + interval);
+                    afficherMessageGraphique(
+                        "Aucune bougie chargée.\n" +
+                        "Binance est indisponible et OKX n'a pas répondu.\n" +
+                        "Erreur OKX : " + errOKX.message
+                    );
 
-            } catch (err) {
-                console.error("Erreur API/Socket :", err);
-                afficherStatus("Erreur API Binance : " + err.message);
+                    afficherStatus(
+                        "Erreur graphique.\n" +
+                        "Binance : " + erreurBinance.message + "\n" +
+                        "OKX : " + errOKX.message
+                    );
+                }
             }
+
+            return sourceUtilisee;
         }
 
         async function convertirFichierImageEnBase64(fichier) {
