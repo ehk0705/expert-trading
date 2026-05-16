@@ -579,44 +579,25 @@
 
                 const configuration = obtenirConfiguration();
 
-                const payload = {
-                    image: null,
-                    screenshot_base64: null,
-                    metadata: {
-                        asset: configuration.actif,
-                        interval: configuration.intervalle,
-                        category: configuration.categorieAnalyseLibelle,
-                        style: configuration.style,
-                        indicator: configuration.indicateur,
-                        date: new Date().toLocaleString()
-                    },
-                    configuration: configuration
-                };
-
                 try {
-                    const response = await fetch(getApiUrl('/api/save'), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
+                    const resultatSauvegarde = await enregistrerConfigurationSurServeur(configuration);
 
-                    const data = await lireReponseJson(response);
-                    afficherResultat(data);
-                    afficherStatus("Configuration TradingView enregistrée sur le serveur.");
-                    alert("✅ Configuration enregistrée.\n\nNote : la capture image directe du widget TradingView public n'est pas possible depuis une iframe externe.");
+                    afficherResultat(resultatSauvegarde);
+                    afficherStatus("Configuration TradingView enregistrée dans la liste des captures.");
+                    alert("✅ Configuration enregistrée dans la liste des captures.");
 
                 } catch (erreurServeur) {
                     afficherResultat({
                         ok: false,
                         message: "Configuration créée, mais sauvegarde serveur échouée.",
                         details: erreurServeur.message,
-                        route: getApiUrl('/api/save')
+                        routesEssayees: obtenirUrlsSauvegardeCapture()
                     });
 
                     afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Configuration créée localement, mais sauvegarde serveur échouée.");
+                    alert("Configuration créée localement, mais sauvegarde serveur échouée.
+
+Détail : " + erreurServeur.message);
                 }
 
                 return null;
@@ -624,7 +605,9 @@
             } catch (err) {
                 console.error("Erreur capture :", err);
                 afficherStatus("Erreur capture : " + err.message);
-                alert("Erreur capture.\n\n" + err.message);
+                alert("Erreur capture.
+
+" + err.message);
                 return null;
             }
         }
