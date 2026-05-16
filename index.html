@@ -490,21 +490,18 @@
                 data = JSON.parse(texte);
             } catch (erreur) {
                 throw new Error(
-                    "Le serveur n'a pas retourné du JSON valide.
-
-" +
-                    "Statut HTTP : " + response.status + "
-
-" +
+                    "Le serveur n'a pas retourné du JSON valide.\n\n" +
+                    "Statut HTTP : " + response.status + "\n\n" +
                     texte
                 );
             }
 
             if (!response.ok || data.ok === false) {
                 throw new Error(
-                    "Statut HTTP : " + response.status + "
-" +
-                    "Réponse serveur : " + JSON.stringify(data, null, 2)
+                    data.details ||
+                    data.message ||
+                    data.error ||
+                    ("Erreur HTTP " + response.status)
                 );
             }
 
@@ -534,58 +531,28 @@
 
         function creerPayloadCapturePostgres(configuration) {
             const nomCapture =
-                nettoyerNomFichier(configuration.actif || "BINANCE:BTCUSDT") + "-" +
-                nettoyerNomFichier(configuration.indicateur || "EMA") + "-" +
-                nettoyerNomFichier(configuration.intervalle || "D") + "-" +
+                nettoyerNomFichier(configuration.actif) + "-" +
+                nettoyerNomFichier(configuration.indicateur) + "-" +
+                nettoyerNomFichier(configuration.categorieAnalyseLibelle) + "-" +
                 genererTimestampFichier();
 
-            const categorieAnalyse =
-                configuration.categorieAnalyseLibelle ||
-                configuration.categorieAnalyse ||
-                "Analyse technique";
-
-            /*
-                Format volontairement compatible avec server.js :
-                - champs principaux à plat ;
-                - configuration complète dans configuration_json ;
-                - aliases conservés pour compatibilité.
-            */
             return {
-                actif: configuration.actif || "BINANCE:BTCUSDT",
-                indicateur: configuration.indicateur || "EMA",
-                intervalle: configuration.intervalle || "D",
-
-                actif_libelle: configuration.actif || "BINANCE:BTCUSDT",
-                indicateur_libelle: configuration.indicateur || "EMA",
-                intervalle_libelle: configuration.intervalle || "D",
-
+                actif: configuration.actif || "NON_RENSEIGNE",
+                indicateur: configuration.indicateur || null,
+                intervalle: configuration.intervalle || null,
+                actif_libelle: configuration.actif || null,
+                indicateur_libelle: configuration.indicateur || null,
+                intervalle_libelle: configuration.intervalle || null,
                 source_parametres: "widget_tradingview_tvjs",
                 lecture_directe_graphique: false,
-
-                type_bougie: configuration.style || "candles",
-                type_bougie_libelle: configuration.style || "candles",
-
+                type_bougie: configuration.style || null,
+                type_bougie_libelle: configuration.style || null,
                 nom_fichier: nomCapture,
                 nom_capture: nomCapture,
-
-                categorie_analyse: categorieAnalyse,
-                categorieAnalyse: categorieAnalyse,
-
+                categorie_analyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
+                categorieAnalyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
                 configuration_json: configuration,
-                configuration: configuration,
-
-                image: null,
-                screenshot_base64: null,
-                screenshotBase64: null,
-
-                metadata: {
-                    asset: configuration.actif || "BINANCE:BTCUSDT",
-                    interval: configuration.intervalle || "D",
-                    category: categorieAnalyse,
-                    style: configuration.style || "candles",
-                    indicator: configuration.indicateur || "EMA",
-                    date: new Date().toLocaleString()
-                }
+                screenshot_base64: null
             };
         }
 
@@ -605,14 +572,10 @@
         async function enregistrerConfigurationSurServeur(configuration) {
             const payloadCapture = creerPayloadCapturePostgres(configuration);
             const urls = obtenirUrlsSauvegardeCapture();
-            const erreurs = [];
-
-            console.log("Payload envoyé à /api/captures :", payloadCapture);
+            let derniereErreur = null;
 
             for (const url of urls) {
                 try {
-                    console.log("Tentative de sauvegarde :", url);
-
                     const response = await fetch(url, {
                         method: "POST",
                         mode: "cors",
@@ -634,19 +597,14 @@
                         reponseServeur: data
                     };
                 } catch (erreur) {
-                    erreurs.push({
-                        route: url,
-                        message: erreur.message
-                    });
+                    derniereErreur = erreur;
                     console.warn("Sauvegarde échouée sur", url, erreur);
                 }
             }
 
             throw new Error(
-                "Aucune route de sauvegarde n'a accepté la configuration.
-
-" +
-                JSON.stringify(erreurs, null, 2)
+                "Aucune route de sauvegarde n'a accepté la configuration. Dernière erreur : " +
+                (derniereErreur ? derniereErreur.message : "inconnue")
             );
         }
 
@@ -861,33 +819,44 @@
 
                 const configuration = obtenirConfiguration();
 
-                try {
-                    /*
-                        Sauvegarde correcte :
-                        on envoie un objet compatible avec la route /api/captures.
-                        L'ancienne route /api/save n'est plus utilisée.
-                    */
-                    const data = await enregistrerConfigurationSurServeur(configuration);
+                const payload = {
+                    image: null,
+                    screenshot_base64: null,
+                    metadata: {
+                        asset: configuration.actif,
+                        interval: configuration.intervalle,
+                        category: configuration.categorieAnalyseLibelle,
+                        style: configuration.style,
+                        indicator: configuration.indicateur,
+                        date: new Date().toLocaleString()
+                    },
+                    configuration: configuration
+                };
 
+                try {
+                    const response = await fetch(getApiUrl('/api/save'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await lireReponseJson(response);
                     afficherResultat(data);
                     afficherStatus("Configuration TradingView enregistrée sur le serveur.");
-                    alert("✅ Configuration enregistrée sur le serveur.
-
-Route utilisée : " + data.routeUtilisee);
+                    alert("✅ Configuration enregistrée.\n\nNote : la capture image directe du widget TradingView public n'est pas possible depuis une iframe externe.");
 
                 } catch (erreurServeur) {
                     afficherResultat({
                         ok: false,
-                        message: "Configuration créée localement, mais sauvegarde serveur échouée.",
+                        message: "Configuration créée, mais sauvegarde serveur échouée.",
                         details: erreurServeur.message,
-                        routesEssayees: obtenirUrlsSauvegardeCapture(),
-                        configurationLocale: configuration
+                        route: getApiUrl('/api/save')
                     });
 
                     afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Configuration créée localement, mais sauvegarde serveur échouée.
-
-Détail : " + erreurServeur.message);
+                    alert("Configuration créée localement, mais sauvegarde serveur échouée.");
                 }
 
                 return null;
@@ -895,9 +864,7 @@ Détail : " + erreurServeur.message);
             } catch (err) {
                 console.error("Erreur capture :", err);
                 afficherStatus("Erreur capture : " + err.message);
-                alert("Erreur capture.
-
-" + err.message);
+                alert("Erreur capture.\n\n" + err.message);
                 return null;
             }
         }
