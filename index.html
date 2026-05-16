@@ -2,997 +2,2323 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <title>Trading Station IA - Advanced</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading Pro v2.0 - Full Interface</title>
-
-    <!-- Bibliothèque TradingView utilisée pour afficher le vrai graphique TV -->
+    <!--
+        Version avancée :
+        - Si la Charting Library / Advanced Charts de TradingView est disponible,
+          le script lit directement le symbole et l'intervalle du graphique.
+        - Avec le simple widget public tv.js, TradingView ne donne pas un accès fiable
+          aux valeurs internes choisies dans le graphique. Dans ce cas, le code garde
+          un repli vers les champs HTML masqués afin de ne pas casser l'enregistrement.
+    -->
     <script src="https://s3.tradingview.com/tv.js"></script>
-    <!--<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>-->
 
     <style>
-        :root {
-            --bg-color: #ffffff;
-            --header-bg: #0f172a;
-            --chart-bg: #020617;
-            --chart-grid: #263244;
-            --chart-text: #d1d5db;
-            --text-main: #111827;
-            --text-muted: #9ca3af;
-            --accent: #2962ff;
-            --border: #263244;
-            --yellow-pro: #facc15;
-            --buy-green: #22c55e;
-            --sell-red: #ef4444;
-            --purple-pro: #8b5cf6;
-            --cyan-pro: #00d9ff;
-            --panel-bg: #111827;
-        }
-
         * { box-sizing: border-box; }
 
-        html,
-        body {
-            width: 100%;
-            height: 100%;
+		body {
+			margin: 0;
+			font-family: Arial, sans-serif;
+			background: #ffffff;
+			color: #111827;
+		}
+
+        header {
+            background: #0f172a;
+            border-bottom: 2px solid #00d9ff;
+            padding: 14px 20px;
         }
 
-        body {
-            font-family: Arial, sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
+        .top-bar {
             display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .header-pro {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--header-bg);
-            padding: 8px 12px;
-            border-bottom: 2px solid var(--cyan-pro);
-            gap: 8px;
             flex-wrap: wrap;
-            z-index: 10;
-            flex-shrink: 0;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: bold;
+            color: #00d9ff;
+            margin-right: 18px;
+            line-height: 1.1;
+        }
+
+        .logo span { color: #facc15; }
+
+        .auteur-logo {
+            display: block;
+            font-size: 12px;
+            font-weight: normal;
+            color: #cbd5e1;
+            margin-top: 3px;
         }
 
         .control-group {
             display: flex;
             align-items: center;
             gap: 6px;
-            border-right: 1px solid #334155;
-            padding-right: 8px;
         }
 
-        .control-group:last-child { border-right: none; }
+        .parametres-graphiques-caches {
+            display: none !important;
+        }
 
-        label {
-            font-size: 11px;
+        .source-parametres-graphique {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 6px 9px;
+            border-radius: 7px;
+            background: #713f12;
+            color: #fde68a;
+            font-size: 12px;
             font-weight: bold;
-            color: var(--cyan-pro);
+        }
+
+        .source-parametres-graphique.ok {
+            background: #064e3b;
+            color: #86efac;
+        }
+
+        .source-parametres-graphique.erreur {
+            background: #7f1d1d;
+            color: #fecaca;
+        }
+
+        .capture-selector-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 0 1 560px;
+            min-width: 360px;
+            max-width: 620px;
+        }
+
+        .capture-selector-top label {
             white-space: nowrap;
         }
 
-        h1 {
-            font-size: 15px;
-            margin: 0;
-            color: var(--yellow-pro);
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            flex-grow: 1;
-            text-align: center;
-            min-width: 170px;
-        }
-
-        select,
-        button,
-        input[type="file"] {
-            background: #020617;
-            color: #ffffff;
-            border: 1px solid #334155;
-            padding: 7px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            outline: none;
-        }
-
-        input[type="file"] { max-width: 185px; }
-
-        select:hover,
-        button:hover { opacity: 0.88; }
-
-        button:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .btn-capture { background: #00d9ff; color: #00111a; border: none; font-weight: 700; }
-        .btn-vision { background: var(--purple-pro); color: #ffffff; border: none; font-weight: 700; }
-        .btn-technique { background: var(--buy-green); color: #03130a; border: none; font-weight: 700; }
-        .btn-effacer { background: var(--sell-red); color: #ffffff; border: none; font-weight: 700; }
-        .btn-tv { background: var(--accent); color: #ffffff; border: none; font-weight: 700; }
-
-        #chart-container {
-            flex: 1 1 auto;
+        #liste-captures-postgres {
             width: 100%;
-            min-height: 520px;
-            background: var(--chart-bg);
-            position: relative;
-            border-top: 1px solid var(--border);
-            padding: 12px;
+            min-width: 260px;
+            max-width: 430px;
+        }
+
+        .analysis-category-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 340px;
+            min-width: 300px;
+            max-width: 360px;
+            margin-left: 8px;
+        }
+
+        .analysis-category-top label {
+            white-space: nowrap;
+        }
+
+        .analysis-category-top select {
+            width: 190px;
+            min-width: 180px;
+        }
+
+        .category-description-top {
+            display: none;
+        }
+            max-width: 190px;
+        }
+
+        .category-description-top {
+            flex: 1 1 100%;
+            margin-top: 0;
+            display: none;
+        }
+
+        label {
+            font-weight: bold;
+            color: #00d9ff;
+            font-size: 13px;
+        }
+
+        select, input, textarea {
+            background: #020617;
+            color: white;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 7px;
+            font-size: 13px;
+            max-width: 100%;
+        }
+
+        button {
+            border: none;
+            border-radius: 7px;
+            padding: 8px 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        button:hover { opacity: 0.85; }
+
+        .btn-tv { background: #2962ff; color: white; }
+        .btn-capture { background: #00d9ff; color: #00111a; }
+        .btn-save { background: #22c55e; color: #03130a; }
+        .btn-copy { background: #facc15; color: #1a1300; }
+        .btn-export { background: #a855f7; color: white; }
+        .btn-import { background: #14b8a6; color: #001a16; }
+        .btn-api { background: #fb923c; color: #1a0b00; }
+        .btn-db { background: #10b981; color: #00130d; }
+        .btn-load { background: #6366f1; color: white; }
+        .btn-ai { background: #38bdf8; color: #00111a; }
+        .btn-market { background: #84cc16; color: #102000; }
+        .btn-decision { background: #eab308; color: #1a1300; }
+        .btn-clear { background: #ef4444; color: white; }
+        .btn-dark { background: #334155; color: white; }
+
+        .header-images {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 8px;
+        }
+
+        .header-images img {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #020617;
+            padding: 1px;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: minmax(0, 2.3fr) minmax(320px, 0.7fr);
+            gap: 14px;
+            padding: 14px;
+        }
+
+        .chart-panel, .side-panel {
+            background: #111827;
+            border: 1px solid #263244;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .chart-panel { min-width: 0; }
+        .side-panel { min-width: 320px; overflow: hidden; }
+
+        .chart-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 14px;
+            margin-bottom: 10px;
+            width: 100%;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+        }
+
+        .chart-title-row h2 {
+            margin: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+            line-height: 1.1;
+            flex: 0 0 auto;
+        }
+
+        .chart-title-icons {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .chart-title-icons img {
+            width: 36px;
+            height: 36px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #020617;
+            padding: 1px;
+        }
+
+        .chart-inline-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0;
+            flex-wrap: nowrap;
+            flex: 0 0 auto;
+        }
+
+        .chart-inline-controls .form-block {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 0 0 auto;
+            margin-bottom: 0;
+        }
+
+        .chart-inline-controls .form-block label {
+            margin-bottom: 0;
+            white-space: nowrap;
+            color: #ffffff;
+        }
+
+        .chart-inline-controls .form-block select {
+            width: 175px;
+        }
+
+        .chart-inline-controls .form-block input {
+            width: 105px;
         }
 
         #tradingview_chart {
+            height: 700px;
             width: 100%;
-            height: 100%;
-            min-height: 500px;
             border-radius: 10px;
             overflow: hidden;
-            background: var(--chart-bg);
-            border: 1px solid var(--border);
+            background: #020617;
         }
 
-        .chart-message {
-            position: absolute;
-            left: 24px;
-            top: 24px;
-            z-index: 2;
+        h2 {
+            color: #00d9ff;
+            font-size: 18px;
+            margin-top: 0;
+            border-bottom: 1px solid #263244;
+            padding-bottom: 8px;
+        }
+
+        h3 {
             color: #facc15;
-            background: rgba(2, 6, 23, 0.84);
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .form-block {
+            margin-bottom: 12px;
+            min-width: 0;
+        }
+
+        .form-block label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-block input, .form-block select, .form-block textarea { width: 100%; }
+
+        pre {
+            background: #020617;
+            color: #a7f3d0;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #263244;
+            min-height: 260px;
+            max-height: 420px;
+            overflow: auto;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .button-zone {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .button-zone button { flex: 1 1 120px; }
+
+        .status {
+            background: #020617;
+            border: 1px solid #263244;
+            border-radius: 8px;
+            padding: 10px;
+            color: #facc15;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .server-status {
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .server-status.neutral { background: #334155; color: #ffffff; }
+        .server-status.ok { background: #064e3b; color: #86efac; }
+        .server-status.error { background: #7f1d1d; color: #fecaca; }
+        .server-status.warning { background: #713f12; color: #fde68a; }
+
+        .server-info {
+            background: #020617;
             border: 1px solid #334155;
             border-radius: 8px;
-            padding: 10px 12px;
-            font-size: 13px;
-            max-width: calc(100% - 48px);
-        }
-
-        a { text-decoration: none; }
-
-        .result-panel {
-            position: fixed;
-            right: 12px;
-            bottom: 12px;
-            width: min(620px, calc(100vw - 24px));
-            max-height: 45vh;
-            background: rgba(17, 24, 39, 0.97);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 20;
-        }
-
-        .result-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 8px 10px;
-            background: var(--panel-bg);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .result-header strong { color: var(--yellow-pro); font-size: 12px; }
-
-        .status-line {
-            color: #cbd5e1;
-            font-size: 11px;
-            padding: 7px 10px;
-            border-bottom: 1px solid var(--border);
-            white-space: pre-wrap;
-        }
-
-        #resultat-analyse {
-            margin: 0;
             padding: 10px;
-            color: #dbeafe;
             font-family: Consolas, monospace;
-            font-size: 11px;
-            line-height: 1.45;
+            font-size: 12px;
+            color: #d1d5db;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-height: 90px;
+            max-height: 220px;
+            overflow: auto;
+        }
+
+        .analysis-category-box, .ai-section, .risk-box {
+            margin-top: 14px;
+            background: #0b1220;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .side-panel > section:first-child { margin-top: 0; }
+
+        .risk-box h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        .analysis-category-box select { width: 100%; }
+
+        .category-description, .note {
+            margin-top: 10px;
+            padding: 10px;
+            background: #020617;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #d1d5db;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .ai-result-box {
+            background: #020617;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 220px;
+            max-height: 520px;
             overflow: auto;
             white-space: pre-wrap;
+            word-break: break-word;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            color: #d1d5db;
         }
 
-        .hidden { display: none; }
+        .screenshot-preview {
+            margin-top: 12px;
+            background: #020617;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 10px;
+        }
 
-        @media (max-width: 900px) {
-            body {
-                height: auto;
-                min-height: 100vh;
-                overflow: auto;
-            }
+        .screenshot-preview img {
+            width: 100%;
+            max-height: 360px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #000;
+            display: none;
+        }
 
-            .header-pro { align-items: stretch; }
+        footer {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 16px;
+            border-top: 1px solid #263244;
+        }
 
-            .control-group {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid #334155;
-                padding-bottom: 5px;
-            }
 
-            h1 {
-                width: 100%;
-                order: -1;
-                margin-bottom: 4px;
-            }
+        .modal-password-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.72);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+        }
 
-            select,
-            button,
-            input[type="file"] {
-                flex: 1;
+        .modal-password-box {
+            width: 100%;
+            max-width: 420px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 18px;
+            color: #ffffff;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+        }
+
+        .modal-password-box h3 {
+            margin-top: 0;
+            color: #facc15;
+        }
+
+        .modal-password-box p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #cbd5e1;
+        }
+
+        .modal-password-box input {
+            width: 100%;
+            margin-top: 8px;
+            margin-bottom: 14px;
+        }
+
+        .modal-password-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .modal-password-actions button {
+            min-width: 110px;
+        }
+
+        @media (max-width: 1200px) {
+            main { grid-template-columns: minmax(0, 2fr) minmax(320px, 0.8fr); }
+            #tradingview_chart { height: 650px; }
+        }
+
+        @media (max-width: 1000px) {
+            main { grid-template-columns: 1fr; }
+            .side-panel { min-width: 0; }
+            #tradingview_chart { height: 520px; }
+        }
+
+        @media (max-width: 700px) {
+            header { padding: 12px; }
+            .top-bar { flex-direction: column; align-items: stretch; }
+            .control-group { flex-direction: column; align-items: stretch; }
+
+            .capture-selector-top {
+                flex-direction: column;
+                align-items: stretch;
                 min-width: 0;
-            }
-
-            #chart-container {
-                height: 65vh;
-                min-height: 460px;
-                padding: 8px;
-            }
-
-            #tradingview_chart {
-                min-height: 440px;
-            }
-
-            .result-panel {
-                position: static;
+                max-width: none;
                 width: 100%;
-                max-height: none;
-                border-radius: 0;
             }
+
+            .analysis-category-top {
+                flex-direction: column;
+                align-items: stretch;
+                min-width: 0;
+                max-width: none;
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .analysis-category-top select {
+                min-width: 0;
+                width: 100%;
+            }
+
+            #liste-captures-postgres {
+                min-width: 0;
+                max-width: none;
+                width: 100%;
+            }
+
+            button { width: 100%; }
+            .button-zone button { flex: 1 1 100%; }
+            .logo { text-align: center; margin-right: 0; }
+            .header-images { justify-content: center; margin-left: 0; }
+            .header-images img { width: 43px; height: 43px; }
+            .chart-title-row { justify-content: flex-start; flex-wrap: nowrap; }
+            .chart-inline-controls { flex: 0 0 auto; flex-wrap: nowrap; }
+            .chart-inline-controls .form-block { flex: 0 0 auto; }
+            .chart-title-icons img { width: 30px; height: 30px; }
+            #tradingview_chart { height: 460px; }
         }
     </style>
 </head>
 
 <body>
-
-    <div class="header-pro">
-        <div class="control-group">
-            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()">📷 CAPTURE</button>
-            <input type="file" id="screenshot-file" accept="image/png,image/jpeg,image/webp">
-            <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()">Vision + Marché</button>
+<header>
+    <div class="top-bar">
+        <div class="logo">
+            TRADING STATION <span>IA</span>
+            <small class="auteur-logo">Auteur : Hocine Korichi, Ing.</small>
         </div>
 
-        <div class="control-group">
+        <div class="control-group parametres-graphiques-caches">
             <label for="asset-selector">ACTIF :</label>
             <select id="asset-selector" onchange="actualiserGraphique()">
-                <option value="BINANCE:BTCUSDT">BTC/USDT</option>
-                <option value="COINBASE:BTCUSD">BTC/USD</option>
-                <option value="BINANCE:ETHUSDT">ETH/USDT</option>
-                <option value="BINANCE:SOLUSDT">SOL/USDT</option>
-                <option value="BINANCE:BNBUSDT">BNB/USDT</option>
-                <option value="BINANCE:XRPUSDT">XRP/USDT</option>
-                <option value="OANDA:XAUUSD">OR (XAU)</option>
-                <option value="NASDAQ:AAPL">AAPL</option>
-                <option value="NASDAQ:TSLA">TSLA</option>
-                <option value="NASDAQ:NVDA">NVDA</option>
-                <option value="NASDAQ:MSFT">MSFT</option>
-                <option value="NASDAQ:AMZN">AMZN</option>
-                <option value="NASDAQ:GOOGL">GOOGL</option>
-                <option value="SP:SPX">S&P 500</option>
-                <option value="TVC:DXY">DXY</option>
+                <option value="BINANCE:BTCUSDT">Bitcoin / USDT</option>
+                <option value="COINBASE:BTCUSD">Bitcoin / USD</option>
+                <option value="BINANCE:ETHUSDT">Ethereum / USDT</option>
+                <option value="OANDA:XAUUSD">Or / Dollar - XAUUSD</option>
+                <option value="NASDAQ:AAPL">Apple - AAPL</option>
+                <option value="NASDAQ:TSLA">Tesla - TSLA</option>
+                <option value="NASDAQ:NVDA">Nvidia - NVDA</option>
+                <option value="NASDAQ:MSFT">Microsoft - MSFT</option>
+                <option value="NASDAQ:AMZN">Amazon - AMZN</option>
+                <option value="NASDAQ:GOOGL">Google - GOOGL</option>
+                <option value="SP:SPX">S&amp;P 500</option>
+                <option value="TVC:DXY">Dollar Index - DXY</option>
             </select>
         </div>
 
-        <div class="control-group">
-            <label for="categorie-analyse-btc">ANALYSE :</label>
-            <select id="categorie-analyse-btc">
-                <option value="macro">Macro</option>
-                <option value="monnaie">Monnaie</option>
-                <option value="onchain">On-chain</option>
-                <option value="minage">Minage</option>
-                <option value="technique" selected>Technique</option>
-                <option value="derives">Dérivés</option>
-                <option value="liquidite">Liquidité</option>
-                <option value="inst">Inst.</option>
-                <option value="sentiment">Sentiment</option>
-                <option value="risques">Risques</option>
+        <div class="control-group parametres-graphiques-caches">
+            <label for="interval-selector">INTERVALLE :</label>
+            <select id="interval-selector" onchange="actualiserGraphique()">
+                <option value="1">1 minute</option>
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 heure</option>
+                <option value="240">4 heures</option>
+                <option value="D" selected>1 jour</option>
+                <option value="W">1 semaine</option>
+                <option value="M">1 mois</option>
             </select>
         </div>
 
-        <h1>EXPERT TRADING PRO</h1>
-
-        <div class="control-group">
-            <label for="chart-type-selector">STYLE :</label>
-            <select id="chart-type-selector" onchange="changerStyleGraphique()">
-                <option value="candles" selected>Bougies</option>
-                <option value="bars">Barres</option>
-                <option value="line">Ligne</option>
-                <option value="area">Aire</option>
-            </select>
-        </div>
-
-        <div class="control-group">
-            <label for="indicator-selector">IND :</label>
+        <div class="control-group parametres-graphiques-caches">
+            <label for="indicator-selector">INDICATEUR :</label>
             <select id="indicator-selector" onchange="actualiserGraphique()">
-                <option value="EMA">EMA</option>
                 <option value="RSI">RSI</option>
                 <option value="MACD">MACD</option>
-                <option value="SUPERTREND">ST</option>
-                <option value="BOLLINGER">BB</option>
+                <option value="EMA">EMA</option>
+                <option value="SUPERTREND">Supertrend</option>
+                <option value="BOLLINGER">Bandes de Bollinger</option>
                 <option value="ATR">ATR</option>
-                <option value="VOLUME">VOL</option>
-                <option value="LIQUIDITY">LIQ</option>
+                <option value="VOLUME">Volume</option>
+                <option value="LIQUIDITY_ZONE">Zones de liquidité</option>
             </select>
         </div>
 
-        <div class="control-group">
-            <label for="interval-selector">INT :</label>
-            <select id="interval-selector" onchange="actualiserGraphique()">
-                <option value="1">1m</option>
-                <option value="5">5m</option>
-                <option value="15">15m</option>
-                <option value="30">30m</option>
-                <option value="60">1h</option>
-                <option value="240">4h</option>
-                <option value="D" selected>1J</option>
-                <option value="W">1S</option>
-                <option value="M">1M</option>
+        <button class="btn-clear" onclick="viderTableTradingCapture()">Vider la table</button>
+        <button class="btn-capture" onclick="capturerEtEnregistrerConfiguration()">Capturer en local</button>
+        <!--<button class="btn-market" onclick="enrichirConfigurationAvecDonneesMarche()">Ajouter marché</button>-->
+        <button class="btn-db" style="display:none;" disabled title="Désactivé : capture locale uniquement" onclick="enregistrerCapturePostgres()">Enregistrer la configuration</button>
+        <!-- <button class="btn-save" onclick="rechargerConfigurationTradingView()">Recharger</button> -->
+        <button class="btn-decision" onclick="ouvrirPageDecision()">Analyser le snapshot</button>
+
+        <div class="capture-selector-top">
+            <label for="liste-captures-postgres">Choisir une confihuration :</label>
+            <select id="liste-captures-postgres" onchange="chargerCapturePostgresSelectionnee()">
+                <option value="">Aucune configuration chargée</option>
             </select>
         </div>
 
-        <div class="control-group">
-            <button class="btn-technique" onclick="testerAnalyseTechnique()">Tester technique</button>
-
-            <button class="btn-tv" type="button" onclick="ouvrirTradingView()">Ouvrir TV</button>
-
-            <a href="analyse.html" title="Analyser la capture">
-                <button type="button">Analyser</button>
-            </a>
-
-           <button class="btn-effacer" disabled>Effacer</button>
+        <div class="analysis-category-top">
+            <label for="categorie-analyse-btc">Type d'analyse :</label>
+            <select id="categorie-analyse-btc">
+                <option value="macroeconomie">Macroéconomie</option>
+                <option value="monnaie_bitcoin">Monnaie Bitcoin</option>
+                <option value="donnees_on_chain">Données on-chain</option>
+                <option value="minage">Minage</option>
+                <option value="analyse_technique" selected>Analyse technique</option>
+                <option value="derives">Dérivés</option>
+                <option value="liquidite_marche">Liquidité de marché</option>
+                <option value="institutionnel">Institutionnel</option>
+                <option value="sentiment">Sentiment</option>
+                <option value="reglementation_risques">Réglementation et risques</option>
+            </select>
+            <div id="description-categorie-analyse" class="category-description category-description-top">
+                Analyse technique : graphiques, tendances, supports, résistances, RSI et moyennes mobiles.
+            </div>
         </div>
+
+<!--
+        <div class="header-images">
+            <img src="img/bitcoin.jfif" alt="Bitcoin">
+            <img src="img/lingot-or.jfif" alt="Lingot d'or">
+        </div>
+-->
     </div>
+</header>
 
-    <div id="chart-container">
-        <div id="chart-message" class="chart-message">Chargement du graphique TradingView...</div>
+<main>
+    <section class="chart-panel">
+        <div class="chart-title-row">
+            <h2>Graphique TradingView intégré</h2>
+            <span id="source-parametres-graphique" class="source-parametres-graphique">Lecture directe non confirmée</span>
+            <div class="chart-inline-controls">
+                <div class="form-block">
+                    <label for="type-bougie">Type de graphique</label>
+                    <select id="type-bougie" onchange="actualiserGraphique()">
+                        <option value="bougies_japonaises" selected>Bougies japonaises</option>
+                        <option value="barres">Barres</option>
+                        <option value="ligne">Ligne</option>
+                        <option value="heikin_ashi">Heikin Ashi</option>
+                    </select>
+                </div>
+                <div class="form-block">
+                    <label for="capital-input">Capital initial</label>
+                    <input id="capital-input" type="number" value="1000" min="0" step="100">
+                </div>
+            </div>
+            <div class="chart-title-icons">
+                <img src="img/bitcoin.jfif" alt="Symbole du Bitcoin">
+                <img src="img/lingot-or.jfif" alt="Lingot d'or">
+            </div>
+        </div>
+
         <div id="tradingview_chart"></div>
-    </div>
+        <input type="file" id="fichier-import-json" accept="application/json,.json" style="display:none;" onchange="importerJSONDepuisFichier(event)">
 
-    <div class="result-panel" id="result-panel">
-        <div class="result-header">
-            <strong>Résultat IA</strong>
-            <button type="button" onclick="togglePanel()">Masquer / afficher</button>
+    </section>
+
+    <aside class="side-panel">
+        <section class="risk-box">
+            <h3>Paramètres de risque</h3>
+            <div class="form-block">
+                <label for="risk-input">Risque par position en pourcentage</label>
+                <input id="risk-input" type="number" value="1" min="0" step="0.1">
+            </div>
+            <div class="form-block">
+                <label for="stoploss-input">Stop loss en pourcentage</label>
+                <input id="stoploss-input" type="number" value="2" min="0" step="0.1">
+            </div>
+            <div class="form-block">
+                <label for="takeprofit-input">Take profit en pourcentage</label>
+                <input id="takeprofit-input" type="number" value="4" min="0" step="0.1">
+            </div>
+            <div class="form-block">
+                <label for="levier-input">Levier</label>
+                <input id="levier-input" type="number" value="1" min="1" step="1">
+            </div>
+            <div class="form-block">
+                <label for="sens-selector">Sens</label>
+                <select id="sens-selector">
+                    <option value="achat_vente" selected>Achat ou vente</option>
+                    <option value="achat">Achat seulement</option>
+                    <option value="vente">Vente seulement</option>
+                </select>
+            </div>
+            <div class="form-block">
+                <label for="strategie-selector">Stratégie</label>
+                <select id="strategie-selector">
+                    <option value="suivi_tendance" selected>Suivi de tendance</option>
+                    <option value="retournement">Retournement</option>
+                    <option value="cassure">Cassure</option>
+                    <option value="range">Range</option>
+                </select>
+            </div>
+            <div class="form-block">
+                <label for="snapshot-url">URL éventuelle du snapshot</label>
+                <input id="snapshot-url" type="text" placeholder="Lien optionnel vers une image ou un snapshot">
+            </div>
+
+        </section>
+
+        <h3>Configuration capturée</h3>
+        <pre id="resultat-configuration">Aucune configuration capturée.</pre>
+
+        <div id="status" class="status">En attente de capture.</div>
+    </aside>
+</main>
+
+
+<div id="modal-password-overlay" class="modal-password-overlay">
+    <div class="modal-password-box">
+        <h3>Mot de passe administrateur</h3>
+        <p>Entrer le mot de passe pour vider la table <strong>trading_capture</strong>.</p>
+        <input id="admin-delete-password-input" type="password" autocomplete="current-password" placeholder="Mot de passe">
+        <div class="modal-password-actions">
+            <button class="btn-dark" type="button" onclick="fermerFenetreMotDePasse(false)">Annuler</button>
+            <button class="btn-clear" type="button" onclick="fermerFenetreMotDePasse(true)">Confirmer</button>
         </div>
-
-        <div id="status" class="status-line">Prêt.</div>
-        <pre id="resultat-analyse">Aucune analyse lancée.</pre>
     </div>
+</div>
 
-    <script>
-        /*
-            ============================================================
-            CONFIGURATION API
-            ============================================================
-        */
-        const API_BASE_URL = window.location.hostname.includes("github.io")
-            ? "https://expert-trading.onrender.com"
-            : "";
+<footer>
+    Trading Station IA — page HTML sur GitHub Pages, API Node.js sur Render.
+</footer>
 
-        const API_BASE_URL_SECOURS = "https://trading-g8ie.onrender.com";
+<script>
+    let widgetTradingView = null;
+    let configurationActuelle = null;
+    let lectureDirecteGraphiqueDisponible = false;
+    let derniersParametresGraphiqueDirect = null;
+    let ecouteursGraphiqueInstalles = false;
 
-        let chart;
-        let mainSeries;
-        let socket;
-        let currentData = [];
-        let dernierScreenshotBase64 = null;
-        let widgetTradingView = null;
+    const API_BASE_URL_PAR_DEFAUT = "https://trading-g8ie.onrender.com";
 
-        function getApiUrl(route) {
-            return API_BASE_URL + route;
-        }
+    let resolveMotDePasseAdmin = null;
 
-        function getChartSize() {
-            const container = document.getElementById('chart-container');
-            const rect = container.getBoundingClientRect();
+    function demanderMotDePasseAdmin() {
+        return new Promise(function(resolve) {
+            const overlay = document.getElementById("modal-password-overlay");
+            const champ = document.getElementById("admin-delete-password-input");
 
-            return {
-                width: Math.max(320, Math.floor(rect.width || window.innerWidth)),
-                height: Math.max(420, Math.floor(rect.height || (window.innerHeight - 60)))
-            };
-        }
+            resolveMotDePasseAdmin = resolve;
 
-        function afficherMessageGraphique(message, type) {
-            const zone = document.getElementById("chart-message");
-            if (!zone) return;
-
-            zone.textContent = message || "";
-            zone.style.display = message ? "block" : "none";
-
-            if (type === "erreur") {
-                zone.style.color = "#fecaca";
-                zone.style.borderColor = "#7f1d1d";
-            } else if (type === "ok") {
-                zone.style.color = "#86efac";
-                zone.style.borderColor = "#064e3b";
-            } else {
-                zone.style.color = "#facc15";
-                zone.style.borderColor = "#334155";
-            }
-        }
-
-        function appliquerThemeGraphiqueTradingView() {
-            const container = document.getElementById("tradingview_chart");
-            if (container) {
-                container.style.background = "#020617";
-            }
-        }
-
-        function init() {
-            creerWidgetTradingView();
-            appliquerThemeGraphiqueTradingView();
-            afficherStatus("Graphique TradingView chargé ou en cours de chargement.");
-        }
-
-        function afficherStatus(message) {
-            const status = document.getElementById("status");
-
-            if (status) {
-                status.textContent = message;
-            }
-        }
-
-        function afficherResultat(data) {
-            const zone = document.getElementById("resultat-analyse");
-
-            if (!zone) return;
-
-            if (typeof data === "string") {
-                zone.textContent = data;
-            } else {
-                zone.textContent = JSON.stringify(data, null, 2);
-            }
-        }
-
-        function togglePanel() {
-            const zone = document.getElementById("resultat-analyse");
-            const status = document.getElementById("status");
-
-            if (!zone || !status) return;
-
-            zone.classList.toggle("hidden");
-            status.classList.toggle("hidden");
-        }
-
-        function effacerResultat() {
-            afficherResultat("Aucune analyse lancée.");
-            afficherStatus("Résultat effacé.");
-        }
-
-        function setBoutonsActifs(actif) {
-            const ids = [
-                "btn-capture",
-                "btn-vision"
-            ];
-
-            ids.forEach(id => {
-                const bouton = document.getElementById(id);
-
-                if (bouton) {
-                    bouton.disabled = !actif;
-                }
-            });
-        }
-
-        async function lireReponseJson(response) {
-            const texte = await response.text();
-
-            let data;
-
-            try {
-                data = JSON.parse(texte);
-            } catch (erreur) {
-                throw new Error(
-                    "Le serveur n'a pas retourné du JSON valide.\n\n" +
-                    "Statut HTTP : " + response.status + "\n\n" +
-                    texte
-                );
-            }
-
-            if (!response.ok || data.ok === false) {
-                throw new Error(
-                    data.details ||
-                    data.message ||
-                    data.error ||
-                    ("Erreur HTTP " + response.status)
-                );
-            }
-
-            return data;
-        }
-
-
-        function nettoyerNomFichier(valeur) {
-            return String(valeur || "non-defini")
-                .normalize("NFD")
-                .replace(/[̀-ͯ]/g, "")
-                .replace(/[^a-zA-Z0-9-_]/g, "-")
-                .replace(/-+/g, "-")
-                .replace(/^-|-$/g, "");
-        }
-
-        function genererTimestampFichier() {
-            const maintenant = new Date();
-            const annee = maintenant.getFullYear();
-            const mois = String(maintenant.getMonth() + 1).padStart(2, "0");
-            const jour = String(maintenant.getDate()).padStart(2, "0");
-            const heure = String(maintenant.getHours()).padStart(2, "0");
-            const minute = String(maintenant.getMinutes()).padStart(2, "0");
-            const seconde = String(maintenant.getSeconds()).padStart(2, "0");
-            return annee + mois + jour + "-" + heure + minute + seconde;
-        }
-
-        function creerPayloadCapturePostgres(configuration) {
-            const nomCapture =
-                nettoyerNomFichier(configuration.actif) + "-" +
-                nettoyerNomFichier(configuration.indicateur) + "-" +
-                nettoyerNomFichier(configuration.categorieAnalyseLibelle) + "-" +
-                genererTimestampFichier();
-
-            return {
-                actif: configuration.actif || "NON_RENSEIGNE",
-                indicateur: configuration.indicateur || null,
-                intervalle: configuration.intervalle || null,
-                actif_libelle: configuration.actif || null,
-                indicateur_libelle: configuration.indicateur || null,
-                intervalle_libelle: configuration.intervalle || null,
-                source_parametres: "widget_tradingview_tvjs",
-                lecture_directe_graphique: false,
-                type_bougie: configuration.style || null,
-                type_bougie_libelle: configuration.style || null,
-                nom_fichier: nomCapture,
-                nom_capture: nomCapture,
-                categorie_analyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
-                categorieAnalyse: configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "Analyse technique",
-                configuration_json: configuration,
-                screenshot_base64: null
-            };
-        }
-
-        function obtenirUrlsSauvegardeCapture() {
-            const urls = [];
-
-            if (API_BASE_URL) {
-                urls.push(API_BASE_URL + "/api/captures");
-            }
-
-            urls.push(API_BASE_URL_SECOURS + "/api/captures");
-            urls.push("/api/captures");
-
-            return [...new Set(urls)];
-        }
-
-        async function enregistrerConfigurationSurServeur(configuration) {
-            const payloadCapture = creerPayloadCapturePostgres(configuration);
-            const urls = obtenirUrlsSauvegardeCapture();
-            let derniereErreur = null;
-
-            for (const url of urls) {
-                try {
-                    const response = await fetch(url, {
-                        method: "POST",
-                        mode: "cors",
-                        credentials: "omit",
-                        cache: "no-store",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        },
-                        body: JSON.stringify(payloadCapture)
-                    });
-
-                    const data = await lireReponseJson(response);
-
-                    return {
-                        ok: true,
-                        routeUtilisee: url,
-                        payloadEnvoye: payloadCapture,
-                        reponseServeur: data
-                    };
-                } catch (erreur) {
-                    derniereErreur = erreur;
-                    console.warn("Sauvegarde échouée sur", url, erreur);
-                }
-            }
-
-            throw new Error(
-                "Aucune route de sauvegarde n'a accepté la configuration. Dernière erreur : " +
-                (derniereErreur ? derniereErreur.message : "inconnue")
-            );
-        }
-
-        function obtenirConfiguration() {
-            const cat = document.getElementById('categorie-analyse-btc');
-            const catText = cat.options[cat.selectedIndex].text;
-
-            const actif = document.getElementById('asset-selector').value;
-            const intervalle = document.getElementById('interval-selector').value;
-            const indicateur = document.getElementById('indicator-selector').value;
-            const style = document.getElementById('chart-type-selector').value;
-
-            return {
-                nom: "Expert Trading Pro v2.0",
-                actif: actif,
-                intervalle: intervalle,
-                indicateur: indicateur,
-                categorieAnalyse: document.getElementById('categorie-analyse-btc').value,
-                categorieAnalyseLibelle: catText,
-                style: style,
-                graphique: {
-                    actif: actif,
-                    intervalle: intervalle,
-                    indicateur: indicateur,
-                    style: style,
-                    source: "tradingview_widget_tvjs"
-                },
-                marcheLocal: {
-                    derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
-                    nombreBougies: currentData.length
-                },
-                tradingView: {
-                    widgetPresent: !!widgetTradingView,
-                    bibliotheque: "https://s3.tradingview.com/tv.js",
-                    theme: "dark",
-                    timezone: "America/Toronto"
-                },
-                dateConfiguration: new Date().toISOString()
-            };
-        }
-
-        function convertirIntervallePourBinance(intervalleTradingView) {
-            const interval = String(intervalleTradingView || "60");
-
-            if (interval === "60") return "1h";
-            if (interval === "240") return "4h";
-            if (interval === "D") return "1d";
-            if (interval === "W") return "1w";
-            if (interval === "M") return "1M";
-            if (!isNaN(interval)) return interval + "m";
-
-            return interval;
-        }
-
-        function obtenirSymboleBinanceDepuisActif(actif) {
-            const brut = String(actif || "BINANCE:BTCUSDT").toUpperCase();
-
-            if (brut.includes("BINANCE:")) {
-                return brut.split(":")[1];
-            }
-
-            if (brut.includes("BTC")) return "BTCUSDT";
-            if (brut.includes("ETH")) return "ETHUSDT";
-            if (brut.includes("SOL")) return "SOLUSDT";
-            if (brut.includes("BNB")) return "BNBUSDT";
-            if (brut.includes("XRP")) return "XRPUSDT";
-
-            return "BTCUSDT";
-        }
-
-        function actifCompatibleBinance(actif) {
-            return String(actif || "").toUpperCase().startsWith("BINANCE:");
-        }
-
-        function obtenirStyleTradingView() {
-            const type = document.getElementById('chart-type-selector').value;
-
-            if (type === "bars") return "0";
-            if (type === "candles") return "1";
-            if (type === "line") return "3";
-            if (type === "area") return "3";
-
-            return "1";
-        }
-
-        function choisirEtudeTradingView() {
-            const indicateur = document.getElementById('indicator-selector').value;
-
-            if (indicateur === "RSI") return ["RSI@tv-basicstudies"];
-            if (indicateur === "MACD") return ["MACD@tv-basicstudies"];
-            if (indicateur === "EMA") return ["MASimple@tv-basicstudies"];
-            if (indicateur === "BOLLINGER") return ["BB@tv-basicstudies"];
-            if (indicateur === "VOLUME") return ["Volume@tv-basicstudies"];
-
-            return [];
-        }
-
-        function creerWidgetTradingView(tentative = 0) {
-            const conteneur = document.getElementById("tradingview_chart");
-            if (!conteneur) return;
-
-            afficherMessageGraphique("Chargement du graphique TradingView...", "attente");
-
-            if (typeof TradingView === "undefined" || !TradingView.widget) {
-                if (tentative < 20) {
-                    setTimeout(function () {
-                        creerWidgetTradingView(tentative + 1);
-                    }, 500);
-                } else {
-                    afficherMessageGraphique("Impossible de charger TradingView. Vérifier la connexion Internet ou le bloqueur de scripts.", "erreur");
-                    afficherStatus("Erreur : bibliothèque TradingView indisponible.");
-                }
+            if (!overlay || !champ) {
+                resolve("");
                 return;
             }
 
-            const symbole = document.getElementById('asset-selector').value || "BINANCE:BTCUSDT";
-            const intervalle = document.getElementById('interval-selector').value || "D";
+            champ.value = "";
+            overlay.style.display = "flex";
 
-            conteneur.innerHTML = "";
+            setTimeout(function() {
+                champ.focus();
+            }, 50);
+        });
+    }
+
+    function fermerFenetreMotDePasse(valider) {
+        const overlay = document.getElementById("modal-password-overlay");
+        const champ = document.getElementById("admin-delete-password-input");
+
+        const valeur = valider && champ ? champ.value : "";
+
+        if (overlay) {
+            overlay.style.display = "none";
+        }
+
+        if (typeof resolveMotDePasseAdmin === "function") {
+            resolveMotDePasseAdmin(valeur);
+            resolveMotDePasseAdmin = null;
+        }
+    }
+
+    document.addEventListener("keydown", function(event) {
+        const overlay = document.getElementById("modal-password-overlay");
+        const champ = document.getElementById("admin-delete-password-input");
+
+        if (!overlay || overlay.style.display !== "flex") {
+            return;
+        }
+
+        if (event.key === "Escape") {
+            fermerFenetreMotDePasse(false);
+        }
+
+        if (event.key === "Enter" && document.activeElement === champ) {
+            fermerFenetreMotDePasse(true);
+        }
+    });
+
+
+    function valeurElement(id, valeurDefaut = "") {
+        const element = document.getElementById(id);
+        return element ? element.value : valeurDefaut;
+    }
+
+    function libelleElement(id, valeurDefaut = "") {
+        const element = document.getElementById(id);
+        if (!element || element.selectedIndex < 0) return valeurDefaut;
+        return element.options[element.selectedIndex].text;
+    }
+
+    function nombreElement(id, valeurDefaut = 0) {
+        const element = document.getElementById(id);
+        if (!element) return valeurDefaut;
+        const valeur = Number(element.value);
+        return Number.isFinite(valeur) ? valeur : valeurDefaut;
+    }
+
+    function nettoyerUrl(url) {
+        return String(url || "").trim().replace(/\/+$/, "");
+    }
+
+    function getApiBaseUrl() {
+        const champApi = document.getElementById("api-url");
+        let valeurChamp = champApi ? nettoyerUrl(champApi.value) : "";
+
+        if (!valeurChamp) return API_BASE_URL_PAR_DEFAUT;
+
+        valeurChamp = valeurChamp
+            .replace("https://https://", "https://")
+            .replace("http://http://", "http://")
+            .replace(/\/analyse\/?$/, "/api/analyse");
+
+        valeurChamp = valeurChamp
+            .replace(/\/api\/analyse\/?$/, "")
+            .replace(/\/api\/test\/?$/, "")
+            .replace(/\/api\/marche\/?$/, "")
+            .replace(/\/api\/captures\/?$/, "")
+            .replace(/\/api\/vider-captures\/?$/, "")
+            .replace(/\/api\/creer-table\/?$/, "")
+            .replace(/\/api\/verifier-table\/?$/, "");
+
+        if (!valeurChamp.startsWith("http://") && !valeurChamp.startsWith("https://")) {
+            return API_BASE_URL_PAR_DEFAUT;
+        }
+
+        return nettoyerUrl(valeurChamp);
+    }
+
+    function getApiAnalyseUrl() { return getApiBaseUrl() + "/api/analyse"; }
+    function getApiTestUrl() { return getApiBaseUrl() + "/api/test"; }
+    function getApiMarcheUrl() { return getApiBaseUrl() + "/api/marche"; }
+
+    /*
+        IMPORTANT :
+        Cette route reste volontairement fixe.
+        Ne pas remplacer par getApiBaseUrl(), car l'enregistrement fonctionnait ainsi.
+    */
+    function getApiCapturesUrl() { return API_BASE_URL_PAR_DEFAUT + "/api/captures"; }
+
+    function getApiViderCapturesUrl() { return API_BASE_URL_PAR_DEFAUT + "/api/vider-captures"; }
+
+    function getApiCreerTableUrl() { return getApiBaseUrl() + "/api/creer-table"; }
+    function getApiVerifierTableUrl() { return getApiBaseUrl() + "/api/verifier-table"; }
+
+    function afficherEtatServeur(type, message) {
+        const etat = document.getElementById("etatServeur");
+        if (!etat) return;
+        etat.className = "server-status " + type;
+        etat.textContent = message;
+    }
+
+    function afficherInfosServeur(texte) {
+        const zone = document.getElementById("infosServeur");
+        if (!zone) return;
+        zone.textContent = texte;
+    }
+
+    function afficherStatus(message) {
+        document.getElementById("status").textContent = message;
+    }
+
+    function afficherAnalyseIA(texte) {
+        document.getElementById("resultat-analyse-ia").textContent = texte;
+    }
+
+    function afficherConfiguration(configuration) {
+        document.getElementById("resultat-configuration").textContent = JSON.stringify(configuration, null, 4);
+    }
+
+    function getCategorieAnalyseBTC() {
+        return valeurElement("categorie-analyse-btc", "analyse_technique");
+    }
+
+    function getLibelleCategorieAnalyseBTC() {
+        return libelleElement("categorie-analyse-btc", "Analyse technique");
+    }
+
+    function getDescriptionCategorieAnalyseBTC() {
+        const descriptions = {
+            macroeconomie: "Macroéconomie : taux, inflation, liquidité mondiale, dollar, obligations et bilan de la Fed.",
+            monnaie_bitcoin: "Monnaie Bitcoin : offre maximale, émission, halving et inflation de BTC.",
+            donnees_on_chain: "Données on-chain : adresses, transactions, MVRV, realized price et flux des plateformes.",
+            minage: "Minage : taux de hachage, difficulté, revenus et ventes des mineurs.",
+            analyse_technique: "Analyse technique : graphiques, tendances, supports, résistances, RSI et moyennes mobiles.",
+            derives: "Dérivés : contrats à terme, options, funding rates, open interest et liquidations.",
+            liquidite_marche: "Liquidité de marché : volumes, carnets d'ordres, spreads et profondeur de marché.",
+            institutionnel: "Institutionnel : FNB Bitcoin, achats d'entreprises, fonds, banques et adoption officielle.",
+            sentiment: "Sentiment : réseaux sociaux, Google Trends, médias, peur et avidité.",
+            reglementation_risques: "Réglementation et risques : lois, fiscalité, plateformes, garde et géopolitique."
+        };
+        return descriptions[getCategorieAnalyseBTC()] || descriptions.analyse_technique;
+    }
+
+    function actualiserDescriptionCategorie() {
+        const zone = document.getElementById("description-categorie-analyse");
+        if (zone) zone.textContent = getDescriptionCategorieAnalyseBTC();
+    }
+
+    function obtenirStyleTradingView() {
+        const typeBougie = valeurElement("type-bougie", "bougies_japonaises");
+        switch (typeBougie) {
+            case "barres": return "0";
+            case "bougies_japonaises": return "1";
+            case "ligne": return "3";
+            case "heikin_ashi": return "8";
+            default: return "1";
+        }
+    }
+
+    function choisirEtudeTradingView() {
+        const indicateur = valeurElement("indicator-selector", "RSI");
+        if (indicateur === "RSI") return ["RSI@tv-basicstudies"];
+        if (indicateur === "MACD") return ["MACD@tv-basicstudies"];
+        if (indicateur === "EMA") return ["MASimple@tv-basicstudies"];
+        if (indicateur === "BOLLINGER") return ["BB@tv-basicstudies"];
+        if (indicateur === "VOLUME") return ["Volume@tv-basicstudies"];
+        return [];
+    }
+
+    function mettreAJourBadgeLectureGraphique(type, message) {
+        const badge = document.getElementById("source-parametres-graphique");
+        if (!badge) return;
+        badge.className = "source-parametres-graphique" + (type ? " " + type : "");
+        badge.textContent = message;
+    }
+
+    function normaliserResultatSymbolInterval(resultat) {
+        if (!resultat) return null;
+
+        const symbole =
+            resultat.symbol ||
+            resultat.ticker ||
+            resultat.pro_name ||
+            resultat.full_name ||
+            null;
+
+        const intervalle =
+            resultat.interval ||
+            resultat.resolution ||
+            resultat.timeframe ||
+            null;
+
+        if (!symbole && !intervalle) return null;
+
+        return {
+            actif: symbole || valeurElement("asset-selector", "BINANCE:BTCUSDT"),
+            actifLibelle: symbole || libelleElement("asset-selector", "Bitcoin / USDT"),
+            intervalle: intervalle || valeurElement("interval-selector", "D"),
+            intervalleLibelle: intervalle || libelleElement("interval-selector", "1 jour"),
+            indicateur: valeurElement("indicator-selector", "RSI"),
+            indicateurLibelle: libelleElement("indicator-selector", "RSI"),
+            source: "graphique_tradingview_api",
+            lectureDirecte: true
+        };
+    }
+
+    function lireParametresDepuisGraphiqueTradingView() {
+        try {
+            if (!widgetTradingView) return null;
+
+            /*
+                Advanced Charts / Charting Library :
+                La méthode symbolInterval() permet de lire le symbole et l'intervalle
+                du graphique actif lorsque cette API est réellement disponible.
+            */
+            if (typeof widgetTradingView.symbolInterval === "function") {
+                const resultatWidget = normaliserResultatSymbolInterval(widgetTradingView.symbolInterval());
+                if (resultatWidget) return resultatWidget;
+            }
+
+            if (typeof widgetTradingView.activeChart === "function") {
+                const chart = widgetTradingView.activeChart();
+
+                if (chart && typeof chart.symbolInterval === "function") {
+                    const resultatChart = normaliserResultatSymbolInterval(chart.symbolInterval());
+                    if (resultatChart) return resultatChart;
+                }
+
+                const symbole = chart && typeof chart.symbol === "function" ? chart.symbol() : null;
+                const intervalle = chart && typeof chart.resolution === "function" ? chart.resolution() : null;
+
+                if (symbole || intervalle) {
+                    return {
+                        actif: symbole || valeurElement("asset-selector", "BINANCE:BTCUSDT"),
+                        actifLibelle: symbole || libelleElement("asset-selector", "Bitcoin / USDT"),
+                        intervalle: intervalle || valeurElement("interval-selector", "D"),
+                        intervalleLibelle: intervalle || libelleElement("interval-selector", "1 jour"),
+                        indicateur: valeurElement("indicator-selector", "RSI"),
+                        indicateurLibelle: libelleElement("indicator-selector", "RSI"),
+                        source: "graphique_tradingview_api",
+                        lectureDirecte: true
+                    };
+                }
+            }
+        } catch (erreur) {
+            console.warn("Lecture directe du graphique impossible :", erreur);
+        }
+
+        return derniersParametresGraphiqueDirect;
+    }
+
+    function synchroniserChampsMasquesAvecGraphique(parametres) {
+        if (!parametres) return;
+
+        if (parametres.actif) definirValeur("asset-selector", parametres.actif);
+        if (parametres.intervalle) definirValeur("interval-selector", parametres.intervalle);
+
+        /*
+            Les indicateurs ajoutés manuellement dans le graphique ne sont pas tous lisibles
+            avec le widget public. On conserve donc l'indicateur HTML masqué comme repli.
+        */
+        if (parametres.indicateur) definirValeur("indicator-selector", parametres.indicateur);
+    }
+
+    function installerLectureDirecteGraphique() {
+        if (!widgetTradingView) return;
+
+        const initialiser = function () {
+            const parametres = lireParametresDepuisGraphiqueTradingView();
+
+            if (parametres && parametres.lectureDirecte === true) {
+                lectureDirecteGraphiqueDisponible = true;
+                derniersParametresGraphiqueDirect = parametres;
+                synchroniserChampsMasquesAvecGraphique(parametres);
+                mettreAJourBadgeLectureGraphique("ok", "Lecture directe du graphique active");
+            } else {
+                lectureDirecteGraphiqueDisponible = false;
+                mettreAJourBadgeLectureGraphique("erreur", "Widget simple : repli sur champs masqués");
+            }
+
+            if (ecouteursGraphiqueInstalles) return;
 
             try {
-                widgetTradingView = new TradingView.widget({
-                    autosize: true,
-                    symbol: symbole,
-                    interval: intervalle,
-                    timezone: "America/Toronto",
-                    theme: "dark",
-                    style: obtenirStyleTradingView(),
-                    locale: "fr",
-                    toolbar_bg: "#0f172a",
-                    enable_publishing: false,
-                    allow_symbol_change: true,
-                    container_id: "tradingview_chart",
-                    hide_side_toolbar: false,
-                    details: true,
-                    hotlist: true,
-                    calendar: false,
-                    studies: choisirEtudeTradingView()
-                });
+                if (typeof widgetTradingView.activeChart === "function") {
+                    const chart = widgetTradingView.activeChart();
 
-                setTimeout(function () {
-                    afficherMessageGraphique("", "ok");
-                }, 2500);
+                    if (chart && chart.onIntervalChanged && typeof chart.onIntervalChanged === "function") {
+                        chart.onIntervalChanged().subscribe(null, function () {
+                            const nouveauxParametres = lireParametresDepuisGraphiqueTradingView();
+                            if (nouveauxParametres) {
+                                derniersParametresGraphiqueDirect = nouveauxParametres;
+                                synchroniserChampsMasquesAvecGraphique(nouveauxParametres);
+                            }
+                        });
+                    }
 
-                afficherStatus("Graphique TradingView affiché : " + symbole + " / " + intervalle);
+                    if (chart && chart.onSymbolChanged && typeof chart.onSymbolChanged === "function") {
+                        chart.onSymbolChanged().subscribe(null, function () {
+                            const nouveauxParametres = lireParametresDepuisGraphiqueTradingView();
+                            if (nouveauxParametres) {
+                                derniersParametresGraphiqueDirect = nouveauxParametres;
+                                synchroniserChampsMasquesAvecGraphique(nouveauxParametres);
+                            }
+                        });
+                    }
+                }
+
+                ecouteursGraphiqueInstalles = true;
             } catch (erreur) {
-                console.error("Erreur TradingView :", erreur);
-                afficherMessageGraphique("Erreur lors du chargement du graphique TradingView.", "erreur");
-                afficherStatus("Erreur TradingView : " + erreur.message);
+                console.warn("Écoute directe du graphique non disponible :", erreur);
+            }
+        };
+
+        if (typeof widgetTradingView.onChartReady === "function") {
+            widgetTradingView.onChartReady(initialiser);
+        } else {
+            setTimeout(initialiser, 800);
+        }
+    }
+
+    function creerWidgetTradingView(tentative = 0) {
+        const conteneur = document.getElementById("tradingview_chart");
+        if (!conteneur) return;
+
+        if (typeof TradingView === "undefined" || !TradingView.widget) {
+            conteneur.innerHTML = "<div style='padding:16px;color:#facc15;'>Chargement de TradingView...</div>";
+            if (tentative < 20) {
+                setTimeout(function () { creerWidgetTradingView(tentative + 1); }, 500);
+            } else {
+                conteneur.innerHTML = "<div style='padding:16px;color:#fecaca;'>Impossible de charger TradingView.</div>";
+            }
+            return;
+        }
+
+        const symbole = valeurElement("asset-selector", "BINANCE:BTCUSDT");
+        const intervalle = valeurElement("interval-selector", "D");
+        conteneur.innerHTML = "";
+
+        try {
+            widgetTradingView = new TradingView.widget({
+                autosize: true,
+                symbol: symbole,
+                interval: intervalle,
+                timezone: "America/Toronto",
+                theme: "dark",
+                style: obtenirStyleTradingView(),
+                locale: "fr",
+                toolbar_bg: "#0f172a",
+                enable_publishing: false,
+                allow_symbol_change: true,
+                container_id: "tradingview_chart",
+                hide_side_toolbar: false,
+                details: true,
+                hotlist: true,
+                calendar: false,
+                studies: choisirEtudeTradingView()
+            });
+
+            ecouteursGraphiqueInstalles = false;
+            installerLectureDirecteGraphique();
+        } catch (erreur) {
+            conteneur.innerHTML = "<div style='padding:16px;color:#fecaca;'>Erreur lors du chargement du graphique TradingView.</div>";
+            afficherStatus("Erreur TradingView : " + erreur.message);
+        }
+    }
+
+    function actualiserGraphique() {
+        creerWidgetTradingView();
+        afficherStatus("Graphique actualisé.");
+    }
+
+    function ouvrirTradingView() {
+        const symbole = valeurElement("asset-selector", "BINANCE:BTCUSDT");
+        const intervalle = valeurElement("interval-selector", "D");
+        const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(symbole) + "&interval=" + encodeURIComponent(intervalle);
+        window.open(url, "_blank");
+    }
+
+
+    async function viderTableTradingCapture() {
+        const confirmation = confirm("Êtes-vous sûr de vouloir vider toute la table trading_capture ?\n\nCette action supprimera toutes les configurations enregistrées.");
+
+        if (!confirmation) {
+            afficherStatus("Suppression annulée.");
+            return;
+        }
+
+        const motDePasse = await demanderMotDePasseAdmin();
+
+        if (!motDePasse || motDePasse.trim() === "") {
+            afficherStatus("Suppression annulée : mot de passe absent.");
+            alert("Suppression annulée : mot de passe absent.");
+            return;
+        }
+
+        const url = getApiViderCapturesUrl();
+
+        afficherStatus("Vidage de la table trading_capture en cours...");
+        afficherEtatServeur("warning", "Suppression des captures...");
+        afficherInfosServeur(
+            "VIDAGE DE LA TABLE\n" +
+            "------------------\n" +
+            "Table : trading_capture\n" +
+            "Route appelée : " + url
+        );
+
+        try {
+            const resultat = await appelerJson(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                cache: "no-store",
+                body: JSON.stringify({
+                    motDePasse: motDePasse.trim()
+                })
+            });
+
+            afficherStatus("Table trading_capture vidée.");
+            afficherEtatServeur("ok", "Table vidée");
+            afficherInfosServeur(
+                "VIDAGE RÉUSSI\n" +
+                "-------------\n" +
+                JSON.stringify(resultat, null, 4)
+            );
+
+            const select = document.getElementById("liste-captures-postgres");
+            if (select) {
+                select.innerHTML = '<option value="">Aucune configuration enregistrée</option>';
+            }
+
+            configurationActuelle = null;
+            afficherConfiguration({ message: "La table trading_capture a été vidée." });
+            alert("La table trading_capture a été vidée.");
+
+        } catch (erreur) {
+            console.error("Erreur pendant le vidage de la table trading_capture :", erreur);
+
+            afficherStatus("Impossible de vider la table trading_capture.");
+            afficherEtatServeur("error", "Erreur vidage table");
+            afficherInfosServeur(
+                "ERREUR VIDAGE TABLE\n" +
+                "-------------------\n" +
+                "Route appelée : " + url + "\n\n" +
+                "Détail : " + erreur.message
+            );
+
+            alert("Impossible de vider la table trading_capture.\n\nDétail : " + erreur.message);
+        }
+    }
+
+    function ouvrirServeurRender() {
+        window.open(getApiBaseUrl(), "_blank");
+    }
+
+    async function appelerJson(url, options = {}) {
+        try {
+            const urlFinale = String(url || "").replace("https://https://", "https://");
+
+            console.log("APPEL JSON - URL :", urlFinale);
+            console.log("APPEL JSON - OPTIONS :", options);
+
+            const reponse = await fetch(urlFinale, {
+                ...options,
+                mode: "cors",
+                credentials: "omit",
+                cache: "no-store",
+                headers: {
+                    "Accept": "application/json",
+                    ...(options.headers || {})
+                }
+            });
+
+            const texte = await reponse.text();
+
+            console.log("STATUT HTTP :", reponse.status);
+            console.log("RÉPONSE BRUTE :", texte);
+
+            let json;
+
+            try {
+                json = JSON.parse(texte);
+            } catch (erreurJson) {
+                throw new Error("Le serveur n'a pas retourné du JSON. Réponse reçue : " + texte);
+            }
+
+            if (!reponse.ok) {
+                throw new Error(json.detail || json.message || "Réponse HTTP " + reponse.status);
+            }
+
+            return json;
+
+        } catch (erreur) {
+            console.error("ERREUR DANS appelerJson :", erreur);
+            throw erreur;
+        }
+    }
+
+    async function testerServeur() {
+        const urlTest = getApiTestUrl();
+        const debut = performance.now();
+        afficherEtatServeur("warning", "Test du serveur en cours...");
+        afficherInfosServeur("Test de la route :\n" + urlTest);
+
+        try {
+            const resultat = await appelerJson(urlTest, { method: "GET", cache: "no-store" });
+            const duree = Math.round(performance.now() - debut);
+            afficherEtatServeur("ok", "Serveur connecté");
+            afficherInfosServeur("TEST RÉUSSI\n-----------\nRoute : " + urlTest + "\nTemps : " + duree + " ms\n\n" + JSON.stringify(resultat, null, 4));
+        } catch (erreur) {
+            afficherEtatServeur("error", "Serveur inaccessible");
+            afficherInfosServeur("TEST ÉCHOUÉ\n-----------\nRoute : " + urlTest + "\n\n" + erreur.message);
+        }
+    }
+
+    async function creerTablePostgres() {
+        const url = getApiCreerTableUrl();
+        afficherEtatServeur("warning", "Création de la table...");
+        afficherInfosServeur("Appel :\n" + url);
+
+        try {
+            const resultat = await appelerJson(url, { method: "GET", cache: "no-store" });
+            afficherEtatServeur("ok", "Table PostgreSQL prête");
+            afficherInfosServeur(JSON.stringify(resultat, null, 4));
+            alert("Table PostgreSQL créée ou déjà existante.");
+        } catch (erreur) {
+            afficherEtatServeur("error", "Erreur table PostgreSQL");
+            afficherInfosServeur("Impossible de créer la table.\n\n" + erreur.message);
+            alert("Impossible de créer la table PostgreSQL.");
+        }
+    }
+
+    async function verifierTablePostgres() {
+        const url = getApiVerifierTableUrl();
+        afficherEtatServeur("warning", "Vérification de la table...");
+        afficherInfosServeur("Appel :\n" + url);
+
+        try {
+            const resultat = await appelerJson(url, { method: "GET", cache: "no-store" });
+            afficherEtatServeur(resultat.tableExiste ? "ok" : "warning", resultat.tableExiste ? "Table existante" : "Table absente");
+            afficherInfosServeur(JSON.stringify(resultat, null, 4));
+        } catch (erreur) {
+            afficherEtatServeur("error", "Erreur vérification table");
+            afficherInfosServeur("Impossible de vérifier la table.\n\n" + erreur.message);
+        }
+    }
+
+
+    function lireParametresGraphiquesMasques() {
+        const parametresDepuisGraphique = lireParametresDepuisGraphiqueTradingView();
+
+        if (parametresDepuisGraphique && parametresDepuisGraphique.lectureDirecte === true) {
+            derniersParametresGraphiqueDirect = parametresDepuisGraphique;
+            synchroniserChampsMasquesAvecGraphique(parametresDepuisGraphique);
+            mettreAJourBadgeLectureGraphique("ok", "Lecture directe du graphique active");
+            return parametresDepuisGraphique;
+        }
+
+        mettreAJourBadgeLectureGraphique("erreur", "Widget simple : repli sur champs masqués");
+
+        return {
+            actif: valeurElement("asset-selector", "BINANCE:BTCUSDT"),
+            actifLibelle: libelleElement("asset-selector", "Bitcoin / USDT"),
+            intervalle: valeurElement("interval-selector", "D"),
+            intervalleLibelle: libelleElement("interval-selector", "1 jour"),
+            indicateur: valeurElement("indicator-selector", "RSI"),
+            indicateurLibelle: libelleElement("indicator-selector", "RSI"),
+            source: "repli_champs_html_masques",
+            lectureDirecte: false
+        };
+    }
+
+
+    function appelSecurise(description, fonction) {
+        try {
+            if (typeof fonction !== "function") return null;
+            const resultat = fonction();
+            return resultat === undefined ? null : resultat;
+        } catch (erreur) {
+            console.warn("Paramètre TradingView non accessible : " + description, erreur);
+            return null;
+        }
+    }
+
+    function valeurNonVide(valeur) {
+        if (valeur === undefined || valeur === null) return null;
+        if (typeof valeur === "string" && valeur.trim() === "") return null;
+        return valeur;
+    }
+
+    function detecterDimensionsElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            return {
+                existe: false,
+                largeur: null,
+                hauteur: null
+            };
+        }
+
+        const rectangle = element.getBoundingClientRect();
+
+        return {
+            existe: true,
+            largeur: Math.round(rectangle.width),
+            hauteur: Math.round(rectangle.height),
+            largeurScroll: element.scrollWidth || null,
+            hauteurScroll: element.scrollHeight || null
+        };
+    }
+
+    function obtenirEtudesConfigureesDepuisPage() {
+        const indicateur = valeurElement("indicator-selector", "RSI");
+        const etudes = choisirEtudeTradingView();
+
+        return {
+            indicateurSelectionne: indicateur,
+            indicateurLibelle: libelleElement("indicator-selector", "RSI"),
+            etudesConfigurees: etudes,
+            source: "selecteur_html_et_parametre_studies"
+        };
+    }
+
+    function lireValeursAvanceesDepuisChartingLibrary() {
+        const donnees = {
+            apiDisponible: false,
+            symbole: null,
+            intervalle: null,
+            visibleRange: null,
+            typeGraphiqueBrut: null,
+            nomGraphique: null,
+            timezone: null,
+            etudes: null,
+            dessins: null,
+            erreurs: []
+        };
+
+        if (!widgetTradingView || typeof widgetTradingView.activeChart !== "function") {
+            donnees.erreurs.push("API activeChart indisponible avec le widget actuel.");
+            return donnees;
+        }
+
+        const chart = appelSecurise("activeChart", function () {
+            return widgetTradingView.activeChart();
+        });
+
+        if (!chart) {
+            donnees.erreurs.push("Graphique actif non disponible.");
+            return donnees;
+        }
+
+        donnees.apiDisponible = true;
+
+        const symbolInterval = appelSecurise("symbolInterval", function () {
+            return typeof chart.symbolInterval === "function" ? chart.symbolInterval() : null;
+        });
+
+        if (symbolInterval) {
+            donnees.symbole = valeurNonVide(symbolInterval.symbol || symbolInterval.ticker || symbolInterval.pro_name || symbolInterval.full_name);
+            donnees.intervalle = valeurNonVide(symbolInterval.interval || symbolInterval.resolution || symbolInterval.timeframe);
+        }
+
+        donnees.symbole = donnees.symbole || valeurNonVide(appelSecurise("symbol", function () {
+            return typeof chart.symbol === "function" ? chart.symbol() : null;
+        }));
+
+        donnees.intervalle = donnees.intervalle || valeurNonVide(appelSecurise("resolution", function () {
+            return typeof chart.resolution === "function" ? chart.resolution() : null;
+        }));
+
+        donnees.visibleRange = appelSecurise("getVisibleRange", function () {
+            return typeof chart.getVisibleRange === "function" ? chart.getVisibleRange() : null;
+        });
+
+        donnees.typeGraphiqueBrut = appelSecurise("chartType", function () {
+            if (typeof chart.chartType === "function") return chart.chartType();
+            if (typeof chart.getChartType === "function") return chart.getChartType();
+            return null;
+        });
+
+        donnees.nomGraphique = appelSecurise("name", function () {
+            return typeof chart.name === "function" ? chart.name() : null;
+        });
+
+        donnees.timezone = appelSecurise("timezone", function () {
+            if (typeof chart.getTimezone === "function") return chart.getTimezone();
+            if (typeof widgetTradingView.getTimezoneApi === "function") return widgetTradingView.getTimezoneApi();
+            return null;
+        });
+
+        donnees.etudes = appelSecurise("getAllStudies", function () {
+            if (typeof chart.getAllStudies === "function") return chart.getAllStudies();
+            if (typeof chart.getAllPanes === "function") return { panesDisponibles: true, panes: chart.getAllPanes() };
+            return null;
+        });
+
+        donnees.dessins = appelSecurise("getAllShapes", function () {
+            return typeof chart.getAllShapes === "function" ? chart.getAllShapes() : null;
+        });
+
+        return donnees;
+    }
+
+    function capturerParametresAvancesTradingView(parametresGraphiques) {
+        const lectureAvancee = lireValeursAvanceesDepuisChartingLibrary();
+        const dimensionsGraphique = detecterDimensionsElement("tradingview_chart");
+        const etudesConfigurees = obtenirEtudesConfigureesDepuisPage();
+        const dateCapture = new Date();
+
+        const actifFinal =
+            lectureAvancee.symbole ||
+            parametresGraphiques.actif ||
+            valeurElement("asset-selector", "BINANCE:BTCUSDT");
+
+        const intervalleFinal =
+            lectureAvancee.intervalle ||
+            parametresGraphiques.intervalle ||
+            valeurElement("interval-selector", "D");
+
+        return {
+            versionCapture: "advanced_capture_v1",
+            dateCaptureIso: dateCapture.toISOString(),
+            sourcePrincipale: lectureAvancee.apiDisponible ? "charting_library_ou_api_avancee" : "widget_public_avec_repli_html",
+            lectureDirectePossible: lectureAvancee.apiDisponible === true,
+            valeursPrincipales: {
+                actif: actifFinal,
+                actifLibelle: parametresGraphiques.actifLibelle || actifFinal,
+                intervalle: intervalleFinal,
+                intervalleLibelle: parametresGraphiques.intervalleLibelle || intervalleFinal,
+                indicateur: parametresGraphiques.indicateur || valeurElement("indicator-selector", "RSI"),
+                indicateurLibelle: parametresGraphiques.indicateurLibelle || libelleElement("indicator-selector", "RSI"),
+                typeBougie: valeurElement("type-bougie", "bougies_japonaises"),
+                typeBougieLibelle: libelleElement("type-bougie", "Bougies japonaises"),
+                styleTradingView: obtenirStyleTradingView()
+            },
+            graphiqueTradingView: {
+                widgetPresent: !!widgetTradingView,
+                apiActiveChartDisponible: typeof widgetTradingView?.activeChart === "function",
+                apiSymbolIntervalDisponible: typeof widgetTradingView?.symbolInterval === "function",
+                allowSymbolChange: true,
+                autosize: true,
+                theme: "dark",
+                locale: "fr",
+                timezoneConfiguree: "America/Toronto",
+                toolbarBg: "#0f172a",
+                hideSideToolbar: false,
+                details: true,
+                hotlist: true,
+                calendar: false,
+                enablePublishing: false,
+                dimensions: dimensionsGraphique
+            },
+            donneesLuesDepuisApiAvancee: lectureAvancee,
+            indicateursEtEtudes: etudesConfigurees,
+            analyse: {
+                categorie: getCategorieAnalyseBTC(),
+                categorieLibelle: getLibelleCategorieAnalyseBTC(),
+                descriptionCategorie: getDescriptionCategorieAnalyseBTC(),
+                strategie: valeurElement("strategie-selector", "suivi_tendance"),
+                sens: valeurElement("sens-selector", "achat_vente")
+            },
+            risque: {
+                capitalInitial: nombreElement("capital-input", 1000),
+                risqueParPositionPourcent: nombreElement("risk-input", 1),
+                stopLossPourcent: nombreElement("stoploss-input", 2),
+                takeProfitPourcent: nombreElement("takeprofit-input", 4),
+                levier: nombreElement("levier-input", 1)
+            },
+            environnementPage: {
+                urlPage: window.location.href,
+                origine: window.location.origin,
+                chemin: window.location.pathname,
+                largeurFenetre: window.innerWidth,
+                hauteurFenetre: window.innerHeight,
+                devicePixelRatio: window.devicePixelRatio || 1,
+                langueNavigateur: navigator.language || null,
+                plateforme: navigator.platform || null,
+                userAgent: navigator.userAgent || null,
+                heureLocale: dateCapture.toLocaleString("fr-CA")
+            },
+            limites: {
+                indicateursAjoutesManuellementDansTradingView: lectureAvancee.etudes ? "lecture_tentee" : "non_accessible_avec_widget_public",
+                dessinsEtAnnotationsTradingView: lectureAvancee.dessins ? "lecture_tentee" : "non_accessible_avec_widget_public",
+                donneesOHLCVCompletes: "non_fournies_par_le_widget_public",
+                remarque: "Les valeurs réellement accessibles dépendent de l'API TradingView disponible dans la page. Avec le widget public tv.js, la capture directe reste limitée."
+            }
+        };
+    }
+
+    function capturerConfigurationTradingView(afficherAlerte = true) {
+        const parametresGraphiques = lireParametresGraphiquesMasques();
+        const parametresAvancesTradingView = capturerParametresAvancesTradingView(parametresGraphiques);
+
+        configurationActuelle = {
+            nom: "Configuration TradingView IA",
+            dateCapture: new Date().toISOString(),
+            serveur: {
+                apiAnalyse: getApiAnalyseUrl(),
+                apiTest: getApiTestUrl(),
+                apiMarche: getApiMarcheUrl(),
+                apiCaptures: getApiCapturesUrl(),
+                apiViderCaptures: getApiViderCapturesUrl(),
+                hebergeur: "Render",
+                type: "Node.js"
+            },
+            graphique: {
+                actif: parametresGraphiques.actif,
+                actifLibelle: parametresGraphiques.actifLibelle,
+                intervalle: parametresGraphiques.intervalle,
+                intervalleLibelle: parametresGraphiques.intervalleLibelle,
+                indicateur: parametresGraphiques.indicateur,
+                indicateurLibelle: parametresGraphiques.indicateurLibelle,
+                typeBougie: valeurElement("type-bougie", "bougies_japonaises"),
+                typeBougieLibelle: libelleElement("type-bougie", "Bougies japonaises"),
+                source: parametresGraphiques.source || "graphique_tradingview_api",
+                sourceAffichage: "widget_tradingview_integre",
+                lectureDirecteGraphique: parametresGraphiques.lectureDirecte === true,
+                champsMasques: true,
+                parametresAvances: parametresAvancesTradingView
+            },
+            tradingView: parametresAvancesTradingView,
+            analyseIA: {
+                categorie: getCategorieAnalyseBTC(),
+                categorieLibelle: getLibelleCategorieAnalyseBTC(),
+                descriptionCategorie: getDescriptionCategorieAnalyseBTC(),
+                strategie: valeurElement("strategie-selector", "suivi_tendance"),
+                statut: "pret_pour_analyse"
+            },
+            risque: {
+                capitalInitial: nombreElement("capital-input", 1000),
+                risqueParPositionPourcent: nombreElement("risk-input", 1),
+                stopLossPourcent: nombreElement("stoploss-input", 2),
+                takeProfitPourcent: nombreElement("takeprofit-input", 4),
+                levier: nombreElement("levier-input", 1),
+                sens: valeurElement("sens-selector", "achat_vente")
+            },
+            snapshot: {
+                url: valeurElement("snapshot-url", ""),
+                categorieAnalyse: getCategorieAnalyseBTC(),
+                categorieAnalyseLibelle: getLibelleCategorieAnalyseBTC(),
+                descriptionCategorieAnalyse: getDescriptionCategorieAnalyseBTC(),
+                screenshotBase64: null
+            },
+            marche: null,
+            notes: valeurElement("notes-analyse", "").trim(),
+            limites: {
+                captureCompleteTradingView: false,
+                dessinsInternesTradingView: false,
+                remarque: "La page capture le maximum de paramètres accessibles. Avec le widget public TradingView, certaines données internes restent inaccessibles."
+            }
+        };
+
+        afficherConfiguration(configurationActuelle);
+        afficherStatus("Configuration capturée avec succès.");
+
+        if (afficherAlerte) alert("Configuration capturée.");
+
+        return configurationActuelle;
+    }
+
+    async function capturerEtEnregistrerConfiguration() {
+        try {
+            capturerConfigurationTradingView(false);
+
+            afficherStatus("Capture en cours, ajout des données de marché...");
+
+            await enrichirConfigurationAvecDonneesMarche(false);
+
+            /*
+                IMPORTANT :
+                À la demande de l'utilisateur, on ne sauvegarde plus dans PostgreSQL.
+                Ancien appel désactivé volontairement :
+                await enregistrerCapturePostgres(true, false);
+
+                La capture est conservée uniquement localement dans le navigateur,
+                afin que decisions.html puisse la relire avec localStorage.
+            */
+            localStorage.setItem(
+                "configurationTradingViewIA",
+                JSON.stringify(configurationActuelle)
+            );
+
+            afficherConfiguration(configurationActuelle);
+            afficherStatus("Capture créée localement. Aucune sauvegarde dans la base de données.");
+            alert("Capture créée localement. Aucune sauvegarde dans la base de données.");
+
+        } catch (erreur) {
+            console.error("Erreur capture locale :", erreur);
+
+            try {
+                if (!configurationActuelle) {
+                    capturerConfigurationTradingView(false);
+                }
+
+                localStorage.setItem(
+                    "configurationTradingViewIA",
+                    JSON.stringify(configurationActuelle)
+                );
+
+                afficherConfiguration(configurationActuelle);
+                afficherStatus("Capture locale créée, mais les données de marché n'ont pas été ajoutées.");
+                alert(
+                    "Capture locale créée, mais les données de marché n'ont pas été ajoutées.
+
+" +
+                    "Détail : " + erreur.message
+                );
+            } catch (erreurLocale) {
+                console.error("Erreur pendant la capture locale :", erreurLocale);
+                afficherStatus("Erreur pendant la capture locale.");
+                alert("Erreur pendant la capture locale : " + erreurLocale.message);
             }
         }
+    }
 
-        function changerStyleGraphique() {
-            creerWidgetTradingView();
-            appliquerThemeGraphiqueTradingView();
-        }
+    async function enrichirConfigurationAvecDonneesMarche(afficherAlerte = true) {
+        if (!configurationActuelle) capturerConfigurationTradingView(false);
 
-        async function actualiserGraphique() {
-            creerWidgetTradingView();
-            afficherStatus("Graphique TradingView actualisé.");
-        }
+        const urlMarche = getApiMarcheUrl();
+        afficherStatus("Récupération des données de marché...");
+        afficherEtatServeur("warning", "Appel /api/marche...");
 
-        function ouvrirTradingView() {
-            const symbole = document.getElementById('asset-selector').value || "BINANCE:BTCUSDT";
-            const intervalle = document.getElementById('interval-selector').value || "D";
-            const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(symbole) + "&interval=" + encodeURIComponent(intervalle);
-            window.open(url, "_blank");
-        }
-
-        async function convertirFichierImageEnBase64(fichier) {
-            return await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error("Impossible de lire le fichier image."));
-
-                reader.readAsDataURL(fichier);
+        try {
+            const donneesMarche = await appelerJson(urlMarche, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({
+                    actif: configurationActuelle.graphique.actif,
+                    intervalle: configurationActuelle.graphique.intervalle,
+                    indicateur: configurationActuelle.graphique.indicateur,
+                    categorieAnalyse: configurationActuelle.analyseIA.categorie,
+                    typeBougie: configurationActuelle.graphique.typeBougie,
+                    actifLibelle: configurationActuelle.graphique.actifLibelle,
+                    intervalleLibelle: configurationActuelle.graphique.intervalleLibelle,
+                    indicateurLibelle: configurationActuelle.graphique.indicateurLibelle
+                })
             });
+
+            configurationActuelle.marche = {
+                prixActuel: donneesMarche.prixActuel ?? null,
+                support: donneesMarche.support ?? null,
+                resistance: donneesMarche.resistance ?? null,
+                plusHautRecent: donneesMarche.plusHautRecent ?? null,
+                plusBasRecent: donneesMarche.plusBasRecent ?? null,
+                variationPourcent: donneesMarche.variationPourcent ?? null,
+                rsi: donneesMarche.rsi ?? null,
+                ema20: donneesMarche.ema20 ?? null,
+                ema50: donneesMarche.ema50 ?? null,
+                ema200: donneesMarche.ema200 ?? null,
+                macd: donneesMarche.macd ?? null,
+                signalMacd: donneesMarche.signalMacd ?? null,
+                histogrammeMacd: donneesMarche.histogrammeMacd ?? null,
+                atr14: donneesMarche.atr14 ?? null,
+                volume: donneesMarche.volume ?? "neutre",
+                volumeMoyen20: donneesMarche.volumeMoyen20 ?? null,
+                tendance: donneesMarche.tendance ?? "neutre",
+                decisionTechniquePreliminaire: donneesMarche.decisionTechniquePreliminaire ?? "attente",
+                methodeSupportResistance: donneesMarche.methodeSupportResistance ?? null,
+                source: donneesMarche.source ?? "serveur_nodejs",
+                api: urlMarche,
+                ok: donneesMarche.ok === true,
+                statut: donneesMarche.statut || null,
+                message: donneesMarche.message || null,
+                donneesCompletes: donneesMarche,
+                dateMiseAJour: new Date().toISOString()
+            };
+
+            localStorage.setItem("configurationTradingViewIA", JSON.stringify(configurationActuelle));
+            afficherConfiguration(configurationActuelle);
+            afficherEtatServeur("ok", "Données de marché reçues");
+            afficherStatus("Configuration enrichie avec les données de marché.");
+            afficherInfosServeur(JSON.stringify(donneesMarche, null, 4));
+            if (afficherAlerte) alert("Données de marché ajoutées.");
+        } catch (erreur) {
+            afficherEtatServeur("error", "Erreur /api/marche");
+            afficherStatus("Impossible de récupérer les données de marché.");
+            afficherInfosServeur("ERREUR /api/marche\n-----------------\nAdresse : " + urlMarche + "\n\n" + erreur.message);
+            if (afficherAlerte) alert("Impossible d'ajouter les données de marché.");
         }
+    }
 
-        function capturerCanvasEnBase64() {
-            const canvas = document.querySelector('#chart-container canvas');
+    function nettoyerNomFichier(valeur) {
+        return String(valeur || "non-defini")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9-_]/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+    }
 
-            if (!canvas) {
-                throw new Error(
-                    "Le widget TradingView public est chargé dans une iframe externe. " +
-                    "La capture automatique directe du graphique est bloquée par le navigateur. " +
-                    "Utiliser le champ fichier pour importer une capture PNG/JPG/WebP."
+    function genererTimestampFichier() {
+        const maintenant = new Date();
+        const annee = maintenant.getFullYear();
+        const mois = String(maintenant.getMonth() + 1).padStart(2, "0");
+        const jour = String(maintenant.getDate()).padStart(2, "0");
+        const heure = String(maintenant.getHours()).padStart(2, "0");
+        const minute = String(maintenant.getMinutes()).padStart(2, "0");
+        const seconde = String(maintenant.getSeconds()).padStart(2, "0");
+        return annee + mois + jour + "-" + heure + minute + seconde;
+    }
+
+    function genererNomCapturePostgres(configuration) {
+        const actif = nettoyerNomFichier(configuration.graphique.actif);
+        const indicateur = nettoyerNomFichier(configuration.graphique.indicateur);
+
+        const categorieAnalyse =
+            configuration?.analyseIA?.categorieLibelle ||
+            configuration?.analyseIA?.categorie ||
+            configuration?.snapshot?.categorieAnalyseLibelle ||
+            configuration?.snapshot?.categorieAnalyse ||
+            "Liquidité de marché";
+
+        const categorie = nettoyerNomFichier(categorieAnalyse);
+        const timestamp = genererTimestampFichier();
+
+        /*
+            Format demandé :
+            ACTIF-INDICATEUR-CATEGORIE_ANALYSE-TIMESTAMP
+
+            Exemple :
+            BINANCE-BTCUSDT-RSI-ANALYSE-TECHNIQUE-20260510-154233
+        */
+        return actif + "-" + indicateur + "-" + categorie + "-" + timestamp;
+    }
+
+    function obtenirScreenshotBase64DepuisConfiguration() {
+        if (!configurationActuelle || !configurationActuelle.snapshot) return null;
+        return configurationActuelle.snapshot.screenshotBase64 || null;
+    }
+
+    async function enregistrerCapturePostgres(afficherAlerte = true, capturerAvant = true) {
+        try {
+            if (capturerAvant) {
+                capturerConfigurationTradingView(false);
+            }
+
+            if (!configurationActuelle) {
+                throw new Error("configurationActuelle est vide ou non définie.");
+            }
+
+            if (!configurationActuelle.graphique) {
+                throw new Error("configurationActuelle.graphique est vide ou non défini.");
+            }
+
+            const parametresGraphiques = lireParametresGraphiquesMasques();
+
+            configurationActuelle.graphique.actif = parametresGraphiques.actif;
+            configurationActuelle.graphique.actifLibelle = parametresGraphiques.actifLibelle;
+            configurationActuelle.graphique.intervalle = parametresGraphiques.intervalle;
+            configurationActuelle.graphique.intervalleLibelle = parametresGraphiques.intervalleLibelle;
+            configurationActuelle.graphique.indicateur = parametresGraphiques.indicateur;
+            configurationActuelle.graphique.indicateurLibelle = parametresGraphiques.indicateurLibelle;
+            configurationActuelle.graphique.source = parametresGraphiques.source || "graphique_tradingview_api";
+            configurationActuelle.graphique.lectureDirecteGraphique = parametresGraphiques.lectureDirecte === true;
+            configurationActuelle.graphique.champsMasques = true;
+
+            const parametresAvancesTradingView = capturerParametresAvancesTradingView(parametresGraphiques);
+            configurationActuelle.tradingView = parametresAvancesTradingView;
+            configurationActuelle.graphique.parametresAvances = parametresAvancesTradingView;
+
+            const urlCaptures = getApiCapturesUrl();
+            const nomCapture = genererNomCapturePostgres(configurationActuelle);
+            const screenshotBase64 = obtenirScreenshotBase64DepuisConfiguration();
+
+            configurationActuelle.nomCapture = nomCapture;
+
+            const categorieAnalyse =
+                configurationActuelle?.analyseIA?.categorieLibelle ||
+                configurationActuelle?.analyseIA?.categorie ||
+                configurationActuelle?.snapshot?.categorieAnalyseLibelle ||
+                configurationActuelle?.snapshot?.categorieAnalyse ||
+                "Liquidité de marché";
+
+            const donneesAEnregistrer = {
+                actif: configurationActuelle.graphique.actif || "NON_RENSEIGNE",
+                indicateur: configurationActuelle.graphique.indicateur || null,
+                intervalle: configurationActuelle.graphique.intervalle || null,
+                actif_libelle: configurationActuelle.graphique.actifLibelle || null,
+                indicateur_libelle: configurationActuelle.graphique.indicateurLibelle || null,
+                intervalle_libelle: configurationActuelle.graphique.intervalleLibelle || null,
+                source_parametres: configurationActuelle.graphique.source || null,
+                lecture_directe_graphique: configurationActuelle.graphique.lectureDirecteGraphique === true,
+                type_bougie: configurationActuelle.graphique.typeBougie || null,
+                type_bougie_libelle: configurationActuelle.graphique.typeBougieLibelle || null,
+
+                /*
+                    On garde nom_fichier pour compatibilité avec ton ancien code.
+                    On ajoute nom_capture pour la nouvelle colonne.
+                    On ajoute aussi categorie_analyse pour server.js.
+                */
+                nom_fichier: nomCapture || ("capture-" + new Date().toISOString()),
+                nom_capture: nomCapture || ("capture-" + new Date().toISOString()),
+                categorie_analyse: categorieAnalyse,
+                categorieAnalyse: categorieAnalyse,
+
+                configuration_json: configurationActuelle,
+
+                /*
+                    Je garde ton choix actuel :
+                    screenshot désactivé pour éviter les erreurs de taille ou de capture.
+                */
+                screenshot_base64: null
+            };
+
+            console.log("URL PostgreSQL :", urlCaptures);
+            console.log("Données envoyées :", donneesAEnregistrer);
+
+            afficherStatus("Enregistrement dans PostgreSQL...");
+            afficherEtatServeur("warning", "Envoi vers PostgreSQL...");
+            afficherInfosServeur(
+                "ENVOI EN COURS\n" +
+                "--------------\n" +
+                "Route : " + urlCaptures + "\n" +
+                "Table : trading_capture\n" +
+                "Nom capture : " + donneesAEnregistrer.nom_capture
+            );
+
+            const reponse = await fetch(urlCaptures, {
+                method: "POST",
+                mode: "cors",
+                credentials: "omit",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                cache: "no-store",
+                body: JSON.stringify(donneesAEnregistrer)
+            });
+
+            const texte = await reponse.text();
+
+            console.log("Statut HTTP :", reponse.status);
+            console.log("Réponse brute serveur :", texte);
+
+            let resultat;
+
+            try {
+                resultat = JSON.parse(texte);
+            } catch (erreurJson) {
+                throw new Error("Réponse non JSON du serveur : " + texte);
+            }
+
+            if (!reponse.ok || resultat.ok !== true) {
+                throw new Error(resultat.detail || resultat.message || "Erreur serveur inconnue.");
+            }
+
+            console.log("Réponse PostgreSQL :", resultat);
+
+            if (!resultat || resultat.ok !== true || resultat.statut !== "ok") {
+                throw new Error("Réponse serveur incorrecte : " + JSON.stringify(resultat));
+            }
+
+            localStorage.setItem(
+                "configurationTradingViewIA",
+                JSON.stringify(configurationActuelle)
+            );
+
+            afficherStatus("Configuration enregistrée dans PostgreSQL.");
+            afficherEtatServeur("ok", "Enregistrement réussi");
+            afficherInfosServeur(
+                "ENREGISTREMENT RÉUSSI\n" +
+                "----------------------\n" +
+                JSON.stringify(resultat, null, 4)
+            );
+
+            await chargerListeCapturesPostgres(false);
+
+            if (afficherAlerte) {
+                alert(
+                    "Configuration enregistrée dans la base de données.\n\n" +
+                    "Nom de la capture : " + donneesAEnregistrer.nom_capture
                 );
             }
 
-            return canvas.toDataURL('image/png');
+        } catch (erreur) {
+            console.error("Erreur complète d'enregistrement PostgreSQL :", erreur);
+
+            afficherStatus("Erreur lors de l'enregistrement.");
+            afficherEtatServeur("error", "Erreur base de données");
+            afficherInfosServeur(
+                "ERREUR D'ENREGISTREMENT\n" +
+                "-----------------------\n" +
+                erreur.message
+            );
+
+            alert("Impossible d'enregistrer dans la base de données : " + erreur.message);
         }
+    }
 
-        async function obtenirImagePourAnalyse() {
-            const input = document.getElementById("screenshot-file");
+    async function chargerListeCapturesPostgres(afficherAlerte = true) {
+        /*
+            On garde l'ancienne URL fixe qui fonctionnait hier.
+        */
+        const urlCaptures = "https://trading-g8ie.onrender.com/api/captures";
 
-            if (input && input.files && input.files.length > 0) {
-                return await convertirFichierImageEnBase64(input.files[0]);
-            }
+        const select = document.getElementById("liste-captures-postgres");
+        if (!select) return;
 
-            if (dernierScreenshotBase64) {
-                return dernierScreenshotBase64;
-            }
+        afficherStatus("Chargement de la liste PostgreSQL...");
+        afficherEtatServeur("warning", "Lecture /api/captures...");
 
-            return capturerCanvasEnBase64();
-        }
+        try {
+            console.log("URL utilisée pour charger la liste :", urlCaptures);
 
-        async function takeScreenshot() {
-            try {
-                afficherStatus("Capture de configuration en cours...");
+            const resultat = await appelerJson(urlCaptures, { method: "GET", cache: "no-store" });
 
-                const configuration = obtenirConfiguration();
+            select.innerHTML = '<option value="">Choisir une configuration</option>';
 
-                const payload = {
-                    image: null,
-                    screenshot_base64: null,
-                    metadata: {
-                        asset: configuration.actif,
-                        interval: configuration.intervalle,
-                        category: configuration.categorieAnalyseLibelle,
-                        style: configuration.style,
-                        indicator: configuration.indicateur,
-                        date: new Date().toLocaleString()
-                    },
-                    configuration: configuration
-                };
+            if (!resultat.captures || resultat.captures.length === 0) {
+                select.innerHTML = '<option value="">Aucune configuration enregistrée</option>';
+            } else {
+                resultat.captures.forEach(function(capture) {
+                    const option = document.createElement("option");
 
-                try {
-                    const response = await fetch(getApiUrl('/api/save'), {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    });
+                    /*
+                        Important :
+                        La valeur reste l'id, car la route de chargement est /api/captures/:id.
+                    */
+                    option.value = capture.id;
 
-                    const data = await lireReponseJson(response);
-                    afficherResultat(data);
-                    afficherStatus("Configuration TradingView enregistrée sur le serveur.");
-                    alert("✅ Configuration enregistrée.\n\nNote : la capture image directe du widget TradingView public n'est pas possible depuis une iframe externe.");
+                    const dateCapture = capture.date_capture
+                        ? new Date(capture.date_capture).toLocaleString("fr-CA")
+                        : "date inconnue";
 
-                } catch (erreurServeur) {
-                    afficherResultat({
-                        ok: false,
-                        message: "Configuration créée, mais sauvegarde serveur échouée.",
-                        details: erreurServeur.message,
-                        route: getApiUrl('/api/save')
-                    });
+                    const nomCapture =
+                        capture.nom_capture ||
+                        capture.nom_fichier ||
+                        (
+                            (capture.actif || "actif") +
+                            "-" +
+                            (capture.indicateur || "indicateur") +
+                            "-" +
+                            dateCapture
+                        );
 
-                    afficherStatus("Configuration créée localement, mais non sauvegardée sur le serveur.");
-                    alert("Configuration créée localement, mais sauvegarde serveur échouée.");
-                }
+                    /*
+                        Affichage demandé :
+                        on affiche le nom_capture dans la liste déroulante.
+                    */
+                    option.textContent =
+                        capture.id +
+                        " - " +
+                        nomCapture +
+                        " - " +
+                        dateCapture;
 
-                return null;
-
-            } catch (err) {
-                console.error("Erreur capture :", err);
-                afficherStatus("Erreur capture : " + err.message);
-                alert("Erreur capture.\n\n" + err.message);
-                return null;
-            }
-        }
-
-        async function testerAnalyseTechnique() {
-            try {
-                const configuration = obtenirConfiguration();
-
-                afficherStatus("Test technique serveur en cours...");
-
-                const response = await fetch(getApiUrl('/api/analyse-technique-pro'), {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        actif: configuration.actif,
-                        intervalle: configuration.intervalle,
-                        configuration: configuration
-                    })
+                    select.appendChild(option);
                 });
-
-                const data = await lireReponseJson(response);
-
-                afficherResultat(data);
-                afficherStatus("Analyse technique serveur reçue.");
-
-            } catch (err) {
-                console.error("Erreur test technique :", err);
-                afficherStatus("Erreur test technique : " + err.message);
-                alert("Erreur test technique.\n\n" + err.message);
             }
+
+            afficherStatus("Liste PostgreSQL chargée.");
+            afficherEtatServeur("ok", "Captures chargées");
+            afficherInfosServeur(
+                "LISTE DES CAPTURES\n" +
+                "------------------\n" +
+                "Nombre : " + (resultat.captures ? resultat.captures.length : 0)
+            );
+
+            if (afficherAlerte) alert("Liste des captures chargée.");
+        } catch (erreur) {
+            afficherStatus("Impossible de charger la liste PostgreSQL.");
+            afficherEtatServeur("error", "Erreur lecture /api/captures");
+            afficherInfosServeur(
+                "ERREUR LECTURE /api/captures\n" +
+                "---------------------------\n" +
+                erreur.message
+            );
+
+            if (afficherAlerte) alert("Impossible de charger la liste PostgreSQL.");
+        }
+    }
+
+    async function chargerCapturePostgresSelectionnee() {
+        const select = document.getElementById("liste-captures-postgres");
+        if (!select || !select.value) {
+            alert("Choisir une capture dans la liste.");
+            return;
         }
 
-        async function analyserVisionMarche() {
+        const urlCapture = getApiCapturesUrl() + "/" + encodeURIComponent(select.value);
+
+        afficherStatus("Chargement de la capture PostgreSQL...");
+        afficherEtatServeur("warning", "Lecture capture PostgreSQL...");
+
+        try {
+            const resultat = await appelerJson(urlCapture, { method: "GET", cache: "no-store" });
+            const capture = resultat.capture;
+
+            configurationActuelle = capture.configuration_json || null;
+
+            if (!configurationActuelle) {
+                throw new Error("La capture ne contient pas configuration_json.");
+            }
+
+            appliquerConfiguration(configurationActuelle);
+            afficherConfiguration(configurationActuelle);
+            afficherScreenshotPostgres(capture.screenshot_base64);
+            localStorage.setItem("configurationTradingViewIA", JSON.stringify(configurationActuelle));
+
+            afficherStatus("Capture PostgreSQL chargée.");
+            afficherEtatServeur("ok", "Capture chargée");
+            afficherInfosServeur(
+                "CAPTURE CHARGÉE\n" +
+                "---------------\n" +
+                "ID : " + capture.id + "\n" +
+                "Nom capture : " + (capture.nom_capture || capture.nom_fichier || "non renseigné") + "\n" +
+                "Actif : " + capture.actif
+            );
+
+            alert("Capture PostgreSQL chargée.");
+        } catch (erreur) {
+            afficherStatus("Impossible de charger la capture PostgreSQL.");
+            afficherEtatServeur("error", "Erreur capture PostgreSQL");
+            afficherInfosServeur(
+                "ERREUR CHARGEMENT CAPTURE\n" +
+                "--------------------------\n" +
+                erreur.message
+            );
+
+            alert("Impossible de charger la capture sélectionnée.");
+        }
+    }
+
+    function afficherScreenshotPostgres(screenshotBase64) {
+        const image = document.getElementById("image-capture-postgres");
+        if (!image) return;
+
+        if (screenshotBase64 && String(screenshotBase64).trim() !== "") {
+            image.src = screenshotBase64;
+            image.style.display = "block";
+        } else {
+            image.removeAttribute("src");
+            image.style.display = "none";
+        }
+    }
+
+    function appliquerConfiguration(configuration) {
+        if (!configuration || !configuration.graphique) return;
+
+        definirValeur("asset-selector", configuration.graphique.actif);
+        definirValeur("interval-selector", configuration.graphique.intervalle);
+        definirValeur("indicator-selector", configuration.graphique.indicateur);
+        definirValeur("type-bougie", configuration.graphique.typeBougie);
+
+        if (configuration.analyseIA) {
+            definirValeur("categorie-analyse-btc", configuration.analyseIA.categorie);
+            definirValeur("strategie-selector", configuration.analyseIA.strategie);
+            actualiserDescriptionCategorie();
+        }
+
+        if (configuration.risque) {
+            definirValeur("capital-input", configuration.risque.capitalInitial);
+            definirValeur("risk-input", configuration.risque.risqueParPositionPourcent);
+            definirValeur("stoploss-input", configuration.risque.stopLossPourcent);
+            definirValeur("takeprofit-input", configuration.risque.takeProfitPourcent);
+            definirValeur("levier-input", configuration.risque.levier);
+            definirValeur("sens-selector", configuration.risque.sens);
+        }
+
+        if (configuration.snapshot) definirValeur("snapshot-url", configuration.snapshot.url);
+        if (configuration.serveur && configuration.serveur.apiAnalyse) definirValeur("api-url", configuration.serveur.apiAnalyse);
+        if (configuration.notes !== undefined) definirValeur("notes-analyse", configuration.notes);
+
+        creerWidgetTradingView();
+    }
+
+    function definirValeur(id, valeur) {
+        const element = document.getElementById(id);
+        if (element && valeur !== undefined && valeur !== null) element.value = valeur;
+    }
+
+    function rechargerConfigurationTradingView() {
+        const data = localStorage.getItem("configurationTradingViewIA");
+        if (!data) {
+            alert("Aucune configuration sauvegardée.");
+            return;
+        }
+
+        try {
+            configurationActuelle = JSON.parse(data);
+            appliquerConfiguration(configurationActuelle);
+            afficherConfiguration(configurationActuelle);
+            afficherStatus("Configuration rechargée.");
+            alert("Configuration rechargée.");
+        } catch (erreur) {
+            alert("Erreur : configuration sauvegardée invalide.");
+        }
+    }
+
+    async function ouvrirPageDecision() {
+        try {
+            capturerConfigurationTradingView(false);
+
+            afficherStatus("Préparation du snapshot avec les données de marché...");
+
+            await enrichirConfigurationAvecDonneesMarche(false);
+
+            localStorage.setItem(
+                "configurationTradingViewIA",
+                JSON.stringify(configurationActuelle)
+            );
+
+            window.open("decisions.html", "_blank");
+
+        } catch (erreur) {
+            console.error("Erreur ouverture decisions.html :", erreur);
+
+            if (!configurationActuelle) {
+                capturerConfigurationTradingView(false);
+            }
+
+            localStorage.setItem(
+                "configurationTradingViewIA",
+                JSON.stringify(configurationActuelle)
+            );
+
+            alert(
+                "Les données de marché n'ont pas pu être ajoutées. " +
+                "La page de décision va s'ouvrir avec les données disponibles."
+            );
+
+            window.open("decisions.html", "_blank");
+        }
+    }
+
+    function importerJSONDepuisFichier(event) {
+        const fichier = event.target.files[0];
+        if (!fichier) return;
+
+        const lecteur = new FileReader();
+        lecteur.onload = function(e) {
             try {
-                const configuration = obtenirConfiguration();
-
-                setBoutonsActifs(false);
-                afficherStatus("Analyse Vision + Marché en cours...");
-
-                const imageBase64 = await obtenirImagePourAnalyse();
-
-                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        actif: configuration.actif,
-                        intervalle: configuration.intervalle,
-                        imageBase64: imageBase64,
-                        configuration: configuration
-                    })
-                });
-
-                const data = await lireReponseJson(response);
-
-                afficherResultat(formatterAnalyseVision(data));
-                afficherStatus("Analyse Vision + Marché terminée.");
-                alert("Analyse Vision + Marché terminée.");
-
-            } catch (err) {
-                console.error("Erreur Vision + Marché :", err);
-                afficherStatus("Erreur Vision + Marché : " + err.message);
-                alert("Erreur Vision + Marché.\n\n" + err.message);
-            } finally {
-                setBoutonsActifs(true);
-            }
-        }
-
-        function formatterAnalyseVision(data) {
-            const analyse = data.analysis || data.analyse || data;
-
-            const lignes = [];
-
-            lignes.push("ANALYSE VISION + MARCHÉ");
-            lignes.push("=======================");
-            lignes.push("");
-            lignes.push("Décision : " + (analyse.decision || analyse.signal || "N/A"));
-            lignes.push("Confiance : " + (analyse.confiance ?? analyse.confidence ?? "N/A") + "%");
-            lignes.push("Tendance : " + (analyse.tendance || "N/A"));
-            lignes.push("Actif : " + (analyse.actif || "N/A"));
-            lignes.push("Intervalle : " + (analyse.intervalle || "N/A"));
-            lignes.push("Prix actuel : " + (analyse.prix_actuel ?? "N/A"));
-            lignes.push("Support principal : " + (analyse.support_principal ?? "N/A"));
-            lignes.push("Résistance principale : " + (analyse.resistance_principale ?? "N/A"));
-            lignes.push("Stop loss : " + (analyse.stop_loss ?? "N/A"));
-            lignes.push("Take profit 1 : " + (analyse.take_profit_1 ?? "N/A"));
-            lignes.push("Take profit 2 : " + (analyse.take_profit_2 ?? "N/A"));
-            lignes.push("");
-
-            if (analyse.resume) {
-                lignes.push("Résumé :");
-                lignes.push(analyse.resume);
-                lignes.push("");
+                const configuration = JSON.parse(e.target.result);
+                if (!configuration.graphique) throw new Error("Le fichier JSON ne contient pas de bloc graphique.");
+                configurationActuelle = configuration;
+                appliquerConfiguration(configurationActuelle);
+                afficherConfiguration(configurationActuelle);
+                localStorage.setItem("configurationTradingViewIA", JSON.stringify(configurationActuelle));
+                afficherStatus("Configuration JSON importée.");
+                alert("Configuration JSON importée avec succès.");
+            } catch (erreur) {
+                alert("Import impossible. Fichier JSON invalide.\n\n" + erreur.message);
             }
 
-            if (Array.isArray(analyse.raisons) && analyse.raisons.length > 0) {
-                lignes.push("Raisons :");
-                analyse.raisons.forEach(item => lignes.push("- " + item));
-                lignes.push("");
-            }
-
-            if (Array.isArray(analyse.risques) && analyse.risques.length > 0) {
-                lignes.push("Risques :");
-                analyse.risques.forEach(item => lignes.push("- " + item));
-                lignes.push("");
-            }
-
-            if (Array.isArray(analyse.recommandations) && analyse.recommandations.length > 0) {
-                lignes.push("Recommandations :");
-                analyse.recommandations.forEach(item => lignes.push("- " + item));
-                lignes.push("");
-            }
-
-            lignes.push("JSON COMPLET");
-            lignes.push("============");
-            lignes.push(JSON.stringify(data, null, 2));
-
-            return lignes.join("\n");
-        }
-
-        window.onload = init;
-
-        window.onresize = () => {
-            appliquerThemeGraphiqueTradingView();
+            event.target.value = "";
         };
-    </script>
+
+        lecteur.readAsText(fichier);
+    }
+
+async function viderTableCaptures() {
+    const confirmation = confirm(
+        "Attention : cette action va supprimer toutes les captures enregistrées.\n\n" +
+        "Voulez-vous vraiment vider la table trading_capture ?"
+    );
+
+    if (!confirmation) {
+        return;
+    }
+
+    const motDePasse = await demanderMotDePasseAdmin();
+
+    if (!motDePasse || motDePasse.trim() === "") {
+        alert("Suppression annulée : mot de passe absent.");
+        return;
+    }
+
+    try {
+        const reponse = await fetch("https://trading-g8ie.onrender.com/api/vider-captures", {
+            method: "POST",
+            mode: "cors",
+            credentials: "omit",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cache: "no-store",
+            body: JSON.stringify({
+                motDePasse: motDePasse.trim()
+            })
+        });
+
+        const texte = await reponse.text();
+        const resultat = JSON.parse(texte);
+
+        if (!reponse.ok || resultat.ok !== true) {
+            throw new Error(resultat.message || "Erreur inconnue.");
+        }
+
+        alert("La table trading_capture a été vidée avec succès.");
+
+        if (typeof chargerListeCapturesPostgres === "function") {
+            chargerListeCapturesPostgres(false);
+        }
+
+    } catch (erreur) {
+        alert("Impossible de vider la table trading_capture : " + erreur.message);
+        console.error("Erreur vidage table :", erreur);
+    }
+}
+    document.addEventListener("DOMContentLoaded", function () {
+        const champApi = document.getElementById("api-url");
+        if (champApi && !champApi.value.trim()) {
+            champApi.value = API_BASE_URL_PAR_DEFAUT + "/api/analyse";
+        }
+
+        const selectCategorie = document.getElementById("categorie-analyse-btc");
+        if (selectCategorie) {
+            selectCategorie.addEventListener("change", function () {
+                actualiserDescriptionCategorie();
+
+                if (configurationActuelle) {
+                    configurationActuelle.analyseIA.categorie = getCategorieAnalyseBTC();
+                    configurationActuelle.analyseIA.categorieLibelle = getLibelleCategorieAnalyseBTC();
+                    configurationActuelle.analyseIA.descriptionCategorie = getDescriptionCategorieAnalyseBTC();
+                    afficherConfiguration(configurationActuelle);
+                }
+            });
+        }
+
+        actualiserDescriptionCategorie();
+        creerWidgetTradingView();
+
+        /*
+            Capture locale uniquement :
+            on ne charge plus automatiquement la liste PostgreSQL.
+            Ancien appel désactivé volontairement :
+            chargerListeCapturesPostgres(false);
+        */
+        afficherStatus("Prêt. Capture locale uniquement, sans sauvegarde en base de données.");
+    });
+</script>
 </body>
 </html>
