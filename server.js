@@ -296,10 +296,12 @@ app.get("/api/structure-table", async (req, res) => {
 
 app.get("/api/contenu-table", async (req, res) => {
     try {
-        verifierDbConfiguree();
+        await initialiserTableTradingCapture();
+
+        const limite = Math.min(Math.max(parseInt(req.query.limit || "50", 10) || 50, 1), 200);
 
         const resultat = await db.query(`
-            SELECT 
+            SELECT
                 id,
                 actif,
                 indicateur,
@@ -307,27 +309,173 @@ app.get("/api/contenu-table", async (req, res) => {
                 nom_fichier,
                 nom_capture,
                 categorie_analyse,
+                actif_libelle,
+                indicateur_libelle,
+                intervalle_libelle,
+                source_parametres,
+                lecture_directe_graphique,
+                type_bougie,
+                type_bougie_libelle,
                 date_capture,
-                CASE 
+                CASE
                     WHEN screenshot_base64 IS NULL THEN false
                     ELSE true
                 END AS image_presente,
+                CASE
+                    WHEN screenshot_base64 IS NULL THEN 0
+                    ELSE LENGTH(screenshot_base64)
+                END AS taille_image_base64,
                 configuration_json
             FROM trading_capture
             ORDER BY date_capture DESC
-            LIMIT 20;
+            LIMIT $1;
+        `, [limite]);
+
+        const total = await db.query(`
+            SELECT COUNT(*)::int AS total
+            FROM trading_capture;
         `);
 
         res.json({
             ok: true,
             table: "trading_capture",
+            requete: "SELECT colonnes principales FROM trading_capture ORDER BY date_capture DESC",
+            limite,
+            total_table: total.rows[0].total,
+            total_retourne: resultat.rows.length,
             captures: resultat.rows,
             date: maintenantIso()
         });
     } catch (erreur) {
         res.status(erreur.httpStatus || 500).json({
             ok: false,
-            message: "Impossible de lire le contenu de la table.",
+            message: "Impossible de lire le contenu de la table trading_capture.",
+            details: erreur.message,
+            date: maintenantIso()
+        });
+    }
+});
+
+app.get("/api/contenu-table-complet", async (req, res) => {
+    try {
+        await initialiserTableTradingCapture();
+
+        const limite = Math.min(Math.max(parseInt(req.query.limit || "10", 10) || 10, 1), 50);
+
+        const resultat = await db.query(`
+            SELECT *
+            FROM trading_capture
+            ORDER BY date_capture DESC
+            LIMIT $1;
+        `, [limite]);
+
+        res.json({
+            ok: true,
+            table: "trading_capture",
+            requete: "SELECT * FROM trading_capture ORDER BY date_capture DESC",
+            avertissement: "Cette route retourne aussi screenshot_base64. La réponse peut être très volumineuse.",
+            limite,
+            total_retourne: resultat.rows.length,
+            captures: resultat.rows,
+            date: maintenantIso()
+        });
+    } catch (erreur) {
+        res.status(erreur.httpStatus || 500).json({
+            ok: false,
+            message: "Impossible de lire le contenu complet de la table trading_capture.",
+            details: erreur.message,
+            date: maintenantIso()
+        });
+    }
+});
+
+app.get("/api/select-trading-capture", async (req, res) => {
+    try {
+        await initialiserTableTradingCapture();
+
+        const limite = Math.min(Math.max(parseInt(req.query.limit || "50", 10) || 50, 1), 200);
+
+        const resultat = await db.query(`
+            SELECT
+                id,
+                actif,
+                indicateur,
+                intervalle,
+                nom_capture,
+                categorie_analyse,
+                date_capture,
+                configuration_json
+            FROM trading_capture
+            ORDER BY date_capture DESC
+            LIMIT $1;
+        `, [limite]);
+
+        res.json({
+            ok: true,
+            message: "Résultat SELECT FROM trading_capture.",
+            sql_execute: "SELECT id, actif, indicateur, intervalle, nom_capture, categorie_analyse, date_capture, configuration_json FROM trading_capture ORDER BY date_capture DESC",
+            limite,
+            lignes: resultat.rows,
+            date: maintenantIso()
+        });
+    } catch (erreur) {
+        res.status(erreur.httpStatus || 500).json({
+            ok: false,
+            message: "Erreur SELECT FROM trading_capture.",
+            details: erreur.message,
+            date: maintenantIso()
+        });
+    }
+});
+
+app.get("/api/capture-image/:id", async (req, res) => {
+    try {
+        await initialiserTableTradingCapture();
+
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                ok: false,
+                message: "ID de capture invalide."
+            });
+        }
+
+        const resultat = await db.query(`
+            SELECT id, nom_capture, screenshot_base64
+            FROM trading_capture
+            WHERE id = $1;
+        `, [id]);
+
+        if (resultat.rows.length === 0) {
+            return res.status(404).json({
+                ok: false,
+                message: "Capture introuvable.",
+                id
+            });
+        }
+
+        const capture = resultat.rows[0];
+
+        if (!capture.screenshot_base64) {
+            return res.status(404).json({
+                ok: false,
+                message: "La capture existe, mais elle ne contient pas d'image.",
+                id
+            });
+        }
+
+        res.json({
+            ok: true,
+            id: capture.id,
+            nom_capture: capture.nom_capture,
+            screenshot_base64: capture.screenshot_base64,
+            date: maintenantIso()
+        });
+    } catch (erreur) {
+        res.status(erreur.httpStatus || 500).json({
+            ok: false,
+            message: "Impossible de lire l'image de la capture.",
             details: erreur.message,
             date: maintenantIso()
         });
@@ -1616,6 +1764,9 @@ app.use((req, res) => {
             "GET /api/verifier-captures",
             "GET /api/structure-table",
             "GET /api/contenu-table",
+            "GET /api/contenu-table-complet",
+            "GET /api/select-trading-capture",
+            "GET /api/capture-image/:id",
             "GET /api/captures",
             "GET /api/captures/:id",
             "POST /api/captures",
