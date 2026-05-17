@@ -73,6 +73,21 @@
             white-space: nowrap;
         }
 
+        .btn-json {
+            background: #1d4ed8;
+            color: #ffffff;
+            border: 1px solid #2563eb;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .btn-json:hover {
+            background: #2563eb;
+        }
+
         @media (max-width: 900px) {
             .configuration-loader {
                 width: 100%;
@@ -95,7 +110,14 @@
     <div class="header-pro">
         <div class="control-group">
             <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché et sauvegarder l’image avec sa configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
-            <input type="file" id="screenshot-file" accept="image/png,image/jpeg,image/webp">
+            <button
+                class="btn-json"
+                id="btn-json-config"
+                type="button"
+                onclick="chargerConfigurationJsonDepuisTable()"
+                title="Charger uniquement les paramètres JSON sauvegardés dans la table trading_capture, sans le code Base64 de l’image.">
+                Charger JSON
+            </button>
             <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()">Vision + Marché</button>
         </div>
 
@@ -479,16 +501,38 @@
             return [obtenirBaseApiPrincipale() + "/api/captures"];
         }
 
+        function nettoyerConfigurationSansImage(configuration) {
+            if (!configuration || typeof configuration !== "object") return configuration;
+
+            const copie = JSON.parse(JSON.stringify(configuration));
+
+            delete copie.screenshot_base64;
+            delete copie.screenshotBase64;
+            delete copie.image;
+            delete copie.screenshot;
+
+            if (copie.snapshot) {
+                delete copie.snapshot.screenshotBase64;
+                delete copie.snapshot.screenshot_base64;
+                delete copie.snapshot.image;
+                delete copie.snapshot.screenshot;
+            }
+
+            return copie;
+        }
+
         function extraireConfigurationDepuisCapture(capture) {
             if (!capture) return null;
 
-            return (
+            const configuration = (
                 capture.configuration_json ||
                 capture.configuration ||
                 capture.configurationJson ||
                 capture.brute?.configuration_json ||
                 null
             );
+
+            return nettoyerConfigurationSansImage(configuration);
         }
 
         function formaterDateCapture(valeur) {
@@ -594,6 +638,93 @@
 
             select.value = valeurTexte;
             return true;
+        }
+
+        async function chargerConfigurationJsonDepuisTable() {
+            const select = document.getElementById("configuration-sauvegardee-selector");
+
+            try {
+                if (!configurationsSauvegardees.length) {
+                    await chargerListeConfigurationsSauvegardees();
+                }
+
+                if (!configurationsSauvegardees.length) {
+                    throw new Error("Aucune configuration JSON disponible dans la table trading_capture.");
+                }
+
+                let index = select && select.value !== "" ? Number(select.value) : 0;
+
+                if (!Number.isInteger(index) || !configurationsSauvegardees[index]) {
+                    index = 0;
+                }
+
+                if (select) {
+                    select.value = String(index);
+                }
+
+                const capture = configurationsSauvegardees[index];
+                const configuration = extraireConfigurationDepuisCapture(capture);
+
+                if (!configuration) {
+                    throw new Error("La ligne sélectionnée ne contient pas de configuration_json.");
+                }
+
+                await appliquerConfigurationJsonAuGraphique(configuration, capture);
+
+                afficherResultat({
+                    ok: true,
+                    message: "Configuration JSON chargée depuis trading_capture, sans image Base64.",
+                    capture: {
+                        id: capture.id,
+                        nom_capture: capture.nom_capture || capture.nom_fichier,
+                        date_capture: capture.date_capture
+                    },
+                    configuration_json_sans_image: configuration
+                });
+
+                afficherStatus("Configuration JSON chargée depuis PostgreSQL, sans image Base64.");
+
+                alert(
+                    "Configuration JSON chargée depuis PostgreSQL.\n\n" +
+                    "Aucune image Base64 n'a été chargée.\n" +
+                    "Seuls les paramètres du graphique ont été appliqués."
+                );
+
+            } catch (erreur) {
+                console.error("Erreur chargement JSON depuis table :", erreur);
+                afficherStatus("Erreur chargement JSON : " + erreur.message);
+                alert("Échec du chargement JSON.\n\n" + erreur.message);
+            }
+        }
+
+        async function appliquerConfigurationJsonAuGraphique(configuration, capture = {}) {
+            const graphique = configuration.graphique || {};
+
+            const actif = configuration.actif || graphique.actif || capture.actif;
+            const intervalle = configuration.intervalle || graphique.intervalle || capture.intervalle;
+            const indicateur = configuration.indicateur || graphique.indicateur || capture.indicateur;
+            const style = configuration.style || graphique.style || capture.type_bougie;
+            const categorie = configuration.categorieAnalyse || configuration.categorie_analyse || capture.categorie_analyse;
+
+            const actifOk = definirValeurSelect("asset-selector", actif);
+            const intervalleOk = definirValeurSelect("interval-selector", intervalle);
+            definirValeurSelect("indicator-selector", indicateur);
+            const styleOk = definirValeurSelect("chart-type-selector", style);
+            definirValeurSelect("categorie-analyse-btc", categorie);
+
+            if (!actifOk) {
+                throw new Error("Actif absent de la liste : " + actif);
+            }
+
+            if (!intervalleOk) {
+                throw new Error("Intervalle absent de la liste : " + intervalle);
+            }
+
+            if (styleOk) {
+                changerStyleGraphique(false);
+            }
+
+            await actualiserGraphique();
         }
 
         async function chargerConfigurationSauvegardee() {
