@@ -561,11 +561,15 @@
         const selectedFiles = new Set();
         const captureMap = new Map();
 
-        const API_BASE_URL_PRINCIPAL = window.location.hostname.includes("github.io")
-            ? "https://expert-trading.onrender.com"
-            : "";
-
-        const API_BASE_URL_SECOURS = "https://trading-g8ie.onrender.com";
+        /*
+            Service unique utilisé par analyse.html.
+            Correction importante :
+            - ne plus lire trading-g8ie ;
+            - rester sur expert-trading uniquement ;
+            - éviter d'afficher des captures venant d'une autre base PostgreSQL.
+        */
+        const API_BASE_URL_PRINCIPAL = "https://expert-trading.onrender.com";
+        const API_BASE_URL_SECOURS = "";
 
         const viewer = document.getElementById('viewer');
         const metaContent = document.getElementById('meta-content');
@@ -579,12 +583,26 @@
         function getApiUrls(route) {
             const urls = [];
 
+            /*
+                Priorité :
+                1. route relative si la page est déjà servie par expert-trading.onrender.com ;
+                2. URL absolue expert-trading ;
+                3. route relative locale pour tests éventuels.
+            */
+            if (window.location.hostname.includes("expert-trading.onrender.com")) {
+                urls.push(route);
+            }
+
             if (API_BASE_URL_PRINCIPAL) {
                 urls.push(API_BASE_URL_PRINCIPAL + route);
             }
 
-            urls.push(API_BASE_URL_SECOURS + route);
-            urls.push(route);
+            if (
+                window.location.hostname === "localhost" ||
+                window.location.hostname === "127.0.0.1"
+            ) {
+                urls.push(route);
+            }
 
             return [...new Set(urls)];
         }
@@ -813,24 +831,64 @@
             );
         }
 
+        function creerNomCaptureLisible(capture, configuration, graphique) {
+            const id = capture.id ? "ID-" + capture.id : "ID-?";
+            const nomBase =
+                capture.nom_capture ||
+                capture.nom_fichier ||
+                configuration.nom_capture ||
+                configuration.nom ||
+                "capture";
+
+            const actif = capture.actif || graphique.actif || configuration.actif || "ACTIF";
+            const indicateur = capture.indicateur || graphique.indicateur || configuration.indicateur || "IND";
+            const intervalle = capture.intervalle || graphique.intervalle || configuration.intervalle || "INT";
+
+            const dateBrute = capture.date_capture || capture.created_at || configuration.dateConfiguration || configuration.dateCapture || null;
+            let dateTexte = "";
+
+            if (dateBrute) {
+                try {
+                    const d = new Date(dateBrute);
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, "0");
+                    const j = String(d.getDate()).padStart(2, "0");
+                    const h = String(d.getHours()).padStart(2, "0");
+                    const min = String(d.getMinutes()).padStart(2, "0");
+                    const s = String(d.getSeconds()).padStart(2, "0");
+                    dateTexte = y + "-" + m + "-" + j + " " + h + ":" + min + ":" + s;
+                } catch (erreur) {
+                    dateTexte = String(dateBrute);
+                }
+            }
+
+            /*
+                Le nom affiché inclut toujours l'ID PostgreSQL.
+                Ainsi, même si nom_capture est identique, les lignes restent distinguables.
+            */
+            return id + " — " + nomBase + " — " + actif + " / " + indicateur + " / " + intervalle + (dateTexte ? " — " + dateTexte : "");
+        }
+
         function normaliserCapture(capture) {
             const configuration = capture.configuration_json || capture.configuration || {};
             const graphique = configuration.graphique || {};
+            const screenshot = extraireImageCapture(capture, configuration);
+            const dateCapture = capture.date_capture || capture.created_at || configuration.dateConfiguration || configuration.dateCapture || null;
+
+            const nomLisible = creerNomCaptureLisible(capture, configuration, graphique);
 
             return {
                 id: capture.id,
                 key: "capture:" + capture.id,
-                nom: capture.nom_capture || capture.nom_fichier || (
-                    (capture.actif || graphique.actif || "capture") + "-" +
-                    (capture.indicateur || graphique.indicateur || "indicateur") + "-" +
-                    (capture.intervalle || graphique.intervalle || "intervalle")
-                ),
-                date: capture.date_capture || capture.created_at || configuration.dateConfiguration || configuration.dateCapture || null,
+                nom: nomLisible,
+                nom_original: capture.nom_capture || capture.nom_fichier || "capture",
+                date: dateCapture,
                 actif: capture.actif || graphique.actif || configuration.actif || "N/A",
                 indicateur: capture.indicateur || graphique.indicateur || configuration.indicateur || "N/A",
                 intervalle: capture.intervalle || graphique.intervalle || configuration.intervalle || "N/A",
                 categorie: capture.categorie_analyse || configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "N/A",
-                screenshot: extraireImageCapture(capture, configuration),
+                image_presente: Boolean(screenshot || capture.image_presente),
+                screenshot: screenshot,
                 configuration: configuration,
                 brute: capture
             };
@@ -917,7 +975,8 @@
                     const apercu = capture.screenshot
                         ? `<img src="${capture.screenshot}" alt="${capture.nom}">`
                         : `<div style="height:135px;display:flex;align-items:center;justify-content:center;color:#facc15;background:#020617;padding:12px;text-align:center;font-size:12px;">
-                                Capture sans image<br>Détail image absent
+                                Capture sans image<br>
+                                ${capture.image_presente ? "Image indiquée présente, mais non chargée" : "Image absente dans PostgreSQL"}
                            </div>`;
 
                     container.innerHTML = `
@@ -948,58 +1007,14 @@
                 updateSelectionCount();
 
             } catch (errorCaptures) {
-                console.warn("Lecture /api/captures impossible, tentative ancienne route /api/list :", errorCaptures);
+                console.error("Lecture /api/captures impossible :", errorCaptures);
 
-                try {
-                    const resultatLegacy = await fetchJsonAvecSecours('/api/list', { method: "GET" });
-                    const files = Array.isArray(resultatLegacy.data) ? resultatLegacy.data : [];
+                galleryList.innerHTML =
+                    "<p style='color:#f6465d; padding:20px;'>Erreur lors du chargement des captures depuis expert-trading.<br><br>" +
+                    String(errorCaptures.message).replace(/</g, "&lt;") + "</p>";
 
-                    allFiles = files;
-                    galleryList.innerHTML = "";
-
-                    if (!files.length) {
-                        galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucun setup archivé.</p>";
-                        updateSelectionCount();
-                        return;
-                    }
-
-                    files.forEach(fileName => {
-                        const container = document.createElement('div');
-                        const domId = safeDomId(fileName);
-
-                        container.className = 'thumb-container';
-                        container.id = 'thumb-' + domId;
-                        container.setAttribute("data-file", fileName);
-
-                        container.innerHTML = `
-                            <div class="thumb-check-zone" onclick="event.stopPropagation();">
-                                <input 
-                                    type="checkbox" 
-                                    class="thumb-selector" 
-                                    id="check-${domId}"
-                                    title="Sélectionner cette capture"
-                                    onchange="toggleSelection('${fileName.replace(/'/g, "\\'")}', this.checked)">
-                                <span>Sélection</span>
-                            </div>
-                            <img src="${getApiUrls('/screenshots/' + encodeURIComponent(fileName))[0]}" alt="${fileName}">
-                            <div class="thumb-label">${fileName}</div>
-                        `;
-
-                        container.onclick = () => selectImage(fileName);
-                        galleryList.appendChild(container);
-                    });
-
-                    document.getElementById('dynamic-advice').innerText =
-                        "Captures chargées depuis l'ancienne route : " + resultatLegacy.url;
-
-                    updateSelectionCount();
-
-                } catch (errorLegacy) {
-                    console.error(errorLegacy);
-                    galleryList.innerHTML =
-                        "<p style='color:#f6465d; padding:20px;'>Erreur lors du chargement des captures.<br><br>" +
-                        String(errorLegacy.message).replace(/</g, "&lt;") + "</p>";
-                }
+                document.getElementById('dynamic-advice').innerText =
+                    "Erreur : impossible de lire /api/captures sur expert-trading.";
             }
         }
 
