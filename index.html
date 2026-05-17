@@ -46,6 +46,47 @@
             font-size: 13px;
             max-width: calc(100% - 48px);
         }
+
+        .configuration-loader {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.92);
+        }
+
+        .configuration-loader label {
+            color: #facc15;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .configuration-loader select {
+            min-width: 260px;
+            max-width: 420px;
+        }
+
+        .configuration-loader button {
+            white-space: nowrap;
+        }
+
+        @media (max-width: 900px) {
+            .configuration-loader {
+                width: 100%;
+                flex-wrap: wrap;
+                align-items: stretch;
+            }
+
+            .configuration-loader select,
+            .configuration-loader button {
+                width: 100%;
+                max-width: none;
+            }
+        }
+
     </style>
 </head>
 
@@ -53,7 +94,7 @@
 
     <div class="header-pro">
         <div class="control-group">
-            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()">📷 CAPTURE</button>
+            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché et sauvegarder l’image avec sa configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
             <input type="file" id="screenshot-file" accept="image/png,image/jpeg,image/webp">
             <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()">Vision + Marché</button>
         </div>
@@ -96,6 +137,23 @@
         </div>
 
         <h1>EXPERT TRADING PRO</h1>
+
+        <div class="control-group configuration-loader">
+            <label for="configuration-sauvegardee-selector">CONFIG. :</label>
+            <select
+                id="configuration-sauvegardee-selector"
+                title="Charger une configuration déjà sauvegardée dans PostgreSQL"
+                onchange="chargerConfigurationSauvegardee()">
+                <option value="">Chargement des configurations...</option>
+            </select>
+            <button
+                type="button"
+                title="Rafraîchir la liste des configurations sauvegardées"
+                onclick="chargerListeConfigurationsSauvegardees()">
+                ↻
+            </button>
+        </div>
+
 
         <div class="control-group">
             <label for="chart-type-selector">STYLE :</label>
@@ -178,6 +236,7 @@
         let currentData = [];
         let dernierScreenshotBase64 = null;
         let derniereSourceMarche = null;
+        let configurationsSauvegardees = [];
 
         function getApiUrl(route) {
             return API_BASE_URL + route;
@@ -245,6 +304,7 @@
             creerGraphiqueLightweight();
             appliquerThemeGraphiqueTradingView();
             actualiserGraphique();
+            chargerListeConfigurationsSauvegardees();
         }
 
         function afficherStatus(message) {
@@ -412,6 +472,204 @@
                 "Aucune route de sauvegarde n'a accepté la configuration. Dernière erreur : " +
                 (derniereErreur ? derniereErreur.message : "inconnue")
             );
+        }
+
+        function obtenirUrlsLectureCaptures() {
+            const urls = [];
+
+            if (API_BASE_URL) {
+                urls.push(API_BASE_URL + "/api/captures");
+            }
+
+            urls.push(API_BASE_URL_SECOURS + "/api/captures");
+            urls.push("/api/captures");
+
+            return [...new Set(urls)];
+        }
+
+        function extraireConfigurationDepuisCapture(capture) {
+            if (!capture) return null;
+
+            return (
+                capture.configuration_json ||
+                capture.configuration ||
+                capture.configurationJson ||
+                capture.brute?.configuration_json ||
+                null
+            );
+        }
+
+        function formaterDateCapture(valeur) {
+            if (!valeur) return "date inconnue";
+
+            try {
+                return new Date(valeur).toLocaleString("fr-CA");
+            } catch (erreur) {
+                return String(valeur);
+            }
+        }
+
+        function libelleConfigurationSauvegardee(capture) {
+            const configuration = extraireConfigurationDepuisCapture(capture) || {};
+            const graphique = configuration.graphique || {};
+
+            const nom =
+                capture.nom_capture ||
+                capture.nom_fichier ||
+                configuration.nom_capture ||
+                "Configuration";
+
+            const actif = capture.actif || configuration.actif || graphique.actif || "Actif ?";
+            const intervalle = capture.intervalle || configuration.intervalle || graphique.intervalle || "Intervalle ?";
+            const indicateur = capture.indicateur || configuration.indicateur || graphique.indicateur || "Ind ?";
+            const date = formaterDateCapture(capture.date_capture || configuration.dateConfiguration);
+
+            return nom + " — " + actif + " / " + intervalle + " / " + indicateur + " — " + date;
+        }
+
+        async function chargerListeConfigurationsSauvegardees() {
+            const select = document.getElementById("configuration-sauvegardee-selector");
+            if (!select) return;
+
+            select.innerHTML = '<option value="">Chargement des configurations...</option>';
+            afficherStatus("Chargement des configurations sauvegardées...");
+
+            const urls = obtenirUrlsLectureCaptures();
+            let derniereErreur = null;
+
+            for (const url of urls) {
+                try {
+                    const response = await fetch(url, {
+                        method: "GET",
+                        mode: "cors",
+                        credentials: "omit",
+                        cache: "no-store",
+                        headers: {
+                            "Accept": "application/json"
+                        }
+                    });
+
+                    const data = await lireReponseJson(response);
+                    const captures = Array.isArray(data.captures) ? data.captures : [];
+
+                    configurationsSauvegardees = captures.filter(capture => {
+                        return Boolean(extraireConfigurationDepuisCapture(capture));
+                    });
+
+                    select.innerHTML = '<option value="">Choisir une configuration sauvegardée</option>';
+
+                    if (configurationsSauvegardees.length === 0) {
+                        select.innerHTML = '<option value="">Aucune configuration sauvegardée</option>';
+                        afficherStatus("Aucune configuration sauvegardée trouvée.");
+                        return;
+                    }
+
+                    configurationsSauvegardees.forEach((capture, index) => {
+                        const option = document.createElement("option");
+                        option.value = String(index);
+                        option.textContent = libelleConfigurationSauvegardee(capture);
+                        select.appendChild(option);
+                    });
+
+                    afficherStatus(
+                        configurationsSauvegardees.length +
+                        " configuration(s) chargée(s) depuis la base."
+                    );
+                    return;
+
+                } catch (erreur) {
+                    derniereErreur = erreur;
+                    console.warn("Lecture des configurations échouée sur", url, erreur);
+                }
+            }
+
+            configurationsSauvegardees = [];
+            select.innerHTML = '<option value="">Erreur chargement configurations</option>';
+            afficherStatus(
+                "Erreur chargement configurations : " +
+                (derniereErreur ? derniereErreur.message : "erreur inconnue")
+            );
+        }
+
+        function definirValeurSelect(id, valeur) {
+            const select = document.getElementById(id);
+            if (!select || valeur === undefined || valeur === null) return false;
+
+            const valeurTexte = String(valeur);
+            const existe = Array.from(select.options).some(option => option.value === valeurTexte);
+
+            if (!existe) return false;
+
+            select.value = valeurTexte;
+            return true;
+        }
+
+        async function chargerConfigurationSauvegardee() {
+            const select = document.getElementById("configuration-sauvegardee-selector");
+            if (!select || select.value === "") return;
+
+            const index = Number(select.value);
+            const capture = configurationsSauvegardees[index];
+
+            if (!capture) {
+                alert("Configuration introuvable dans la liste locale.");
+                return;
+            }
+
+            try {
+                const configuration = extraireConfigurationDepuisCapture(capture);
+
+                if (!configuration) {
+                    throw new Error("La capture sélectionnée ne contient pas de configuration JSON.");
+                }
+
+                const graphique = configuration.graphique || {};
+
+                const actif = configuration.actif || graphique.actif || capture.actif;
+                const intervalle = configuration.intervalle || graphique.intervalle || capture.intervalle;
+                const indicateur = configuration.indicateur || graphique.indicateur || capture.indicateur;
+                const style = configuration.style || graphique.style || capture.type_bougie;
+                const categorie = configuration.categorieAnalyse || configuration.categorie_analyse || capture.categorie_analyse;
+
+                const actifOk = definirValeurSelect("asset-selector", actif);
+                const intervalleOk = definirValeurSelect("interval-selector", intervalle);
+                const indicateurOk = definirValeurSelect("indicator-selector", indicateur);
+                const styleOk = definirValeurSelect("chart-type-selector", style);
+                definirValeurSelect("categorie-analyse-btc", categorie);
+
+                if (!actifOk) {
+                    throw new Error("Actif absent de la liste : " + actif);
+                }
+
+                if (!intervalleOk) {
+                    throw new Error("Intervalle absent de la liste : " + intervalle);
+                }
+
+                if (styleOk) {
+                    changerStyleGraphique(false);
+                }
+
+                await actualiserGraphique();
+
+                afficherResultat({
+                    ok: true,
+                    message: "Configuration appliquée au graphique.",
+                    capture: {
+                        id: capture.id,
+                        nom_capture: capture.nom_capture || capture.nom_fichier,
+                        date_capture: capture.date_capture
+                    },
+                    configuration_appliquee: configuration
+                });
+
+                afficherStatus("Configuration appliquée au graphique.");
+                alert("Configuration chargée et appliquée au graphique.");
+
+            } catch (erreur) {
+                console.error("Erreur application configuration :", erreur);
+                afficherStatus("Erreur chargement configuration : " + erreur.message);
+                alert("Échec du chargement de la configuration.\n\n" + erreur.message);
+            }
         }
 
         function obtenirConfiguration() {
@@ -836,8 +1094,18 @@
                 const resultatSauvegarde = await enregistrerConfigurationSurServeur(configuration);
 
                 afficherResultat(resultatSauvegarde);
-                afficherStatus("Configuration et image enregistrées dans la liste des captures.");
-                alert("✅ Configuration et image enregistrées dans la liste des captures.");
+                afficherStatus("Configuration et image enregistrées dans la base PostgreSQL.");
+                await chargerListeConfigurationsSauvegardees();
+
+                const idCapture = resultatSauvegarde?.reponseServeur?.capture?.id || "non retourné";
+                const nomCapture = resultatSauvegarde?.reponseServeur?.capture?.nom_capture || resultatSauvegarde?.payloadEnvoye?.nom_capture || "capture";
+
+                alert(
+                    "Capture réussie.\n\n" +
+                    "Image et configuration JSON sauvegardées dans PostgreSQL.\n" +
+                    "Nom : " + nomCapture + "\n" +
+                    "ID : " + idCapture
+                );
 
                 return dernierScreenshotBase64;
 
