@@ -88,6 +88,29 @@
             background: #2563eb;
         }
 
+        .btn-json-local {
+            background: #047857;
+            color: #ffffff;
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            padding: 7px 11px;
+            cursor: pointer;
+            font-weight: 700;
+            white-space: nowrap;
+            margin-left: 8px;
+        }
+
+        .btn-json-local:hover {
+            background: #059669;
+        }
+
+        .result-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 900px) {
             .configuration-loader {
                 width: 100%;
@@ -239,7 +262,16 @@
     <div class="result-panel" id="result-panel">
         <div class="result-header">
             <strong>Résultat IA</strong>
-            <button type="button" onclick="togglePanel()">Masquer / afficher</button>
+            <div class="result-header-actions">
+                <button
+                    type="button"
+                    class="btn-json-local"
+                    onclick="sauvegarderConfigurationJsonLocale()"
+                    title="Télécharger en local la configuration JSON courante, sans image Base64.">
+                    Sauvegarder JSON local
+                </button>
+                <button type="button" onclick="togglePanel()">Masquer / afficher</button>
+            </div>
         </div>
 
         <div id="status" class="status-line">Prêt.</div>
@@ -835,6 +867,60 @@
                 },
                 dateConfiguration: new Date().toISOString()
             };
+        }
+
+        function obtenirConfigurationSansImagePourSauvegardeLocale() {
+            const configuration = obtenirConfiguration();
+            const copie = nettoyerConfigurationSansImage(configuration);
+
+            copie.exportLocal = {
+                source: "Expert Trading Pro v2.0",
+                type: "configuration_json_locale",
+                imageBase64Incluse: false,
+                dateExport: new Date().toISOString()
+            };
+
+            return copie;
+        }
+
+        function sauvegarderConfigurationJsonLocale() {
+            try {
+                const configuration = obtenirConfigurationSansImagePourSauvegardeLocale();
+
+                const nomFichier =
+                    "configuration-" +
+                    nettoyerNomFichier(configuration.actif || "actif") + "-" +
+                    nettoyerNomFichier(configuration.indicateur || "indicateur") + "-" +
+                    nettoyerNomFichier(configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "analyse") + "-" +
+                    genererTimestampFichier() +
+                    ".json";
+
+                const contenu = JSON.stringify(configuration, null, 2);
+                const blob = new Blob([contenu], { type: "application/json;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+
+                const lien = document.createElement("a");
+                lien.href = url;
+                lien.download = nomFichier;
+                document.body.appendChild(lien);
+                lien.click();
+                document.body.removeChild(lien);
+                URL.revokeObjectURL(url);
+
+                afficherResultat({
+                    ok: true,
+                    message: "Configuration JSON sauvegardée localement, sans image Base64.",
+                    fichier: nomFichier,
+                    configuration_json: configuration
+                });
+
+                afficherStatus("Configuration JSON sauvegardée en local : " + nomFichier);
+
+            } catch (erreur) {
+                console.error("Erreur sauvegarde JSON local :", erreur);
+                afficherStatus("Erreur sauvegarde JSON local : " + erreur.message);
+                alert("Impossible de sauvegarder la configuration JSON.\n\n" + erreur.message);
+            }
         }
 
         function convertirIntervallePourBinance(intervalleTradingView) {
