@@ -1146,58 +1146,111 @@ async function bougiesCoinGecko(actif, intervalle, limit = 300) {
     }));
 }
 
-async function recupererBougiesMarche(actif, intervalle) {
-    const erreurs = [];
+function estRestrictionGeographiqueBinance(erreur) {
+    const message = String(erreur?.message || erreur || "").toLowerCase();
 
-    try {
+    return (
+        message.includes("binance http 451") ||
+        message.includes("restricted location") ||
+        message.includes("service unavailable from a restricted location")
+    );
+}
+
+function ajouterErreurSource(erreurs, source, erreur) {
+    const message = String(erreur?.message || erreur || "Erreur inconnue.");
+
+    const entree = {
+        source,
+        message
+    };
+
+    if (source === "binance" && estRestrictionGeographiqueBinance(erreur)) {
+        entree.type = "restriction_geographique";
+        entree.http_status = 451;
+        entree.action = "Binance ignorée automatiquement. Passage à OKX puis CoinGecko.";
+        entree.bloquante = false;
+    }
+
+    erreurs.push(entree);
+}
+
+function ordreSourcesMarche() {
+    /*
+        Par défaut, on évite Binance en premier, car Render ou le pays
+        peuvent recevoir HTTP 451. Binance reste disponible en secours.
+
+        Valeurs possibles dans Render :
+        MARKET_PRIMARY_SOURCE=okx
+        MARKET_PRIMARY_SOURCE=coingecko
+        MARKET_PRIMARY_SOURCE=binance
+    */
+    const sourcePrioritaire = String(process.env.MARKET_PRIMARY_SOURCE || "okx").toLowerCase();
+
+    const toutes = ["okx", "coingecko", "binance"];
+    const ordre = [sourcePrioritaire, ...toutes].filter((v, i, a) => {
+        return toutes.includes(v) && a.indexOf(v) === i;
+    });
+
+    return ordre.length ? ordre : toutes;
+}
+
+async function recupererBougiesSource(source, actif, intervalle) {
+    if (source === "binance") {
         return {
             source: "binance",
             symbole: normaliserActif(actif),
             intervalle: intervalleBinance(intervalle),
-            bougies: await bougiesBinance(actif, intervalle),
-            erreurs
+            bougies: await bougiesBinance(actif, intervalle)
         };
-    } catch (erreur) {
-        erreurs.push({
-            source: "binance",
-            message: erreur.message
-        });
     }
 
-    try {
+    if (source === "okx") {
         return {
             source: "okx",
             symbole: actifOKX(actif),
             intervalle: intervalleOKX(intervalle),
-            bougies: await bougiesOKX(actif, intervalle),
-            erreurs
+            bougies: await bougiesOKX(actif, intervalle)
         };
-    } catch (erreur) {
-        erreurs.push({
-            source: "okx",
-            message: erreur.message
-        });
     }
 
-    try {
+    if (source === "coingecko") {
         return {
             source: "coingecko",
             symbole: coinGeckoId(actif),
             intervalle: "days=" + daysCoinGecko(intervalle),
-            bougies: await bougiesCoinGecko(actif, intervalle),
-            erreurs
+            bougies: await bougiesCoinGecko(actif, intervalle)
         };
-    } catch (erreur) {
-        erreurs.push({
-            source: "coingecko",
-            message: erreur.message
-        });
     }
 
-    throw new Error(
+    throw new Error("Source de marché inconnue : " + source);
+}
+
+async function recupererBougiesMarche(actif, intervalle) {
+    const erreurs = [];
+    const ordre = ordreSourcesMarche();
+
+    for (const source of ordre) {
+        try {
+            const resultat = await recupererBougiesSource(source, actif, intervalle);
+
+            return {
+                ...resultat,
+                erreurs
+            };
+        } catch (erreur) {
+            ajouterErreurSource(erreurs, source, erreur);
+        }
+    }
+
+    const erreurFinale = new Error(
         "Aucune source de marché disponible : " +
         JSON.stringify(erreurs, null, 2)
     );
+
+    erreurFinale.erreurs_sources = erreurs;
+    erreurFinale.httpStatus = 503;
+
+    throw erreurFinale;
 }
 
 function ema(values, p) {
