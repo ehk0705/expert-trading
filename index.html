@@ -16,16 +16,20 @@
         #chart-container {
             flex: 1 1 auto;
             width: 100%;
-            min-height: 520px;
+            min-height: 620px;
             background: #020617;
             position: relative;
             border-top: 1px solid #263244;
             padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         #tradingview_chart {
             width: 100%;
-            height: 100%;
+            flex: 1 1 auto;
+            height: auto;
             min-height: 500px;
             border-radius: 10px;
             overflow: hidden;
@@ -36,8 +40,8 @@
         .chart-message {
             position: absolute;
             left: 24px;
-            top: 24px;
-            z-index: 2;
+            top: 118px;
+            z-index: 30;
             color: #facc15;
             background: rgba(2, 6, 23, 0.84);
             border: 1px solid #334155;
@@ -113,21 +117,34 @@
 
 
         .infos-graphique {
-            margin: 10px 12px 8px 12px;
-            padding: 10px 12px;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.98);
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            border: 2px solid #facc15;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));
             color: #e5e7eb;
             font-size: 13px;
-            line-height: 1.5;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 14px;
+            line-height: 1.45;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(120px, 1fr));
+            gap: 8px 12px;
             align-items: center;
             position: relative;
-            z-index: 5;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            z-index: 20;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        .infos-graphique .infos-titre {
+            grid-column: 1 / -1;
+            color: #facc15;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 6px;
+            margin-bottom: 2px;
         }
 
         .infos-graphique strong {
@@ -137,11 +154,30 @@
 
         .infos-graphique .info-item {
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .infos-graphique .info-note {
-            color: #94a3b8;
-            white-space: normal;
+            grid-column: 1 / -1;
+            color: #cbd5e1;
+            font-size: 12px;
+        }
+
+        @media (max-width: 1100px) {
+            .infos-graphique {
+                grid-template-columns: repeat(2, minmax(140px, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .infos-graphique {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-message {
+                top: 210px;
+            }
         }
 
         @media (max-width: 900px) {
@@ -200,7 +236,7 @@
 
         <div class="control-group">
             <label for="categorie-analyse-btc">ANALYSE :</label>
-            <select id="categorie-analyse-btc" title="Choisir la catégorie d’analyse associée à la capture ou à la configuration.">
+            <select id="categorie-analyse-btc" onchange="afficherInfosGraphique()" title="Choisir la catégorie d’analyse associée à la capture ou à la configuration.">
                 <option value="macro">Macro</option>
                 <option value="monnaie">Monnaie</option>
                 <option value="onchain">On-chain</option>
@@ -287,11 +323,15 @@
         </div>
     </div>
 
-    <div id="infos-graphique" class="infos-graphique" title="Résumé des paramètres actuellement appliqués au graphique.">
-        Informations graphique non chargées.
-    </div>
-
     <div id="chart-container">
+        <div id="infos-graphique" class="infos-graphique" title="Résumé visible des paramètres actuellement appliqués au graphique. Ce bandeau est aussi intégré dans l'image sauvegardée pour analyse.html.">
+            <div class="infos-titre">Informations du graphique</div>
+            <span class="info-item"><strong>Actif :</strong> chargement...</span>
+            <span class="info-item"><strong>Intervalle :</strong> chargement...</span>
+            <span class="info-item"><strong>Indicateur :</strong> chargement...</span>
+            <span class="info-item"><strong>Type :</strong> chargement...</span>
+            <span class="info-item"><strong>Source :</strong> chargement...</span>
+        </div>
         <div id="chart-message" class="chart-message">Chargement du graphique local...</div>
         <div id="tradingview_chart"></div>
     </div>
@@ -397,7 +437,6 @@
             afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
-            afficherInfosGraphique();
         }
 
         function afficherStatus(message) {
@@ -911,11 +950,11 @@
         }
 
 
-
         function libelleOptionSelectionnee(id) {
             const select = document.getElementById(id);
-            if (!select || select.selectedIndex < 0) return "N/A";
-            return select.options[select.selectedIndex].text || select.value || "N/A";
+            if (!select) return "N/A";
+            const option = select.options[select.selectedIndex];
+            return option ? option.textContent.trim() : (select.value || "N/A");
         }
 
         function formatterDerniereBougie(bougie) {
@@ -930,6 +969,48 @@
             });
         }
 
+        function obtenirLignesInfosGraphiquePourCapture() {
+            const configuration = obtenirConfiguration();
+
+            const source =
+                configuration.marcheLocal &&
+                configuration.marcheLocal.source &&
+                configuration.marcheLocal.source.source
+                    ? configuration.marcheLocal.source.source
+                    : "non définie";
+
+            const symbole =
+                configuration.marcheLocal &&
+                configuration.marcheLocal.source &&
+                configuration.marcheLocal.source.symbole
+                    ? configuration.marcheLocal.source.symbole
+                    : "N/A";
+
+            const nombreBougies =
+                configuration.marcheLocal && Number.isFinite(Number(configuration.marcheLocal.nombreBougies))
+                    ? Number(configuration.marcheLocal.nombreBougies)
+                    : 0;
+
+            const derniereBougie =
+                configuration.marcheLocal && configuration.marcheLocal.derniereBougie
+                    ? configuration.marcheLocal.derniereBougie
+                    : null;
+
+            return [
+                "Actif : " + libelleOptionSelectionnee("asset-selector"),
+                "Code : " + configuration.actif,
+                "Intervalle : " + libelleOptionSelectionnee("interval-selector"),
+                "Indicateur : " + configuration.indicateur,
+                "Type : " + libelleOptionSelectionnee("chart-type-selector"),
+                "Analyse : " + configuration.categorieAnalyseLibelle,
+                "Source : " + source,
+                "Symbole : " + symbole,
+                "Bougies : " + nombreBougies,
+                "Dernier prix : " + formatterDerniereBougie(derniereBougie),
+                "Bibliothèque : lightweight-charts"
+            ];
+        }
+
         function afficherInfosGraphique() {
             const zone = document.getElementById("infos-graphique");
             if (!zone) return;
@@ -939,7 +1020,9 @@
             try {
                 configuration = obtenirConfiguration();
             } catch (erreur) {
-                zone.textContent = "Informations graphique indisponibles.";
+                zone.innerHTML =
+                    '<div class="infos-titre">Informations du graphique</div>' +
+                    '<span class="info-item"><strong>État :</strong> informations indisponibles</span>';
                 return;
             }
 
@@ -968,6 +1051,7 @@
                     : 0;
 
             zone.innerHTML =
+                '<div class="infos-titre">Informations du graphique</div>' +
                 '<span class="info-item"><strong>Actif :</strong> ' + libelleOptionSelectionnee("asset-selector") + '</span>' +
                 '<span class="info-item"><strong>Code :</strong> ' + configuration.actif + '</span>' +
                 '<span class="info-item"><strong>Intervalle :</strong> ' + libelleOptionSelectionnee("interval-selector") + '</span>' +
@@ -978,7 +1062,29 @@
                 '<span class="info-item"><strong>Symbole :</strong> ' + symbole + '</span>' +
                 '<span class="info-item"><strong>Bougies :</strong> ' + nombreBougies + '</span>' +
                 '<span class="info-item"><strong>Dernier prix :</strong> ' + formatterDerniereBougie(derniereBougie) + '</span>' +
-                '<span class="info-note">Bibliothèque : lightweight-charts, graphique local capturable.</span>';
+                '<span class="info-note">Ce bandeau est intégré dans la capture sauvegardée et sera donc visible dans analyse.html.</span>';
+        }
+
+        function dessinerTexteMultiligne(ctx, texte, x, y, largeurMax, hauteurLigne) {
+            const mots = String(texte || "").split(" ");
+            let ligne = "";
+            let lignes = [];
+
+            mots.forEach(mot => {
+                const test = ligne ? ligne + " " + mot : mot;
+                if (ctx.measureText(test).width > largeurMax && ligne) {
+                    lignes.push(ligne);
+                    ligne = mot;
+                } else {
+                    ligne = test;
+                }
+            });
+
+            if (ligne) lignes.push(ligne);
+
+            lignes.forEach((ligneTexte, index) => {
+                ctx.fillText(ligneTexte, x, y + index * hauteurLigne);
+            });
         }
 
         function obtenirConfigurationSansImagePourSauvegardeLocale() {
@@ -1348,21 +1454,34 @@
         }
 
         function capturerCanvasEnBase64() {
-            const zone = document.getElementById("tradingview_chart") || document.getElementById("chart-container");
-            if (!zone) throw new Error("Zone du graphique introuvable.");
+            const zoneGraphique = document.getElementById("tradingview_chart") || document.getElementById("chart-container");
+            if (!zoneGraphique) throw new Error("Zone du graphique introuvable.");
 
-            const canvases = Array.from(zone.querySelectorAll("canvas"));
+            afficherInfosGraphique();
+
+            const canvases = Array.from(zoneGraphique.querySelectorAll("canvas"));
             if (!canvases.length) throw new Error("Canvas du graphique introuvable.");
 
             /*
-                lightweight-charts utilise souvent plusieurs canvas superposés.
-                Capturer seulement le premier canvas peut produire une image vide ou partielle.
-                On recompose donc tous les canvas visibles dans une seule image PNG.
+                On ne capture pas seulement les canvas du graphique.
+                On génère une image complète : bandeau d'informations + graphique.
+                Cette image est celle envoyée à PostgreSQL et visible ensuite dans analyse.html.
             */
-            const zoneRect = zone.getBoundingClientRect();
-            const largeur = Math.max(320, Math.round(zoneRect.width || zone.clientWidth || 800));
-            const hauteur = Math.max(320, Math.round(zoneRect.height || zone.clientHeight || 520));
+            const graphiqueRect = zoneGraphique.getBoundingClientRect();
+            const largeurGraphique = Math.max(320, Math.round(graphiqueRect.width || zoneGraphique.clientWidth || 800));
+            const hauteurGraphique = Math.max(320, Math.round(graphiqueRect.height || zoneGraphique.clientHeight || 520));
             const ratio = Math.max(1, window.devicePixelRatio || 1);
+
+            const lignesInfos = obtenirLignesInfosGraphiquePourCapture();
+            const marge = 14;
+            const interligne = 20;
+            const largeur = largeurGraphique;
+            const colonnes = largeur >= 980 ? 3 : (largeur >= 640 ? 2 : 1);
+            const largeurColonne = Math.floor((largeur - marge * 2) / colonnes);
+            const lignesParColonne = Math.ceil(lignesInfos.length / colonnes);
+            const hauteurInfos = Math.max(112, marge * 2 + 28 + lignesParColonne * interligne);
+            const espaceEntreInfosEtGraphique = 10;
+            const hauteur = hauteurInfos + espaceEntreInfosEtGraphique + hauteurGraphique;
 
             const sortie = document.createElement("canvas");
             sortie.width = Math.round(largeur * ratio);
@@ -1370,13 +1489,39 @@
 
             const ctx = sortie.getContext("2d");
             ctx.scale(ratio, ratio);
+
             ctx.fillStyle = "#020617";
             ctx.fillRect(0, 0, largeur, hauteur);
+
+            ctx.fillStyle = "#0f172a";
+            ctx.fillRect(0, 0, largeur, hauteurInfos);
+
+            ctx.strokeStyle = "#facc15";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, largeur - 2, hauteurInfos - 2);
+
+            ctx.font = "bold 15px Arial, sans-serif";
+            ctx.fillStyle = "#facc15";
+            ctx.fillText("Informations du graphique", marge, marge + 6);
+
+            ctx.font = "13px Arial, sans-serif";
+            ctx.fillStyle = "#e5e7eb";
+
+            lignesInfos.forEach((ligne, index) => {
+                const colonne = index % colonnes;
+                const rangee = Math.floor(index / colonnes);
+                const x = marge + colonne * largeurColonne;
+                const y = marge + 34 + rangee * interligne;
+                dessinerTexteMultiligne(ctx, ligne, x, y, largeurColonne - 12, interligne);
+            });
+
+            const decalageGraphiqueY = hauteurInfos + espaceEntreInfosEtGraphique;
+            const zoneRect = zoneGraphique.getBoundingClientRect();
 
             canvases.forEach(canvas => {
                 const rect = canvas.getBoundingClientRect();
                 const x = rect.left - zoneRect.left;
-                const y = rect.top - zoneRect.top;
+                const y = rect.top - zoneRect.top + decalageGraphiqueY;
 
                 if (rect.width > 0 && rect.height > 0) {
                     ctx.drawImage(canvas, x, y, rect.width, rect.height);
