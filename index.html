@@ -113,11 +113,11 @@
 
 
         .infos-graphique {
-            margin-top: 10px;
+            margin: 10px 12px 8px 12px;
             padding: 10px 12px;
             border: 1px solid #334155;
             border-radius: 10px;
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(15, 23, 42, 0.98);
             color: #e5e7eb;
             font-size: 13px;
             line-height: 1.5;
@@ -125,6 +125,9 @@
             flex-wrap: wrap;
             gap: 8px 14px;
             align-items: center;
+            position: relative;
+            z-index: 5;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
         }
 
         .infos-graphique strong {
@@ -284,12 +287,13 @@
         </div>
     </div>
 
+    <div id="infos-graphique" class="infos-graphique" title="Résumé des paramètres actuellement appliqués au graphique.">
+        Informations graphique non chargées.
+    </div>
+
     <div id="chart-container">
         <div id="chart-message" class="chart-message">Chargement du graphique local...</div>
         <div id="tradingview_chart"></div>
-        <div id="infos-graphique" class="infos-graphique" title="Résumé des paramètres actuellement appliqués au graphique.">
-            Informations graphique non chargées.
-        </div>
     </div>
 
     <div class="result-panel" id="result-panel">
@@ -390,6 +394,7 @@
 
             creerGraphiqueLightweight();
             appliquerThemeGraphiqueTradingView();
+            afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
             afficherInfosGraphique();
