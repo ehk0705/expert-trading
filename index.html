@@ -132,21 +132,21 @@
 
     <div class="header-pro">
         <div class="control-group">
-            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché et sauvegarder l’image avec sa configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
+            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché, enregistrer l’image et sauvegarder la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
             <button
                 class="btn-json"
                 id="btn-json-config"
                 type="button"
                 onclick="chargerConfigurationJsonDepuisTable()"
-                title="Charger uniquement les paramètres JSON sauvegardés dans la table trading_capture, sans le code Base64 de l’image.">
+                title="Charger depuis PostgreSQL une configuration JSON sauvegardée, sans image Base64, puis l’appliquer au graphique.">
                 Charger JSON
             </button>
-            <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()">Vision + Marché</button>
+            <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()" title="Lancer l’analyse IA de l’image du graphique avec les données de marché et les indicateurs techniques.">Vision + Marché</button>
         </div>
 
         <div class="control-group">
             <label for="asset-selector">ACTIF :</label>
-            <select id="asset-selector" onchange="actualiserGraphique()">
+            <select id="asset-selector" onchange="actualiserGraphique()" title="Choisir l’actif à afficher et à analyser.">
                 <option value="BINANCE:BTCUSDT">BTC/USDT</option>
                 <option value="COINBASE:BTCUSD">BTC/USD</option>
                 <option value="BINANCE:ETHUSDT">ETH/USDT</option>
@@ -167,7 +167,7 @@
 
         <div class="control-group">
             <label for="categorie-analyse-btc">ANALYSE :</label>
-            <select id="categorie-analyse-btc">
+            <select id="categorie-analyse-btc" title="Choisir la catégorie d’analyse associée à la capture ou à la configuration.">
                 <option value="macro">Macro</option>
                 <option value="monnaie">Monnaie</option>
                 <option value="onchain">On-chain</option>
@@ -193,7 +193,7 @@
             </select>
             <button
                 type="button"
-                title="Rafraîchir la liste des configurations sauvegardées"
+                title="Rafraîchir la liste des configurations sauvegardées dans PostgreSQL."
                 onclick="chargerListeConfigurationsSauvegardees()">
                 ↻
             </button>
@@ -202,7 +202,7 @@
 
         <div class="control-group">
             <label for="chart-type-selector">STYLE :</label>
-            <select id="chart-type-selector" onchange="changerStyleGraphique()">
+            <select id="chart-type-selector" onchange="changerStyleGraphique()" title="Choisir le style visuel du graphique : bougies, barres, ligne ou aire.">
                 <option value="candles" selected>Bougies</option>
                 <option value="bars">Barres</option>
                 <option value="line">Ligne</option>
@@ -212,7 +212,7 @@
 
         <div class="control-group">
             <label for="indicator-selector">IND :</label>
-            <select id="indicator-selector" onchange="actualiserGraphique()">
+            <select id="indicator-selector" onchange="actualiserGraphique()" title="Choisir l’indicateur technique principal associé à la configuration.">
                 <option value="EMA">EMA</option>
                 <option value="RSI">RSI</option>
                 <option value="MACD">MACD</option>
@@ -226,7 +226,7 @@
 
         <div class="control-group">
             <label for="interval-selector">INT :</label>
-            <select id="interval-selector" onchange="actualiserGraphique()">
+            <select id="interval-selector" onchange="actualiserGraphique()" title="Choisir l’unité de temps du graphique.">
                 <option value="1">1m</option>
                 <option value="5">5m</option>
                 <option value="15">15m</option>
@@ -240,15 +240,15 @@
         </div>
 
         <div class="control-group">
-            <button class="btn-technique" onclick="testerAnalyseTechnique()">Générer JSON</button>
+            <button class="btn-technique" onclick="testerAnalyseTechnique()" title="Générer et afficher le JSON technique calculé côté serveur pour l’actif, l’intervalle et l’indicateur sélectionnés.">Générer JSON</button>
 
-            <button class="btn-tv" type="button" onclick="ouvrirTradingView()">Ouvrir TV</button>
+            <button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">Ouvrir TV</button>
 
             <a href="analyse.html" title="Analyser la capture">
-                <button type="button">Analyser</button>
+                <button type="button" title="Ouvrir la page analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
             </a>
 
-           <button class="btn-effacer" type="button" onclick="viderCaptures()">
+           <button class="btn-effacer" type="button" onclick="viderCaptures()" title="Supprimer toutes les captures sauvegardées dans PostgreSQL après confirmation et mot de passe administrateur.">
 				Vider les captures
 		   </button>
         </div>
@@ -267,10 +267,10 @@
                     type="button"
                     class="btn-json-local"
                     onclick="sauvegarderConfigurationJsonLocale()"
-                    title="Télécharger en local la configuration JSON courante, sans image Base64.">
+                    title="Télécharger sur cet ordinateur la configuration JSON actuelle, sans image Base64.">
                     Sauvegarder JSON local
                 </button>
-                <button type="button" onclick="togglePanel()">Masquer / afficher</button>
+                <button type="button" onclick="togglePanel()" title="Masquer ou afficher le détail du résultat IA et le statut courant.">Masquer / afficher</button>
             </div>
         </div>
 
