@@ -8,8 +8,8 @@
     - Crée / corrige la table trading_capture
     - Sauvegarde l'image du graphique + configuration_json
     - Liste les captures pour analyse.html
-    - Analyse technique multi-sources : Binance -> OKX -> CoinGecko
-    - Analyse Vision + Marché avec OpenAI
+    - Analyse technique multi-sources : OKX -> CoinGecko -> Binance
+    - Analyse Vision + Marché avec OpenAI, Gemini, Mistral et Claude
     - Suppression sécurisée des captures avec ADMIN_DELETE_PASSWORD
 */
 
@@ -32,6 +32,12 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 const PORT = process.env.PORT || 3000;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const MARKET_PRIMARY_SOURCE = String(process.env.MARKET_PRIMARY_SOURCE || "okx").toLowerCase();
+const AI_PRIMARY_PROVIDER = String(process.env.AI_PRIMARY_PROVIDER || "openai").toLowerCase();
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MISTRAL_MODEL = process.env.MISTRAL_MODEL || "pixtral-large-latest";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-latest";
+
 const SCREENSHOT_DIR = path.join(__dirname, "screenshots");
 
 if (!fs.existsSync(SCREENSHOT_DIR)) {
@@ -165,7 +171,12 @@ app.get("/api/test", (req, res) => {
         ok: true,
         message: "API accessible.",
         model: OPENAI_MODEL,
+        market_primary_source: MARKET_PRIMARY_SOURCE,
+        ai_primary_provider: AI_PRIMARY_PROVIDER,
         openai_key_configuree: Boolean(process.env.OPENAI_API_KEY),
+        gemini_key_configuree: Boolean(process.env.GEMINI_API_KEY),
+        mistral_key_configuree: Boolean(process.env.MISTRAL_API_KEY),
+        anthropic_key_configuree: Boolean(process.env.ANTHROPIC_API_KEY),
         database_url_configuree: Boolean(DATABASE_URL),
         date: maintenantIso()
     });
@@ -1146,70 +1157,40 @@ async function bougiesCoinGecko(actif, intervalle, limit = 300) {
     }));
 }
 
-function estRestrictionGeographiqueBinance(erreur) {
-    const message = String(erreur?.message || erreur || "").toLowerCase();
-
-    return (
-        message.includes("binance http 451") ||
-        message.includes("restricted location") ||
-        message.includes("service unavailable from a restricted location")
-    );
-}
-
-function ajouterErreurSource(erreurs, source, erreur) {
-    const message = String(erreur?.message || erreur || "Erreur inconnue.");
-
-    const entree = {
-        source,
-        message
-    };
-
-    if (source === "binance" && estRestrictionGeographiqueBinance(erreur)) {
-        entree.type = "restriction_geographique";
-        entree.http_status = 451;
-        entree.action = "Binance ignorée automatiquement. Passage à OKX puis CoinGecko.";
-        entree.bloquante = false;
-    }
-
-    erreurs.push(entree);
+function sourceMarcheConfiguree() {
+    const sources = ["okx", "coingecko", "binance"];
+    return sources.includes(MARKET_PRIMARY_SOURCE) ? MARKET_PRIMARY_SOURCE : "okx";
 }
 
 function ordreSourcesMarche() {
-    /*
-        Par défaut, on évite Binance en premier, car Render ou le pays
-        peuvent recevoir HTTP 451. Binance reste disponible en secours.
-
-        Valeurs possibles dans Render :
-        MARKET_PRIMARY_SOURCE=okx
-        MARKET_PRIMARY_SOURCE=coingecko
-        MARKET_PRIMARY_SOURCE=binance
-    */
-    const sourcePrioritaire = String(process.env.MARKET_PRIMARY_SOURCE || "okx").toLowerCase();
-
-    const toutes = ["okx", "coingecko", "binance"];
-    const ordre = [sourcePrioritaire, ...toutes].filter((v, i, a) => {
-        return toutes.includes(v) && a.indexOf(v) === i;
-    });
-
-    return ordre.length ? ordre : toutes;
+    const defaut = ["okx", "coingecko", "binance"];
+    const principale = sourceMarcheConfiguree();
+    return [principale, ...defaut.filter(x => x !== principale)];
 }
 
-async function recupererBougiesSource(source, actif, intervalle) {
-    if (source === "binance") {
-        return {
-            source: "binance",
-            symbole: normaliserActif(actif),
-            intervalle: intervalleBinance(intervalle),
-            bougies: await bougiesBinance(actif, intervalle)
-        };
-    }
+function enrichirErreurSourceMarche(source, erreur) {
+    const message = erreur.message || String(erreur);
+    const restrictionGeographique =
+        message.includes("HTTP 451") ||
+        message.toLowerCase().includes("restricted location") ||
+        message.toLowerCase().includes("service unavailable from a restricted location");
 
+    return {
+        source,
+        type: restrictionGeographique ? "restriction_geographique" : "erreur_source",
+        bloquant: false,
+        message
+    };
+}
+
+async function essayerSourceMarche(source, actif, intervalle, erreurs) {
     if (source === "okx") {
         return {
             source: "okx",
             symbole: actifOKX(actif),
             intervalle: intervalleOKX(intervalle),
-            bougies: await bougiesOKX(actif, intervalle)
+            bougies: await bougiesOKX(actif, intervalle),
+            erreurs
         };
     }
 
@@ -1218,7 +1199,18 @@ async function recupererBougiesSource(source, actif, intervalle) {
             source: "coingecko",
             symbole: coinGeckoId(actif),
             intervalle: "days=" + daysCoinGecko(intervalle),
-            bougies: await bougiesCoinGecko(actif, intervalle)
+            bougies: await bougiesCoinGecko(actif, intervalle),
+            erreurs
+        };
+    }
+
+    if (source === "binance") {
+        return {
+            source: "binance",
+            symbole: normaliserActif(actif),
+            intervalle: intervalleBinance(intervalle),
+            bougies: await bougiesBinance(actif, intervalle),
+            erreurs
         };
     }
 
@@ -1231,26 +1223,16 @@ async function recupererBougiesMarche(actif, intervalle) {
 
     for (const source of ordre) {
         try {
-            const resultat = await recupererBougiesSource(source, actif, intervalle);
-
-            return {
-                ...resultat,
-                erreurs
-            };
+            return await essayerSourceMarche(source, actif, intervalle, erreurs);
         } catch (erreur) {
-            ajouterErreurSource(erreurs, source, erreur);
+            erreurs.push(enrichirErreurSourceMarche(source, erreur));
         }
     }
 
-    const erreurFinale = new Error(
+    throw new Error(
         "Aucune source de marché disponible : " +
         JSON.stringify(erreurs, null, 2)
     );
-
-    erreurFinale.erreurs_sources = erreurs;
-    erreurFinale.httpStatus = 503;
-
-    throw erreurFinale;
 }
 
 function ema(values, p) {
@@ -1480,10 +1462,8 @@ function extraireJson(txt) {
     }
 }
 
-async function openaiVision({ imageBase64, analyseTechnique, configuration }) {
-    const client = getOpenAIClient();
-
-    const prompt = `Tu es un analyste technique prudent. Analyse l'image et les données techniques. Réponds uniquement en JSON valide avec cette structure:
+function construirePromptAnalyseVision({ analyseTechnique, configuration }) {
+    return `Tu es un analyste technique prudent. Analyse l'image et les données techniques. Réponds uniquement en JSON valide avec cette structure:
 {"signal":"acheter | vendre | attendre","confiance":0,"tendance":"haussiere | baissiere | neutre","resume":"","raisons":[],"risques":[],"recommandations":[],"stop_loss":null,"take_profit_1":null,"take_profit_2":null,"analyse_visuelle":{"commentaire":""}}
 
 Données techniques:
@@ -1493,6 +1473,73 @@ Configuration:
 ${JSON.stringify(configuration || {}, null, 2)}
 
 N'invente jamais de prix. Si incertain, choisis attendre.`;
+}
+
+function providerIAConfigure(provider) {
+    if (provider === "openai") return Boolean(process.env.OPENAI_API_KEY);
+    if (provider === "gemini") return Boolean(process.env.GEMINI_API_KEY);
+    if (provider === "mistral") return Boolean(process.env.MISTRAL_API_KEY);
+    if (provider === "claude") return Boolean(process.env.ANTHROPIC_API_KEY);
+    return false;
+}
+
+function ordreFournisseursIA() {
+    const defaut = ["openai", "gemini", "mistral", "claude"];
+    const principal = ["openai", "gemini", "mistral", "claude"].includes(AI_PRIMARY_PROVIDER)
+        ? AI_PRIMARY_PROVIDER
+        : "openai";
+
+    return [principal, ...defaut.filter(x => x !== principal)];
+}
+
+function extraireImageBase64(image) {
+    const v = String(image || "");
+    const m = v.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+
+    if (m) {
+        return {
+            mediaType: m[1],
+            base64: m[2],
+            dataUrl: v
+        };
+    }
+
+    return {
+        mediaType: "image/png",
+        base64: v.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, ""),
+        dataUrl: v.startsWith("data:") ? v : "data:image/png;base64," + v
+    };
+}
+
+async function imageUrlVersDataUrl(urlImage) {
+    const r = await fetch(urlImage, {
+        headers: {
+            "User-Agent": "ExpertTradingPro/2.0"
+        }
+    });
+
+    if (!r.ok) {
+        throw new Error("Image URL HTTP " + r.status + " : " + await r.text());
+    }
+
+    const buffer = Buffer.from(await r.arrayBuffer());
+    const mediaType = r.headers.get("content-type") || "image/png";
+
+    return `data:${mediaType};base64,${buffer.toString("base64")}`;
+}
+
+async function preparerImagePourIA(imageBase64OuUrl) {
+    const v = String(imageBase64OuUrl || "");
+
+    if (/^https?:\/\//i.test(v)) {
+        return extraireImageBase64(await imageUrlVersDataUrl(v));
+    }
+
+    return extraireImageBase64(v);
+}
+
+async function openaiVisionDepuisPrompt({ prompt, image }) {
+    const client = getOpenAIClient();
 
     if (client.responses && typeof client.responses.create === "function") {
         const response = await client.responses.create({
@@ -1506,13 +1553,16 @@ N'invente jamais de prix. Si incertain, choisis attendre.`;
                     },
                     {
                         type: "input_image",
-                        image_url: imageBase64
+                        image_url: image.dataUrl
                     }
                 ]
             }]
         });
 
-        return extraireJson(response.output_text || "");
+        const json = extraireJson(response.output_text || "");
+        json._fournisseur_ia = "openai";
+        json._modele_ia = OPENAI_MODEL;
+        return json;
     }
 
     if (
@@ -1532,7 +1582,7 @@ N'invente jamais de prix. Si incertain, choisis attendre.`;
                     {
                         type: "image_url",
                         image_url: {
-                            url: imageBase64
+                            url: image.dataUrl
                         }
                     }
                 ]
@@ -1540,10 +1590,213 @@ N'invente jamais de prix. Si incertain, choisis attendre.`;
             temperature: 0.2
         });
 
-        return extraireJson(response.choices?.[0]?.message?.content || "");
+        const json = extraireJson(response.choices?.[0]?.message?.content || "");
+        json._fournisseur_ia = "openai";
+        json._modele_ia = OPENAI_MODEL;
+        return json;
     }
 
     throw new Error("Module OpenAI incompatible. Mettre openai à jour dans package.json.");
+}
+
+async function geminiVisionDepuisPrompt({ prompt, image }) {
+    if (!process.env.GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY n'est pas configurée sur Render.");
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`;
+
+    const r = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            contents: [{
+                role: "user",
+                parts: [
+                    { text: prompt },
+                    {
+                        inline_data: {
+                            mime_type: image.mediaType,
+                            data: image.base64
+                        }
+                    }
+                ]
+            }],
+            generationConfig: {
+                temperature: 0.2,
+                response_mime_type: "application/json"
+            }
+        })
+    });
+
+    const txt = await r.text();
+
+    if (!r.ok) {
+        throw new Error("Gemini HTTP " + r.status + " : " + txt);
+    }
+
+    const data = JSON.parse(txt);
+    const sortie = (data.candidates?.[0]?.content?.parts || [])
+        .map(p => p.text || "")
+        .join("\n")
+        .trim();
+
+    const json = extraireJson(sortie);
+    json._fournisseur_ia = "gemini";
+    json._modele_ia = GEMINI_MODEL;
+    return json;
+}
+
+async function mistralVisionDepuisPrompt({ prompt, image }) {
+    if (!process.env.MISTRAL_API_KEY) {
+        throw new Error("MISTRAL_API_KEY n'est pas configurée sur Render.");
+    }
+
+    const r = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + process.env.MISTRAL_API_KEY
+        },
+        body: JSON.stringify({
+            model: MISTRAL_MODEL,
+            temperature: 0.2,
+            response_format: {
+                type: "json_object"
+            },
+            messages: [{
+                role: "user",
+                content: [
+                    {
+                        type: "text",
+                        text: prompt
+                    },
+                    {
+                        type: "image_url",
+                        image_url: image.dataUrl
+                    }
+                ]
+            }]
+        })
+    });
+
+    const txt = await r.text();
+
+    if (!r.ok) {
+        throw new Error("Mistral HTTP " + r.status + " : " + txt);
+    }
+
+    const data = JSON.parse(txt);
+    const json = extraireJson(data.choices?.[0]?.message?.content || "");
+    json._fournisseur_ia = "mistral";
+    json._modele_ia = MISTRAL_MODEL;
+    return json;
+}
+
+async function claudeVisionDepuisPrompt({ prompt, image }) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error("ANTHROPIC_API_KEY n'est pas configurée sur Render.");
+    }
+
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-api-key": process.env.ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+            model: ANTHROPIC_MODEL,
+            max_tokens: 1200,
+            temperature: 0.2,
+            messages: [{
+                role: "user",
+                content: [
+                    {
+                        type: "text",
+                        text: prompt
+                    },
+                    {
+                        type: "image",
+                        source: {
+                            type: "base64",
+                            media_type: image.mediaType,
+                            data: image.base64
+                        }
+                    }
+                ]
+            }]
+        })
+    });
+
+    const txt = await r.text();
+
+    if (!r.ok) {
+        throw new Error("Claude HTTP " + r.status + " : " + txt);
+    }
+
+    const data = JSON.parse(txt);
+    const sortie = (data.content || [])
+        .map(x => x.text || "")
+        .join("\n")
+        .trim();
+
+    const json = extraireJson(sortie);
+    json._fournisseur_ia = "claude";
+    json._modele_ia = ANTHROPIC_MODEL;
+    return json;
+}
+
+async function appelerFournisseurIA(provider, params) {
+    if (provider === "openai") return openaiVisionDepuisPrompt(params);
+    if (provider === "gemini") return geminiVisionDepuisPrompt(params);
+    if (provider === "mistral") return mistralVisionDepuisPrompt(params);
+    if (provider === "claude") return claudeVisionDepuisPrompt(params);
+
+    throw new Error("Fournisseur IA inconnu : " + provider);
+}
+
+async function openaiVision({ imageBase64, analyseTechnique, configuration }) {
+    const prompt = construirePromptAnalyseVision({ analyseTechnique, configuration });
+    const image = await preparerImagePourIA(imageBase64);
+    const erreursIA = [];
+    const ordre = ordreFournisseursIA();
+
+    for (const provider of ordre) {
+        if (!providerIAConfigure(provider)) {
+            erreursIA.push({
+                fournisseur: provider,
+                ignore: true,
+                message: "Clé API absente. Fournisseur ignoré."
+            });
+            continue;
+        }
+
+        try {
+            const resultat = await appelerFournisseurIA(provider, {
+                prompt,
+                image
+            });
+
+            resultat._erreurs_ia = erreursIA;
+            return resultat;
+        } catch (erreur) {
+            erreursIA.push({
+                fournisseur: provider,
+                message: erreur.message
+            });
+        }
+    }
+
+    const erreurFinale = new Error(
+        "Aucun fournisseur IA disponible ou fonctionnel : " +
+        JSON.stringify(erreursIA, null, 2)
+    );
+    erreurFinale.erreursIA = erreursIA;
+    erreurFinale.httpStatus = 500;
+    throw erreurFinale;
 }
 
 function normaliserDecision(j, t) {
@@ -1561,7 +1814,10 @@ function normaliserDecision(j, t) {
     return {
         ok: true,
         statut: "ok",
-        source: "openai_vision_plus_marche_multi_sources",
+        source: "ia_vision_plus_marche_multi_sources",
+        fournisseur_ia: j._fournisseur_ia || "inconnu",
+        modele_ia: j._modele_ia || null,
+        erreurs_ia: Array.isArray(j._erreurs_ia) ? j._erreurs_ia : [],
         source_marche: t.source_marche,
         symbole_marche: t.symbole_marche,
         erreurs_sources: t.erreurs_sources,
@@ -1674,6 +1930,35 @@ app.get("/api/openai-diagnostic", (req, res) => {
             details: erreur.message
         });
     }
+});
+
+app.get("/api/ai-diagnostic", (req, res) => {
+    res.json({
+        ok: true,
+        market_primary_source: MARKET_PRIMARY_SOURCE,
+        ai_primary_provider: AI_PRIMARY_PROVIDER,
+        ordre_fournisseurs_ia: ordreFournisseursIA(),
+        fournisseurs: {
+            openai: {
+                cle_configuree: Boolean(process.env.OPENAI_API_KEY),
+                modele: OPENAI_MODEL
+            },
+            gemini: {
+                cle_configuree: Boolean(process.env.GEMINI_API_KEY),
+                modele: GEMINI_MODEL
+            },
+            mistral: {
+                cle_configuree: Boolean(process.env.MISTRAL_API_KEY),
+                modele: MISTRAL_MODEL
+            },
+            claude: {
+                cle_configuree: Boolean(process.env.ANTHROPIC_API_KEY),
+                modele: ANTHROPIC_MODEL
+            }
+        },
+        note: "Les fournisseurs sans clé API sont ignorés automatiquement.",
+        date: maintenantIso()
+    });
 });
 
 app.post("/api/analyze-vision-pro", async (req, res) => {
@@ -1825,6 +2110,7 @@ app.use((req, res) => {
             "POST /api/captures",
             "POST /api/analyse-technique-pro",
             "POST /api/analyze-vision-pro",
+            "GET /api/ai-diagnostic",
             "POST /api/vider-captures",
             "DELETE /api/vider-captures"
         ],
