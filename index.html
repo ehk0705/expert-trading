@@ -111,6 +111,36 @@
             flex-wrap: wrap;
         }
 
+
+        .infos-graphique {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.95);
+            color: #e5e7eb;
+            font-size: 13px;
+            line-height: 1.5;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            align-items: center;
+        }
+
+        .infos-graphique strong {
+            color: #facc15;
+            font-weight: 700;
+        }
+
+        .infos-graphique .info-item {
+            white-space: nowrap;
+        }
+
+        .infos-graphique .info-note {
+            color: #94a3b8;
+            white-space: normal;
+        }
+
         @media (max-width: 900px) {
             .configuration-loader {
                 width: 100%;
@@ -257,6 +287,9 @@
     <div id="chart-container">
         <div id="chart-message" class="chart-message">Chargement du graphique local...</div>
         <div id="tradingview_chart"></div>
+        <div id="infos-graphique" class="infos-graphique" title="Résumé des paramètres actuellement appliqués au graphique.">
+            Informations graphique non chargées.
+        </div>
     </div>
 
     <div class="result-panel" id="result-panel">
@@ -359,6 +392,7 @@
             appliquerThemeGraphiqueTradingView();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
+            afficherInfosGraphique();
         }
 
         function afficherStatus(message) {
@@ -757,6 +791,7 @@
             }
 
             await actualiserGraphique();
+            afficherInfosGraphique();
         }
 
         async function chargerConfigurationSauvegardee() {
@@ -805,6 +840,7 @@
                 }
 
                 await actualiserGraphique();
+                afficherInfosGraphique();
 
                 afficherResultat({
                     ok: true,
@@ -867,6 +903,77 @@
                 },
                 dateConfiguration: new Date().toISOString()
             };
+        }
+
+
+
+        function libelleOptionSelectionnee(id) {
+            const select = document.getElementById(id);
+            if (!select || select.selectedIndex < 0) return "N/A";
+            return select.options[select.selectedIndex].text || select.value || "N/A";
+        }
+
+        function formatterDerniereBougie(bougie) {
+            if (!bougie) return "N/A";
+
+            const close = Number(bougie.close ?? bougie.value);
+            if (!Number.isFinite(close)) return "N/A";
+
+            return close.toLocaleString("fr-CA", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function afficherInfosGraphique() {
+            const zone = document.getElementById("infos-graphique");
+            if (!zone) return;
+
+            let configuration;
+
+            try {
+                configuration = obtenirConfiguration();
+            } catch (erreur) {
+                zone.textContent = "Informations graphique indisponibles.";
+                return;
+            }
+
+            const source =
+                configuration.marcheLocal &&
+                configuration.marcheLocal.source &&
+                configuration.marcheLocal.source.source
+                    ? configuration.marcheLocal.source.source
+                    : "non définie";
+
+            const symbole =
+                configuration.marcheLocal &&
+                configuration.marcheLocal.source &&
+                configuration.marcheLocal.source.symbole
+                    ? configuration.marcheLocal.source.symbole
+                    : "N/A";
+
+            const derniereBougie =
+                configuration.marcheLocal && configuration.marcheLocal.derniereBougie
+                    ? configuration.marcheLocal.derniereBougie
+                    : null;
+
+            const nombreBougies =
+                configuration.marcheLocal && Number.isFinite(Number(configuration.marcheLocal.nombreBougies))
+                    ? Number(configuration.marcheLocal.nombreBougies)
+                    : 0;
+
+            zone.innerHTML =
+                '<span class="info-item"><strong>Actif :</strong> ' + libelleOptionSelectionnee("asset-selector") + '</span>' +
+                '<span class="info-item"><strong>Code :</strong> ' + configuration.actif + '</span>' +
+                '<span class="info-item"><strong>Intervalle :</strong> ' + libelleOptionSelectionnee("interval-selector") + '</span>' +
+                '<span class="info-item"><strong>Indicateur :</strong> ' + configuration.indicateur + '</span>' +
+                '<span class="info-item"><strong>Type :</strong> ' + libelleOptionSelectionnee("chart-type-selector") + '</span>' +
+                '<span class="info-item"><strong>Analyse :</strong> ' + configuration.categorieAnalyseLibelle + '</span>' +
+                '<span class="info-item"><strong>Source :</strong> ' + source + '</span>' +
+                '<span class="info-item"><strong>Symbole :</strong> ' + symbole + '</span>' +
+                '<span class="info-item"><strong>Bougies :</strong> ' + nombreBougies + '</span>' +
+                '<span class="info-item"><strong>Dernier prix :</strong> ' + formatterDerniereBougie(derniereBougie) + '</span>' +
+                '<span class="info-note">Bibliothèque : lightweight-charts, graphique local capturable.</span>';
         }
 
         function obtenirConfigurationSansImagePourSauvegardeLocale() {
@@ -1078,6 +1185,7 @@
             }
 
             appliquerThemeGraphiqueTradingView();
+            afficherInfosGraphique();
 
             if (rechargerDonnees) {
                 actualiserGraphique();
@@ -1164,6 +1272,7 @@
                     "erreur"
                 );
                 afficherStatus("Actif non compatible avec les données crypto locales.");
+                afficherInfosGraphique();
                 return;
             }
 
@@ -1205,11 +1314,13 @@
                     resultat.source +
                     (erreurs.length ? " / Binance indisponible, repli OKX." : "")
                 );
+                afficherInfosGraphique();
 
             } catch (erreur) {
                 console.error("Erreur graphique :", erreur);
                 afficherMessageGraphique("Impossible de charger le graphique : " + erreur.message, "erreur");
                 afficherStatus("Erreur graphique : " + erreur.message);
+                afficherInfosGraphique();
             }
         }
 
@@ -1457,6 +1568,7 @@
                 });
 
                 appliquerThemeGraphiqueTradingView();
+                afficherInfosGraphique();
             }
         };
 		
