@@ -467,7 +467,7 @@
     <script>
 
         const AUTH_TOKEN_KEY = "expert_trading_auth_token";
-        const AUTH_TOKEN_KEYS_COMPATIBLES = [
+        const AUTH_TOKEN_KEYS = [
             "expert_trading_auth_token",
             "expertTradingToken",
             "expertTradingAuthToken"
@@ -476,26 +476,32 @@
         let applicationDejaInitialisee = false;
 
         function obtenirTokenAuth() {
-            for (const cle of AUTH_TOKEN_KEYS_COMPATIBLES) {
-                const token = localStorage.getItem(cle);
-                if (token && String(token).trim() !== "") {
-                    return token;
-                }
+            for (const cle of AUTH_TOKEN_KEYS) {
+                const valeur = localStorage.getItem(cle) || sessionStorage.getItem(cle);
+                if (valeur) return valeur;
             }
-
             return "";
         }
 
         function enregistrerTokenAuth(token) {
-            AUTH_TOKEN_KEYS_COMPATIBLES.forEach(cle => {
+            AUTH_TOKEN_KEYS.forEach(cle => {
                 localStorage.setItem(cle, token);
+                sessionStorage.setItem(cle, token);
             });
         }
 
         function supprimerTokenAuth() {
-            AUTH_TOKEN_KEYS_COMPATIBLES.forEach(cle => {
+            AUTH_TOKEN_KEYS.forEach(cle => {
                 localStorage.removeItem(cle);
+                sessionStorage.removeItem(cle);
             });
+            localStorage.removeItem("expertTradingUser");
+            sessionStorage.removeItem("expertTradingUser");
+        }
+
+        function afficherMessageAuth(message) {
+            const zone = document.getElementById("auth-message");
+            if (zone) zone.textContent = message || "";
         }
 
         function afficherEcranConnexion(message = "") {
@@ -504,24 +510,18 @@
 
             const champUtilisateur = document.getElementById("auth-username");
             if (champUtilisateur) {
-                setTimeout(() => champUtilisateur.focus(), 50);
+                setTimeout(() => champUtilisateur.focus(), 80);
             }
         }
 
-        function masquerEcranConnexion() {
+        function ouvrirApplicationApresConnexion() {
             document.body.classList.remove("auth-locked");
             afficherMessageAuth("");
-        }
 
-        function afficherMessageAuth(message) {
-            const zone = document.getElementById("auth-message");
-            if (zone) zone.textContent = message || "";
-        }
-
-        function initialiserApplicationUneSeuleFois() {
-            if (applicationDejaInitialisee) return;
-            applicationDejaInitialisee = true;
-            init();
+            if (!applicationDejaInitialisee) {
+                applicationDejaInitialisee = true;
+                init();
+            }
         }
 
         async function fetchAuth(url, options = {}) {
@@ -539,7 +539,7 @@
 
             if (response.status === 401) {
                 supprimerTokenAuth();
-                afficherEcranConnexion("Session absente ou expirée. Veuillez vous reconnecter.");
+                afficherEcranConnexion("Session expirée. Veuillez vous reconnecter.");
             }
 
             return response;
@@ -549,7 +549,6 @@
             const token = obtenirTokenAuth();
 
             if (!token) {
-                supprimerTokenAuth();
                 afficherEcranConnexion("");
                 return false;
             }
@@ -565,27 +564,18 @@
                     }
                 });
 
-                const texte = await response.text();
-                let data = {};
+                const data = await lireReponseJson(response);
 
-                try {
-                    data = texte ? JSON.parse(texte) : {};
-                } catch (erreurJson) {
-                    throw new Error("Réponse d'authentification non JSON.");
-                }
-
-                if (response.ok && data.ok === true) {
-                    masquerEcranConnexion();
+                if (data.ok === true) {
+                    ouvrirApplicationApresConnexion();
                     return true;
                 }
-
-                throw new Error(data.message || "Session invalide.");
-
             } catch (erreur) {
                 supprimerTokenAuth();
-                afficherEcranConnexion("Veuillez vous authentifier.");
-                return false;
             }
+
+            afficherEcranConnexion("Session absente ou expirée. Veuillez vous connecter.");
+            return false;
         }
 
         async function connexionUtilisateur(event) {
@@ -623,10 +613,8 @@
                 }
 
                 enregistrerTokenAuth(data.token);
-                masquerEcranConnexion();
-                initialiserApplicationUneSeuleFois();
+                ouvrirApplicationApresConnexion();
             } catch (erreur) {
-                supprimerTokenAuth();
                 afficherEcranConnexion("Connexion impossible.\n" + erreur.message);
             } finally {
                 if (bouton) bouton.disabled = false;
@@ -634,9 +622,12 @@
         }
 
         async function demarrerApplication() {
+            /*
+                Correction volontaire : l'écran de connexion reste affiché au démarrage.
+                Il ne disparaît qu'après validation réelle de la session ou après connexion réussie.
+            */
             document.body.classList.add("auth-locked");
-            const sessionOk = await verifierSessionUtilisateur();
-            if (sessionOk) initialiserApplicationUneSeuleFois();
+            await verifierSessionUtilisateur();
         }
 
         const API_BASE_URL = window.location.hostname.includes("github.io")
