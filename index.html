@@ -627,8 +627,7 @@
                 initialiserApplicationUneSeuleFois();
             } catch (erreur) {
                 supprimerTokenAuth();
-                afficherEcranConnexion("Connexion impossible.
-" + erreur.message);
+                afficherEcranConnexion("Connexion impossible.\n" + erreur.message);
             } finally {
                 if (bouton) bouton.disabled = false;
             }
