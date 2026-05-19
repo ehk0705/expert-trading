@@ -287,6 +287,51 @@
             white-space: pre-line;
         }
 
+
+        /* Correction affichage écran authentification :
+           masque les caractères parasites visibles à gauche de l'écran. */
+        body.auth-locked {
+            overflow: hidden !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: #020617 !important;
+            color: transparent !important;
+        }
+
+        body.auth-locked > :not(#auth-screen):not(script):not(style) {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        body.auth-locked #auth-screen {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 2147483647 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            color: #e5e7eb !important;
+        }
+
+        body.auth-locked #auth-screen * {
+            color: inherit;
+        }
+
+        body.auth-locked #auth-screen h2,
+        body.auth-locked #auth-screen label {
+            color: #facc15 !important;
+        }
+
+        body.auth-locked #auth-screen button {
+            color: #111827 !important;
+        }
+
+        body.auth-locked #auth-message {
+            color: #fecaca !important;
+        }
+
     </style>
 </head>
 
@@ -422,7 +467,7 @@
 
             <button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">Ouvrir TV</button>
 
-            <<a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
+            <a href="analyse.html" title="Analyser la capture">
                 <button type="button" title="Ouvrir la page analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
             </a>
 
@@ -634,15 +679,9 @@
         }
 
         async function demarrerApplication() {
-            /*
-                Correction minimale :
-                on force l'écran de connexion au démarrage.
-                Cela empêche un ancien jeton localStorage de fermer la fenêtre trop vite.
-                L'application ne démarre qu'après une connexion réussie.
-            */
-            supprimerTokenAuth();
             document.body.classList.add("auth-locked");
-            afficherEcranConnexion("");
+            const sessionOk = await verifierSessionUtilisateur();
+            if (sessionOk) initialiserApplicationUneSeuleFois();
         }
 
         const API_BASE_URL = window.location.hostname.includes("github.io")
