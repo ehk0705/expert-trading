@@ -467,22 +467,61 @@
     <script>
 
         const AUTH_TOKEN_KEY = "expert_trading_auth_token";
+        const AUTH_TOKEN_KEYS_COMPATIBLES = [
+            "expert_trading_auth_token",
+            "expertTradingToken",
+            "expertTradingAuthToken"
+        ];
+
+        let applicationDejaInitialisee = false;
 
         function obtenirTokenAuth() {
-            return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+            for (const cle of AUTH_TOKEN_KEYS_COMPATIBLES) {
+                const token = localStorage.getItem(cle);
+                if (token && String(token).trim() !== "") {
+                    return token;
+                }
+            }
+
+            return "";
         }
 
         function enregistrerTokenAuth(token) {
-            localStorage.setItem(AUTH_TOKEN_KEY, token);
+            AUTH_TOKEN_KEYS_COMPATIBLES.forEach(cle => {
+                localStorage.setItem(cle, token);
+            });
         }
 
         function supprimerTokenAuth() {
-            localStorage.removeItem(AUTH_TOKEN_KEY);
+            AUTH_TOKEN_KEYS_COMPATIBLES.forEach(cle => {
+                localStorage.removeItem(cle);
+            });
+        }
+
+        function afficherEcranConnexion(message = "") {
+            document.body.classList.add("auth-locked");
+            afficherMessageAuth(message);
+
+            const champUtilisateur = document.getElementById("auth-username");
+            if (champUtilisateur) {
+                setTimeout(() => champUtilisateur.focus(), 50);
+            }
+        }
+
+        function masquerEcranConnexion() {
+            document.body.classList.remove("auth-locked");
+            afficherMessageAuth("");
         }
 
         function afficherMessageAuth(message) {
             const zone = document.getElementById("auth-message");
             if (zone) zone.textContent = message || "";
+        }
+
+        function initialiserApplicationUneSeuleFois() {
+            if (applicationDejaInitialisee) return;
+            applicationDejaInitialisee = true;
+            init();
         }
 
         async function fetchAuth(url, options = {}) {
@@ -500,8 +539,7 @@
 
             if (response.status === 401) {
                 supprimerTokenAuth();
-                document.body.classList.add("auth-locked");
-                afficherMessageAuth("Session expirée. Veuillez vous reconnecter.");
+                afficherEcranConnexion("Session absente ou expirée. Veuillez vous reconnecter.");
             }
 
             return response;
@@ -511,31 +549,43 @@
             const token = obtenirTokenAuth();
 
             if (!token) {
-                document.body.classList.add("auth-locked");
+                supprimerTokenAuth();
+                afficherEcranConnexion("");
                 return false;
             }
 
             try {
-                const response = await fetchAuth(getApiUrl("/api/auth/me"), {
+                const response = await fetch(getApiUrl("/api/auth/me"), {
                     method: "GET",
+                    mode: "cors",
                     cache: "no-store",
                     headers: {
-                        "Accept": "application/json"
+                        "Accept": "application/json",
+                        "Authorization": "Bearer " + token
                     }
                 });
 
-                const data = await lireReponseJson(response);
+                const texte = await response.text();
+                let data = {};
 
-                if (data.ok === true) {
-                    document.body.classList.remove("auth-locked");
+                try {
+                    data = texte ? JSON.parse(texte) : {};
+                } catch (erreurJson) {
+                    throw new Error("Réponse d'authentification non JSON.");
+                }
+
+                if (response.ok && data.ok === true) {
+                    masquerEcranConnexion();
                     return true;
                 }
+
+                throw new Error(data.message || "Session invalide.");
+
             } catch (erreur) {
                 supprimerTokenAuth();
+                afficherEcranConnexion("Veuillez vous authentifier.");
+                return false;
             }
-
-            document.body.classList.add("auth-locked");
-            return false;
         }
 
         async function connexionUtilisateur(event) {
@@ -573,19 +623,21 @@
                 }
 
                 enregistrerTokenAuth(data.token);
-                document.body.classList.remove("auth-locked");
-                afficherMessageAuth("");
-                init();
+                masquerEcranConnexion();
+                initialiserApplicationUneSeuleFois();
             } catch (erreur) {
-                afficherMessageAuth("Connexion impossible.\n" + erreur.message);
+                supprimerTokenAuth();
+                afficherEcranConnexion("Connexion impossible.
+" + erreur.message);
             } finally {
                 if (bouton) bouton.disabled = false;
             }
         }
 
         async function demarrerApplication() {
+            document.body.classList.add("auth-locked");
             const sessionOk = await verifierSessionUtilisateur();
-            if (sessionOk) init();
+            if (sessionOk) initialiserApplicationUneSeuleFois();
         }
 
         const API_BASE_URL = window.location.hostname.includes("github.io")
