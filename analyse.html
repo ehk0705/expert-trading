@@ -607,6 +607,80 @@
             return [...new Set(urls)];
         }
 
+        function getAuthToken() {
+            return (
+                localStorage.getItem("expertTradingToken") ||
+                localStorage.getItem("expertTradingJwt") ||
+                localStorage.getItem("authToken") ||
+                sessionStorage.getItem("expertTradingToken") ||
+                sessionStorage.getItem("expertTradingJwt") ||
+                sessionStorage.getItem("authToken") ||
+                ""
+            );
+        }
+
+        function getAuthHeaders(headers = {}) {
+            const token = getAuthToken();
+            const authHeaders = {
+                ...headers
+            };
+
+            if (token) {
+                authHeaders["Authorization"] = "Bearer " + token;
+            }
+
+            return authHeaders;
+        }
+
+        function verifierAuthentificationAnalyse(afficherAlerte = true) {
+            const token = getAuthToken();
+
+            if (!token) {
+                if (afficherAlerte) {
+                    alert("Authentification requise. Connectez-vous d'abord depuis index.html.");
+                }
+                window.location.href = "/";
+                return false;
+            }
+
+            return true;
+        }
+
+        async function verifierSessionAnalyse() {
+            const token = getAuthToken();
+
+            if (!token) {
+                verifierAuthentificationAnalyse(true);
+                return false;
+            }
+
+            try {
+                const response = await fetch(getApiUrl("/api/auth/me"), {
+                    method: "GET",
+                    mode: "cors",
+                    credentials: "omit",
+                    cache: "no-store",
+                    headers: getAuthHeaders({
+                        "Accept": "application/json"
+                    })
+                });
+
+                const data = await readResponseAsJson(response);
+                return Boolean(data.ok);
+            } catch (erreur) {
+                console.warn("Session invalide ou expirée :", erreur);
+                localStorage.removeItem("expertTradingToken");
+                localStorage.removeItem("expertTradingJwt");
+                localStorage.removeItem("authToken");
+                sessionStorage.removeItem("expertTradingToken");
+                sessionStorage.removeItem("expertTradingJwt");
+                sessionStorage.removeItem("authToken");
+                alert("Session expirée ou invalide. Reconnectez-vous.");
+                window.location.href = "/";
+                return false;
+            }
+        }
+
         async function fetchJsonAvecSecours(route, options = {}) {
             const urls = getApiUrls(route);
             let derniereErreur = null;
@@ -618,10 +692,10 @@
                         mode: "cors",
                         credentials: "omit",
                         cache: "no-store",
-                        headers: {
+                        headers: getAuthHeaders({
                             "Accept": "application/json",
                             ...(options.headers || {})
-                        }
+                        })
                     });
 
                     const data = await readResponseAsJson(response);
@@ -922,6 +996,8 @@
         }
 
         async function loadGallery() {
+            if (!(await verifierSessionAnalyse())) return;
+
             const galleryList = document.getElementById('gallery-list');
             galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Chargement des captures...</p>";
 
@@ -1079,7 +1155,11 @@
 
             try {
                 const jsonName = fileName.replace('.png', '.json');
-                const res = await fetch(getApiUrl('/screenshots/' + encodeURIComponent(jsonName)));
+                const res = await fetch(getApiUrl('/screenshots/' + encodeURIComponent(jsonName)), {
+                    method: 'GET',
+                    headers: getAuthHeaders({ 'Accept': 'application/json' }),
+                    cache: 'no-store'
+                });
 
                 if (res.ok) {
                     const meta = await res.json();
@@ -1207,6 +1287,8 @@
         }
 
         async function triggerConcreteAIAnalysis() {
+            if (!verifierAuthentificationAnalyse()) return;
+
             if (!currentFileName) {
                 alert("Veuillez d'abord sélectionner un graphique à analyser.");
                 return;
@@ -1248,7 +1330,7 @@
 
                 const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(payload)
                 });
 
@@ -1285,6 +1367,8 @@
         }
 
         async function testerCaptureServeur() {
+            if (!verifierAuthentificationAnalyse()) return;
+
             if (!currentFileName) {
                 alert("Veuillez d'abord sélectionner une capture.");
                 return;
@@ -1301,7 +1385,11 @@
 
             try {
                 setLoadingState(true, "VÉRIFICATION CAPTURE...");
-                const response = await fetch(getApiUrl('/api/check-screenshot?fileName=' + encodeURIComponent(currentFileName)));
+                const response = await fetch(getApiUrl('/api/check-screenshot?fileName=' + encodeURIComponent(currentFileName)), {
+                    method: 'GET',
+                    headers: getAuthHeaders({ 'Accept': 'application/json' }),
+                    cache: 'no-store'
+                });
                 const data = await readResponseAsJson(response);
 
                 document.getElementById('ai-panel').style.display = "grid";
@@ -1318,6 +1406,8 @@
         }
 
         async function triggerAIAnalysisAncienneRoute() {
+            if (!verifierAuthentificationAnalyse()) return;
+
             if (!currentFileName) {
                 alert("Veuillez d'abord sélectionner un graphique à analyser.");
                 return;
@@ -1328,7 +1418,7 @@
             try {
                 const response = await fetch(getApiUrl('/api/analyze-vision'), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ fileName: currentFileName })
                 });
 
@@ -1356,6 +1446,8 @@
         }
 
         async function triggerSelectedAIAnalysis() {
+            if (!verifierAuthentificationAnalyse()) return;
+
             const filesToAnalyze = Array.from(selectedFiles);
 
             if (filesToAnalyze.length === 0) {
@@ -1395,7 +1487,7 @@
                         } else {
                             const response = await fetch(getApiUrl('/api/analyze-vision'), {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                                 body: JSON.stringify({ fileName: fileName })
                             });
 
@@ -1551,6 +1643,8 @@
         }
 
         async function saveNotes() {
+            if (!verifierAuthentificationAnalyse()) return;
+
             if (!currentFileName) {
                 alert("Veuillez d'abord sélectionner une capture avant d'archiver le rapport.");
                 return;
@@ -1572,7 +1666,7 @@
             try {
                 const response = await fetch(getApiUrl('/api/update-notes'), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ 
                         fileName: currentFileName.replace('.png', '.json'), 
                         notes: userNotes.value 
