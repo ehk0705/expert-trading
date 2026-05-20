@@ -339,6 +339,29 @@
             color: #fecaca !important;
         }
 
+
+        /* Mode TradingView s3 : masquer le bandeau interne ajouté au-dessus du graphique.
+           Le graphique affiche uniquement les informations natives de TradingView. */
+        body:not(.auth-locked) #infos-graphique {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+            overflow: hidden !important;
+        }
+
+        body:not(.auth-locked) #chart-container {
+            gap: 0 !important;
+        }
+
+        body:not(.auth-locked) #chart-message {
+            top: 24px !important;
+        }
+
     </style>
 </head>
 
