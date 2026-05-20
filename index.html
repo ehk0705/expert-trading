@@ -397,26 +397,7 @@
             <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()" title="Lancer l’analyse IA de l’image du graphique avec les données de marché et les indicateurs techniques.">Vision + Marché</button>
         </div>
 
-        <div class="control-group">
-            <label for="asset-selector">ACTIF :</label>
-            <select id="asset-selector" onchange="actualiserGraphique()" title="Choisir l’actif à afficher et à analyser.">
-                <option value="BINANCE:BTCUSDT">BTC/USDT</option>
-                <option value="COINBASE:BTCUSD">BTC/USD</option>
-                <option value="BINANCE:ETHUSDT">ETH/USDT</option>
-                <option value="BINANCE:SOLUSDT">SOL/USDT</option>
-                <option value="BINANCE:BNBUSDT">BNB/USDT</option>
-                <option value="BINANCE:XRPUSDT">XRP/USDT</option>
-                <option value="OANDA:XAUUSD">OR (XAU)</option>
-                <option value="NASDAQ:AAPL">AAPL</option>
-                <option value="NASDAQ:TSLA">TSLA</option>
-                <option value="NASDAQ:NVDA">NVDA</option>
-                <option value="NASDAQ:MSFT">MSFT</option>
-                <option value="NASDAQ:AMZN">AMZN</option>
-                <option value="NASDAQ:GOOGL">GOOGL</option>
-                <option value="SP:SPX">S&P 500</option>
-                <option value="TVC:DXY">DXY</option>
-            </select>
-        </div>
+
 
         <div class="control-group">
             <label for="categorie-analyse-btc">ANALYSE :</label>
@@ -453,6 +434,26 @@
         </div>
 
 <!--
+        <div class="control-group">
+            <label for="asset-selector">ACTIF :</label>
+            <select id="asset-selector" onchange="actualiserGraphique()" title="Choisir l’actif à afficher et à analyser.">
+                <option value="BINANCE:BTCUSDT">BTC/USDT</option>
+                <option value="COINBASE:BTCUSD">BTC/USD</option>
+                <option value="BINANCE:ETHUSDT">ETH/USDT</option>
+                <option value="BINANCE:SOLUSDT">SOL/USDT</option>
+                <option value="BINANCE:BNBUSDT">BNB/USDT</option>
+                <option value="BINANCE:XRPUSDT">XRP/USDT</option>
+                <option value="OANDA:XAUUSD">OR (XAU)</option>
+                <option value="NASDAQ:AAPL">AAPL</option>
+                <option value="NASDAQ:TSLA">TSLA</option>
+                <option value="NASDAQ:NVDA">NVDA</option>
+                <option value="NASDAQ:MSFT">MSFT</option>
+                <option value="NASDAQ:AMZN">AMZN</option>
+                <option value="NASDAQ:GOOGL">GOOGL</option>
+                <option value="SP:SPX">S&P 500</option>
+                <option value="TVC:DXY">DXY</option>
+            </select>
+        </div>
         <div class="control-group">
             <label for="chart-type-selector">STYLE :</label>
             <select id="chart-type-selector" onchange="changerStyleGraphique()" title="Choisir le style visuel du graphique : bougies, barres, ligne ou aire.">
