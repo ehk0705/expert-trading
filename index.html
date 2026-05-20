@@ -493,6 +493,41 @@
             </select>
         </div>
 -->
+        <!-- Contrôles techniques masqués :
+             ils restent présents dans le DOM pour permettre le chargement des anciennes configurations JSON.
+             Ne pas les supprimer, sinon les fonctions JavaScript ne trouvent plus interval-selector, indicator-selector ou chart-type-selector. -->
+        <div id="controles-techniques-masques" style="display:none !important;">
+            <select id="chart-type-selector" onchange="changerStyleGraphique()" title="Choisir le style visuel du graphique : bougies, barres, ligne ou aire.">
+                <option value="candles" selected>Bougies</option>
+                <option value="bars">Barres</option>
+                <option value="line">Ligne</option>
+                <option value="area">Aire</option>
+            </select>
+
+            <select id="indicator-selector" onchange="actualiserGraphique()" title="Choisir l’indicateur technique principal associé à la configuration.">
+                <option value="EMA" selected>EMA</option>
+                <option value="RSI">RSI</option>
+                <option value="MACD">MACD</option>
+                <option value="SUPERTREND">ST</option>
+                <option value="BOLLINGER">BB</option>
+                <option value="ATR">ATR</option>
+                <option value="VOLUME">VOL</option>
+                <option value="LIQUIDITY">LIQ</option>
+            </select>
+
+            <select id="interval-selector" onchange="actualiserGraphique()" title="Choisir l’unité de temps du graphique.">
+                <option value="1">1m</option>
+                <option value="5">5m</option>
+                <option value="15">15m</option>
+                <option value="30">30m</option>
+                <option value="60">1h</option>
+                <option value="240">4h</option>
+                <option value="D" selected>1J</option>
+                <option value="W">1S</option>
+                <option value="M">1M</option>
+            </select>
+        </div>
+
         <div class="control-group">
             <button class="btn-technique" onclick="testerAnalyseTechnique()" title="Générer et afficher le JSON technique calculé côté serveur pour l’actif, l’intervalle et l’indicateur sélectionnés.">Générer JSON</button>
 
