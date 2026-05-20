@@ -711,14 +711,20 @@
         async function demarrerApplication() {
             /*
                 Correction index-s3 :
-                on ne réutilise pas automatiquement un ancien jeton.
-                La fenêtre d'authentification reste affichée au chargement
-                et l'application démarre uniquement après une connexion réussie.
+                on conserve le jeton déjà reçu pendant sa durée de validité.
+                La session est vérifiée côté serveur avec /api/auth/me.
+                Si le jeton est encore valide, l'application démarre sans redemander le mot de passe.
+                Si le jeton est absent ou expiré, l'écran de connexion reste affiché.
             */
-            supprimerTokenAuth();
-            applicationDejaInitialisee = false;
             document.body.classList.add("auth-locked");
-            afficherEcranConnexion("");
+
+            const sessionOk = await verifierSessionUtilisateur();
+
+            if (sessionOk) {
+                initialiserApplicationUneSeuleFois();
+            } else {
+                afficherEcranConnexion("");
+            }
         }
 
         const API_BASE_URL = window.location.hostname.includes("github.io")
