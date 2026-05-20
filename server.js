@@ -1,6 +1,10 @@
 /*
-    server.js
+    server-plus.js
     Expert Trading Pro v2.0
+
+    Fichier fusionné à partir de :
+    - server(16).js : authentification, multi-IA, protection API, PostgreSQL
+    - server - light-chart.js : base historique light-chart, captures, analyse technique, routes PostgreSQL
 
     Fonctionnalités :
     - Sert index.html et analyse.html
@@ -37,7 +41,7 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || null;
 const AUTH_ADMIN_USER = process.env.AUTH_ADMIN_USER || "admin";
 const AUTH_ADMIN_PASSWORD = process.env.AUTH_ADMIN_PASSWORD || null;
-const AUTH_TOKEN_EXPIRATION = process.env.AUTH_TOKEN_EXPIRATION || "8h";
+const AUTH_TOKEN_EXPIRATION = process.env.AUTH_TOKEN_EXPIRATION || "1h";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const MARKET_PRIMARY_SOURCE = String(process.env.MARKET_PRIMARY_SOURCE || "okx").toLowerCase();
 const AI_PRIMARY_PROVIDER = String(process.env.AI_PRIMARY_PROVIDER || "openai").toLowerCase();
@@ -382,6 +386,7 @@ app.get("/api/test", (req, res) => {
         message: "API accessible.",
         model: OPENAI_MODEL,
         market_primary_source: MARKET_PRIMARY_SOURCE,
+        sources_non_crypto: ["yahoo"],
         ai_primary_provider: AI_PRIMARY_PROVIDER,
         openai_key_configuree: Boolean(process.env.OPENAI_API_KEY),
         gemini_key_configuree: Boolean(process.env.GEMINI_API_KEY),
@@ -1178,6 +1183,106 @@ function normaliserActif(actif) {
         .replace("-", "");
 }
 
+function prefixeActif(actif) {
+    const v = String(actif || "").toUpperCase();
+    return v.includes(":") ? v.split(":")[0] : "";
+}
+
+function estActifCrypto(actif) {
+    const p = prefixeActif(actif);
+    const s = normaliserActif(actif);
+
+    if (["BINANCE", "OKX", "COINBASE", "KRAKEN", "BITSTAMP", "BYBIT"].includes(p)) {
+        return true;
+    }
+
+    return /^(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|AVAX|LINK|DOT|LTC|BCH|MATIC|TRX)(USDT|USD|USDC)$/.test(s);
+}
+
+function estActifForexOuMetaux(actif) {
+    const p = prefixeActif(actif);
+    const s = normaliserActif(actif);
+
+    if (p === "OANDA" || p === "FX" || p === "FOREXCOM") return true;
+
+    return /^(EUR|GBP|AUD|NZD|USD|CAD|CHF|JPY|XAU|XAG)(USD|EUR|GBP|AUD|NZD|CAD|CHF|JPY)$/.test(s);
+}
+
+function symboleYahoo(actif) {
+    const s = normaliserActif(actif);
+    const original = String(actif || "").toUpperCase();
+
+    const correspondances = {
+        XAUUSD: "XAUUSD=X",
+        XAGUSD: "XAGUSD=X",
+        EURUSD: "EURUSD=X",
+        GBPUSD: "GBPUSD=X",
+        USDJPY: "JPY=X",
+        USDCAD: "CAD=X",
+        USDCHF: "CHF=X",
+        AUDUSD: "AUDUSD=X",
+        NZDUSD: "NZDUSD=X"
+    };
+
+    if (correspondances[s]) return correspondances[s];
+
+    if (estActifForexOuMetaux(actif)) {
+        if (s.length === 6) return s + "=X";
+        throw new Error("Symbole Forex ou métaux non reconnu pour Yahoo : " + actif);
+    }
+
+    if (original.includes(":")) {
+        return original.split(":").pop();
+    }
+
+    return s;
+}
+
+function intervalleYahoo(i) {
+    const v = String(i || "1d").toLowerCase();
+
+    if (v.includes("day") || v.includes("days")) return "1d";
+
+    const t = {
+        "1": "1m",
+        "5": "5m",
+        "15": "15m",
+        "30": "30m",
+        "60": "1h",
+        "240": "1h",
+        "d": "1d",
+        "1d": "1d",
+        "w": "1wk",
+        "1w": "1wk",
+        "m": "1mo",
+        "1m": "1m",
+        "5m": "5m",
+        "15m": "15m",
+        "30m": "30m",
+        "1h": "1h",
+        "4h": "1h"
+    };
+
+    return t[v] || "1d";
+}
+
+function rangeYahoo(i) {
+    const v = String(i || "").toLowerCase();
+
+    const m = v.match(/days\s*=\s*(\d+)/);
+    if (m) return Math.max(1, Number(m[1])) + "d";
+
+    const intervalle = intervalleYahoo(i);
+
+    if (["1m", "5m", "15m", "30m"].includes(intervalle)) return "7d";
+    if (intervalle === "1h") return "60d";
+    if (intervalle === "1wk") return "2y";
+    if (intervalle === "1mo") return "5y";
+
+    return "1y";
+}
+
+
 function intervalleBinance(i) {
     const v = String(i || "1h").toLowerCase();
 
@@ -1225,9 +1330,9 @@ function actifOKX(actif) {
     const s = normaliserActif(actif);
 
     if (s.endsWith("USDT")) return s.replace("USDT", "-USDT");
-    if (s.endsWith("USD")) return s.replace("USD", "-USD");
+    if (estActifCrypto(actif) && s.endsWith("USD")) return s.replace("USD", "-USD");
 
-    return "BTC-USDT";
+    throw new Error("OKX ne doit pas être utilisé pour cet actif non crypto ou non reconnu : " + actif);
 }
 
 function coinGeckoId(actif) {
@@ -1246,7 +1351,13 @@ function coinGeckoId(actif) {
         AVAXUSDT: "avalanche-2",
         LINKUSDT: "chainlink",
         DOTUSDT: "polkadot"
-    }[s] || "bitcoin";
+    };
+
+    if (!correspondances[s]) {
+        throw new Error("CoinGecko ne doit pas être utilisé pour cet actif non crypto ou non reconnu : " + actif);
+    }
+
+    return correspondances[s];
 }
 
 function daysCoinGecko(i) {
@@ -1368,14 +1479,80 @@ async function bougiesCoinGecko(actif, intervalle, limit = 300) {
     }));
 }
 
+async function bougiesYahoo(actif, intervalle, limit = 300) {
+    const symbole = symboleYahoo(actif);
+    const url = new URL(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbole)}`
+    );
+
+    url.searchParams.set("range", rangeYahoo(intervalle));
+    url.searchParams.set("interval", intervalleYahoo(intervalle));
+    url.searchParams.set("includePrePost", "false");
+
+    const r = await fetch(url, {
+        headers: {
+            "Accept": "application/json",
+            "User-Agent": "ExpertTradingPro/2.0"
+        }
+    });
+
+    const txt = await r.text();
+
+    if (!r.ok) {
+        throw new Error("Yahoo Finance HTTP " + r.status + " : " + txt);
+    }
+
+    const j = JSON.parse(txt);
+    const result = j?.chart?.result?.[0];
+
+    if (!result || !Array.isArray(result.timestamp)) {
+        const erreurYahoo = j?.chart?.error?.description || txt;
+        throw new Error("Format Yahoo Finance inattendu : " + erreurYahoo);
+    }
+
+    const quote = result.indicators?.quote?.[0] || {};
+    const timestamps = result.timestamp || [];
+
+    const bougies = timestamps.map((ts, index) => ({
+        openTime: Number(ts) * 1000,
+        open: Number(quote.open?.[index]),
+        high: Number(quote.high?.[index]),
+        low: Number(quote.low?.[index]),
+        close: Number(quote.close?.[index]),
+        volume: Number(quote.volume?.[index] || 0),
+        closeTime: Number(ts) * 1000,
+        source: "yahoo"
+    })).filter(x =>
+        Number.isFinite(x.open) &&
+        Number.isFinite(x.high) &&
+        Number.isFinite(x.low) &&
+        Number.isFinite(x.close)
+    );
+
+    if (bougies.length < 30) {
+        throw new Error("Historique Yahoo Finance insuffisant pour " + actif + " (" + symbole + ").");
+    }
+
+    return bougies.slice(-limit);
+}
+
 function sourceMarcheConfiguree() {
-    const sources = ["okx", "coingecko", "binance"];
+    const sources = ["okx", "coingecko", "binance", "yahoo"];
     return sources.includes(MARKET_PRIMARY_SOURCE) ? MARKET_PRIMARY_SOURCE : "okx";
 }
 
-function ordreSourcesMarche() {
+function ordreSourcesMarche(actif) {
+    if (!estActifCrypto(actif)) {
+        return ["yahoo"];
+    }
+
     const defaut = ["okx", "coingecko", "binance"];
     const principale = sourceMarcheConfiguree();
+
+    if (principale === "yahoo") {
+        return ["yahoo", ...defaut];
+    }
+
     return [principale, ...defaut.filter(x => x !== principale)];
 }
 
@@ -1425,12 +1602,22 @@ async function essayerSourceMarche(source, actif, intervalle, erreurs) {
         };
     }
 
+    if (source === "yahoo") {
+        return {
+            source: "yahoo",
+            symbole: symboleYahoo(actif),
+            intervalle: intervalleYahoo(intervalle) + " / " + rangeYahoo(intervalle),
+            bougies: await bougiesYahoo(actif, intervalle),
+            erreurs
+        };
+    }
+
     throw new Error("Source de marché inconnue : " + source);
 }
 
 async function recupererBougiesMarche(actif, intervalle) {
     const erreurs = [];
-    const ordre = ordreSourcesMarche();
+    const ordre = ordreSourcesMarche(actif);
 
     for (const source of ordre) {
         try {
