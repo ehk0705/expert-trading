@@ -497,7 +497,7 @@
 
             <button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">Ouvrir TV</button>
 
-            <a href="analyse-s3.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
+            <a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
                 <button type="button" title="Ouvrir la page analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
             </a>
 
@@ -506,7 +506,7 @@
 		   </button>
         </div>
     </div>
-<!--
+
     <div id="chart-container">
         <div id="infos-graphique" class="infos-graphique" title="Résumé visible des paramètres actuellement appliqués au graphique. Ce bandeau est aussi intégré dans l'image sauvegardée pour analyse.html.">
             <div class="infos-titre">Informations du graphique</div>
@@ -519,7 +519,7 @@
         <div id="chart-message" class="chart-message">Chargement du graphique local...</div>
         <div id="tradingview_chart"></div>
     </div>
--->
+
     <div class="result-panel" id="result-panel">
         <div class="result-header">
             <strong>Résultat IA</strong>
@@ -1722,12 +1722,18 @@
             */
             afficherInfosGraphique();
 
-            const zoneGraphique = document.getElementById("tradingview_chart") || document.getElementById("chart-container");
-            if (!zoneGraphique) throw new Error("Zone du graphique introuvable.");
+            const zoneGraphique =
+                document.getElementById("tradingview_chart") ||
+                document.getElementById("chart-container") ||
+                document.querySelector("iframe") ||
+                document.body;
 
-            const rect = zoneGraphique.getBoundingClientRect();
-            const largeur = Math.max(800, Math.round(rect.width || zoneGraphique.clientWidth || 1000));
-            const hauteur = Math.max(520, Math.round(rect.height || zoneGraphique.clientHeight || 620));
+            const rect = zoneGraphique && typeof zoneGraphique.getBoundingClientRect === "function"
+                ? zoneGraphique.getBoundingClientRect()
+                : { width: window.innerWidth, height: window.innerHeight };
+
+            const largeur = Math.max(800, Math.round(rect.width || zoneGraphique.clientWidth || window.innerWidth || 1000));
+            const hauteur = Math.max(520, Math.round(rect.height || zoneGraphique.clientHeight || (window.innerHeight - 120) || 620));
             const ratio = Math.max(1, window.devicePixelRatio || 1);
 
             const sortie = document.createElement("canvas");
