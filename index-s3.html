@@ -1712,76 +1712,63 @@
             });
         }
 
-        function capturerCanvasEnBase64() {
+        async function capturerCanvasEnBase64() {
             /*
-                Limite importante :
-                TradingView tv.js rend le graphique dans une iframe externe.
-                Le navigateur ne permet pas de capturer directement cette iframe en canvas
-                pour des raisons de sécurité. On génère donc une image de contexte
-                avec les paramètres visibles du graphique.
+                TradingView tv.js affiche le graphique dans une iframe externe.
+                Une capture canvas classique ne peut pas lire cette iframe.
+                Solution utilisée : API native de capture d'écran du navigateur.
+                L'utilisateur doit choisir l'onglet ou la fenêtre contenant le graphique.
             */
             afficherInfosGraphique();
 
-            const zoneGraphique =
-                document.getElementById("tradingview_chart") ||
-                document.getElementById("chart-container") ||
-                document.querySelector("iframe") ||
-                document.body;
+            if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function") {
+                throw new Error("La capture d'écran du navigateur n'est pas disponible. Utilisez Chrome ou Edge en HTTPS.");
+            }
 
-            const rect = zoneGraphique && typeof zoneGraphique.getBoundingClientRect === "function"
-                ? zoneGraphique.getBoundingClientRect()
-                : { width: window.innerWidth, height: window.innerHeight };
+            afficherStatus("Sélectionnez l'onglet ou la fenêtre contenant le graphique TradingView.");
 
-            const largeur = Math.max(800, Math.round(rect.width || zoneGraphique.clientWidth || window.innerWidth || 1000));
-            const hauteur = Math.max(520, Math.round(rect.height || zoneGraphique.clientHeight || (window.innerHeight - 120) || 620));
-            const ratio = Math.max(1, window.devicePixelRatio || 1);
-
-            const sortie = document.createElement("canvas");
-            sortie.width = Math.round(largeur * ratio);
-            sortie.height = Math.round(hauteur * ratio);
-
-            const ctx = sortie.getContext("2d");
-            ctx.scale(ratio, ratio);
-
-            ctx.fillStyle = "#020617";
-            ctx.fillRect(0, 0, largeur, hauteur);
-
-            ctx.fillStyle = "#0f172a";
-            ctx.fillRect(0, 0, largeur, 180);
-
-            ctx.strokeStyle = "#facc15";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(1, 1, largeur - 2, 178);
-
-            ctx.font = "bold 18px Arial, sans-serif";
-            ctx.fillStyle = "#facc15";
-            ctx.fillText("Informations du graphique - TradingView tv.js", 18, 32);
-
-            ctx.font = "14px Arial, sans-serif";
-            ctx.fillStyle = "#e5e7eb";
-
-            const lignesInfos = obtenirLignesInfosGraphiquePourCapture();
-            lignesInfos.forEach((ligne, index) => {
-                ctx.fillText(ligne, 18, 64 + index * 19);
+            const flux = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    displaySurface: "browser",
+                    cursor: "always"
+                },
+                audio: false,
+                preferCurrentTab: true
             });
 
-            ctx.fillStyle = "#111827";
-            ctx.fillRect(0, 190, largeur, hauteur - 190);
+            try {
+                const video = document.createElement("video");
+                video.srcObject = flux;
+                video.muted = true;
+                video.playsInline = true;
 
-            ctx.strokeStyle = "#334155";
-            ctx.strokeRect(18, 210, largeur - 36, hauteur - 230);
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = () => {
+                        video.play().then(resolve).catch(reject);
+                    };
+                    video.onerror = () => reject(new Error("Impossible de lire la capture vidéo."));
+                });
 
-            ctx.font = "bold 16px Arial, sans-serif";
-            ctx.fillStyle = "#facc15";
-            ctx.fillText("Capture directe du widget TradingView non disponible", 36, 250);
+                await new Promise(resolve => setTimeout(resolve, 350));
 
-            ctx.font = "14px Arial, sans-serif";
-            ctx.fillStyle = "#cbd5e1";
-            ctx.fillText("Le widget tv.js est affiché dans une iframe externe.", 36, 282);
-            ctx.fillText("Le navigateur bloque sa capture directe en canvas pour des raisons de sécurité.", 36, 306);
-            ctx.fillText("Cette image conserve les paramètres du graphique pour la sauvegarde et l'analyse.", 36, 330);
+                const largeur = video.videoWidth || window.innerWidth;
+                const hauteur = video.videoHeight || window.innerHeight;
 
-            return sortie.toDataURL("image/png");
+                if (!largeur || !hauteur) {
+                    throw new Error("Dimensions de capture invalides.");
+                }
+
+                const canvas = document.createElement("canvas");
+                canvas.width = largeur;
+                canvas.height = hauteur;
+
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(video, 0, 0, largeur, hauteur);
+
+                return canvas.toDataURL("image/png");
+            } finally {
+                flux.getTracks().forEach(track => track.stop());
+            }
         }
 
         async function obtenirImagePourAnalyse() {
@@ -1793,7 +1780,7 @@
 
             if (dernierScreenshotBase64) return dernierScreenshotBase64;
 
-            return capturerCanvasEnBase64();
+            return await capturerCanvasEnBase64();
         }
 
         async function takeScreenshot() {
@@ -1805,7 +1792,7 @@
                 if (inputCapture && inputCapture.files && inputCapture.files.length > 0) {
                     dernierScreenshotBase64 = await convertirFichierImageEnBase64(inputCapture.files[0]);
                 } else {
-                    dernierScreenshotBase64 = capturerCanvasEnBase64();
+                    dernierScreenshotBase64 = await capturerCanvasEnBase64();
                 }
 
                 const configuration = obtenirConfiguration();
