@@ -709,9 +709,16 @@
         }
 
         async function demarrerApplication() {
+            /*
+                Correction index-s3 :
+                on ne réutilise pas automatiquement un ancien jeton.
+                La fenêtre d'authentification reste affichée au chargement
+                et l'application démarre uniquement après une connexion réussie.
+            */
+            supprimerTokenAuth();
+            applicationDejaInitialisee = false;
             document.body.classList.add("auth-locked");
-            const sessionOk = await verifierSessionUtilisateur();
-            if (sessionOk) initialiserApplicationUneSeuleFois();
+            afficherEcranConnexion("");
         }
 
         const API_BASE_URL = window.location.hostname.includes("github.io")
