@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading Pro v2.0 - Analyse S3 & Journal</title>
+    <title>Expert Trading Pro v2.0 - Analyse & Journal</title>
     <style>
         :root { 
             --bg-color: #252930; 
@@ -435,8 +435,8 @@
 
     <div class="sidebar">
         <div class="sidebar-header">
-            <h2>Journal Technique S3</h2>
-            <a href="/index-s3.html" class="btn-back">← TERMINAL S3 TRADINGVIEW</a>
+            <h2>Journal Technique</h2>
+            <a href="/" class="btn-back">← TERMINAL DE TRADING LIVE</a>
         </div>
 
         <div class="sidebar-tools">
@@ -445,14 +445,14 @@
             <div id="selection-count">0 capture sélectionnée.</div>
         </div>
 
-        <div id="gallery-list">Chargement des captures S3...</div>
+        <div id="gallery-list">Chargement des fichiers...</div>
     </div>
 
     <div class="main-content">
         <div class="info-panel" id="image-info">
             <div class="advice-banner">
                 <strong>💡 RECOMMANDATION :</strong> 
-                <span id="dynamic-advice">Sélectionnez une capture S3 pour générer les conseils d'ingénierie.</span>
+                <span id="dynamic-advice">Sélectionnez une capture pour générer les conseils d'ingénierie.</span>
             </div>
 
             <div class="top-action-bar">
@@ -609,14 +609,10 @@
 
         function getAuthToken() {
             return (
-                localStorage.getItem("expert_trading_auth_token") ||
                 localStorage.getItem("expertTradingToken") ||
-                localStorage.getItem("expertTradingAuthToken") ||
                 localStorage.getItem("expertTradingJwt") ||
                 localStorage.getItem("authToken") ||
-                sessionStorage.getItem("expert_trading_auth_token") ||
                 sessionStorage.getItem("expertTradingToken") ||
-                sessionStorage.getItem("expertTradingAuthToken") ||
                 sessionStorage.getItem("expertTradingJwt") ||
                 sessionStorage.getItem("authToken") ||
                 ""
@@ -673,16 +669,12 @@
                 return Boolean(data.ok);
             } catch (erreur) {
                 console.warn("Session invalide ou expirée :", erreur);
-                [
-                    "expert_trading_auth_token",
-                    "expertTradingToken",
-                    "expertTradingAuthToken",
-                    "expertTradingJwt",
-                    "authToken"
-                ].forEach(cle => {
-                    localStorage.removeItem(cle);
-                    sessionStorage.removeItem(cle);
-                });
+                localStorage.removeItem("expertTradingToken");
+                localStorage.removeItem("expertTradingJwt");
+                localStorage.removeItem("authToken");
+                sessionStorage.removeItem("expertTradingToken");
+                sessionStorage.removeItem("expertTradingJwt");
+                sessionStorage.removeItem("authToken");
                 alert("Session expirée ou invalide. Reconnectez-vous.");
                 window.location.href = "/";
                 return false;
@@ -872,7 +864,7 @@
 
             const dynamicAdvice = document.getElementById("dynamic-advice");
             if (dynamicAdvice) {
-                dynamicAdvice.innerText = "Sélectionnez une capture S3 pour générer les conseils d'ingénierie.";
+                dynamicAdvice.innerText = "Sélectionnez une capture pour générer les conseils d'ingénierie.";
             }
 
             resetAIResults();
@@ -951,33 +943,6 @@
             return id + " — " + nomBase + " — " + actif + " / " + indicateur + " / " + intervalle + (dateTexte ? " — " + dateTexte : "");
         }
 
-        function captureEstS3(capture) {
-            if (!capture) return false;
-
-            const configuration = capture.configuration_json || capture.configuration || {};
-            const graphique = configuration.graphique || {};
-            const tradingView = configuration.tradingView || {};
-
-            const valeurs = [
-                capture.source_parametres,
-                graphique.source,
-                tradingView.bibliotheque,
-                tradingView.widgetPresent ? "widgetPresent" : "",
-                capture.type_bougie,
-                capture.nom_capture,
-                capture.nom_fichier
-            ]
-                .filter(Boolean)
-                .map(v => String(v).toLowerCase());
-
-            return valeurs.some(v =>
-                v.includes("tradingview_tvjs_s3") ||
-                v.includes("tradingview tv.js") ||
-                v.includes("tv.js") ||
-                v.includes("s3")
-            );
-        }
-
         function normaliserCapture(capture) {
             const configuration = capture.configuration_json || capture.configuration || {};
             const graphique = configuration.graphique || {};
@@ -1046,12 +1011,11 @@
                     Correction importante :
                     index.html enregistre les captures via /api/captures.
                     L'ancien analyse.html lisait /api/list et /screenshots.
-                    Cette page lit maintenant uniquement les captures S3 depuis /api/captures.
+                    Cette page lit maintenant d'abord /api/captures.
                 */
                 const resultat = await fetchJsonAvecSecours('/api/captures', { method: "GET" });
                 const data = resultat.data;
                 const captures = Array.isArray(data.captures) ? data.captures : [];
-                const capturesS3 = captures.filter(captureEstS3);
 
                 if (captures.length === 0) {
                     galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucune capture enregistrée dans /api/captures.</p>";
@@ -1059,13 +1023,7 @@
                     return;
                 }
 
-                if (capturesS3.length === 0) {
-                    galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucune capture S3 trouvée.<br><br>Créez une capture depuis index-s3.html.</p>";
-                    updateSelectionCount();
-                    return;
-                }
-
-                allCaptures = capturesS3.map(normaliserCapture);
+                allCaptures = captures.map(normaliserCapture);
 
                 /*
                     La route /api/captures renvoie parfois seulement les métadonnées.
@@ -1120,7 +1078,7 @@
                 });
 
                 document.getElementById('dynamic-advice').innerText =
-                    "Captures S3 chargées depuis : " + resultat.url;
+                    "Captures chargées depuis : " + resultat.url;
 
                 updateSelectionCount();
 
@@ -1132,7 +1090,7 @@
                     String(errorCaptures.message).replace(/</g, "&lt;") + "</p>";
 
                 document.getElementById('dynamic-advice').innerText =
-                    "Erreur : impossible de lire les captures S3 sur expert-trading.";
+                    "Erreur : impossible de lire /api/captures sur expert-trading.";
             }
         }
 
@@ -1171,7 +1129,7 @@
                     <div class="meta-item"><b>Intervalle</b><span>${texteCourt(currentCapture.intervalle)}</span></div>
                     <div class="meta-item"><b>Indicateur</b><span>${texteCourt(currentCapture.indicateur)}</span></div>
                     <div class="meta-item"><b>Catégorie</b><span>${texteCourt(currentCapture.categorie)}</span></div>
-                    <div class="meta-item"><b>Source</b><span>/api/captures — S3</span></div>
+                    <div class="meta-item"><b>Source</b><span>/api/captures</span></div>
                 `;
 
                 userNotes.value =
@@ -1181,7 +1139,7 @@
                 resetAIResults();
 
                 document.getElementById('dynamic-advice').innerText =
-                    "Capture S3 sélectionnée : " + currentCapture.nom;
+                    "Capture sélectionnée : " + currentCapture.nom;
 
                 return;
             }
@@ -1193,7 +1151,7 @@
             viewer.style.display = "block";
 
             document.getElementById('dynamic-advice').innerText =
-                "Capture S3 sélectionnée : " + fileName;
+                "Capture sélectionnée : " + fileName;
 
             try {
                 const jsonName = fileName.replace('.png', '.json');
@@ -1350,10 +1308,9 @@
                         intervalle: intervalle,
                         imageBase64: currentCapture.screenshot || null,
                         configuration: {
-                            origine: "analyse-s3.html",
-                            source: "api_captures_s3",
+                            origine: "analyse.html",
+                            source: "api_captures",
                             captureId: currentCapture.id,
-                            sourceCapture: "tradingview_tvjs_s3",
                             capture: currentCapture.brute,
                             configurationCapture: currentCapture.configuration,
                             notes: userNotes ? userNotes.value : ""
@@ -1364,10 +1321,9 @@
                         actif: actif,
                         intervalle: intervalle,
                         configuration: {
-                            origine: "analyse-s3.html",
+                            origine: "analyse.html",
                             fileName: currentFileName,
                             route: "/api/analyze-vision-pro",
-                            sourceCapture: "tradingview_tvjs_s3",
                             notes: userNotes ? userNotes.value : ""
                         }
                     };
