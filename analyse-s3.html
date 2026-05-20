@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expert Trading Pro v2.0 - Analyse S3 & Journal</title>
+    <style>
+        :root { 
+            --bg-color: #252930; 
+            --sidebar-bg: #1e2329; 
+            --text-main: #eaecef; 
+            --text-dim: #848e9c;
+            --accent: #2962ff; 
+            --yellow-pro: #f0b90b;
+            --border: #363c4e; 
+            --engineer-green: #00ff41;
+            --buy-green: #2ebd85;
+            --sell-red: #f6465d;
+        }
+
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            display: flex; 
+            height: 100vh; 
+            margin: 0; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            overflow: hidden;
+        }
+
+        .sidebar { 
+            width: 320px; 
+            border-right: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            background: var(--sidebar-bg); 
+        }
+
+        .sidebar-header { 
+            padding: 20px; 
+            border-bottom: 1px solid var(--border); 
+        }
+
+        .sidebar-header h2 { 
+            margin: 0; 
+            color: var(--yellow-pro); 
+            font-size: 16px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        #gallery-list { 
+            flex-grow: 1; 
+            overflow-y: auto; 
+            padding: 15px; 
+        }
+
+        .main-content { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px; 
+            overflow-y: auto; 
+            align-items: center; 
+        }
+
+        .thumb-container { 
+            margin-bottom: 15px; 
+            cursor: pointer; 
+            border: 1px solid var(--border); 
+            border-radius: 4px; 
+            overflow: hidden; 
+            transition: 0.2s; 
+            background: #161a1e; 
+            position: relative;
+        }
+
+        .thumb-container:hover { 
+            border-color: var(--accent); 
+        }
+
+        .thumb-container.active { 
+            border-color: var(--yellow-pro); 
+            box-shadow: 0 0 10px rgba(240, 185, 11, 0.2); 
+        }
+
+        .thumb-container.selected { 
+            border-color: var(--engineer-green); 
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.25); 
+        }
+
+        .thumb-container img { 
+            width: 100%; 
+            display: block; 
+            height: auto; 
+            opacity: 0.7; 
+        }
+
+        .thumb-container.active img { 
+            opacity: 1; 
+        }
+
+        .thumb-label { 
+            padding: 8px; 
+            font-size: 10px; 
+            text-align: center; 
+            color: var(--text-dim); 
+            word-break: break-all;
+        }
+
+        .thumb-check-zone {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.75);
+            border-radius: 4px;
+            padding: 5px 7px;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .thumb-check-zone input {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .sidebar-tools {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .sidebar-tools button {
+            background: #2b3139;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .sidebar-tools button:hover {
+            border-color: var(--yellow-pro);
+            color: var(--yellow-pro);
+        }
+
+        #selection-count {
+            width: 100%;
+            color: var(--text-dim);
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        #viewer { 
+            max-width: 100%; 
+            max-height: 50vh; 
+            border-radius: 4px; 
+            border: 1px solid var(--border); 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6); 
+            display: none; 
+            margin-bottom: 20px; 
+        }
+
+        .info-panel { 
+            background: #ffffff; 
+            padding: 30px; 
+            border-radius: 8px; 
+            width: 100%; 
+            max-width: 950px; 
+            color: #1e2329; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+        }
+
+        .top-action-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #dcdfe4;
+            border-radius: 8px;
+        }
+
+        .top-action-bar .action-title {
+            width: 100%;
+            font-size: 12px;
+            font-weight: 800;
+            color: #787b86;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .ai-dashboard { 
+            display: grid; 
+            grid-template-columns: 200px 1fr; 
+            gap: 20px; 
+            margin-bottom: 25px; 
+            display: none; 
+        }
+
+        .ai-card { 
+            background: #f8fafc; 
+            border: 1px solid #dcdfe4; 
+            border-radius: 8px; 
+            padding: 15px; 
+            text-align: center; 
+        }
+
+        .ai-logs { 
+            background: #161a1e; 
+            color: var(--engineer-green); 
+            border-radius: 8px; 
+            padding: 15px; 
+            font-family: 'Consolas', monospace; 
+            font-size: 12px; 
+            overflow: hidden; 
+            white-space: pre-wrap;
+        }
+        
+        .confidence-bar-container { 
+            background: #edf2f7; 
+            height: 8px; 
+            border-radius: 4px; 
+            margin: 10px 0; 
+            overflow: hidden; 
+        }
+
+        .confidence-bar { 
+            height: 100%; 
+            width: 0%; 
+            background: var(--accent); 
+            transition: width 1s ease-in-out; 
+        }
+
+        .meta-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 20px; 
+            margin-bottom: 20px; 
+            padding-bottom: 15px; 
+            border-bottom: 2px solid #f1f3f5; 
+        }
+
+        .meta-item b { 
+            color: #787b86; 
+            font-size: 10px; 
+            text-transform: uppercase; 
+            display: block; 
+        }
+
+        .meta-item span { 
+            font-size: 15px; 
+            color: #1e2329; 
+            font-weight: 700; 
+        }
+
+        .engineer-container { 
+            background: #161a1e; 
+            border-radius: 6px; 
+            padding: 20px; 
+            border-left: 5px solid var(--yellow-pro); 
+        }
+
+        .engineer-container label { 
+            color: var(--yellow-pro); 
+            font-size: 12px; 
+            font-weight: 800; 
+            letter-spacing: 1px; 
+            display: block; 
+            margin-bottom: 10px; 
+        }
+
+        textarea { 
+            width: 100%; 
+            height: 200px; 
+            background: transparent; 
+            color: var(--engineer-green); 
+            border: none; 
+            font-family: 'Consolas', monospace; 
+            font-size: 13px; 
+            line-height: 1.6; 
+            resize: none; 
+            outline: none; 
+        }
+
+        .btn-group { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 20px; 
+        }
+
+        .btn-analyze { 
+            background: var(--yellow-pro); 
+            color: #000; 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        .btn-analyze-multiple { 
+            background: #161a1e; 
+            color: var(--engineer-green); 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        .btn-save { 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        .btn-analyze-pro { 
+            background: #7c3aed; 
+            color: #ffffff; 
+            border: none; 
+            padding: 12px 30px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+        }
+
+        .btn-analyze:hover,
+        .btn-analyze-multiple:hover,
+        .btn-analyze-pro:hover,
+        .btn-save:hover {
+            opacity: 0.88;
+        }
+
+        .btn-analyze:disabled,
+        .btn-analyze-multiple:disabled,
+        .btn-analyze-pro:disabled,
+        .btn-save:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        
+        .loading-spinner { 
+            display: none; 
+            color: var(--accent); 
+            font-weight: bold; 
+            font-size: 12px; 
+        }
+
+        .advice-banner { 
+            background: #e7f0ff; 
+            border: 1px solid #2962ff; 
+            padding: 10px 15px; 
+            border-radius: 4px; 
+            margin-bottom: 20px; 
+            font-size: 13px; 
+            color: #1e4bd8; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+
+        .btn-back { 
+            text-decoration: none; 
+            color: var(--text-dim); 
+            font-size: 11px; 
+            margin-top: 10px; 
+            display: inline-block; 
+            font-weight: 600; 
+        }
+
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                overflow: auto;
+                height: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 45vh;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+
+            .info-panel {
+                padding: 16px;
+            }
+
+            .ai-dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .meta-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .top-action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-analyze,
+            .btn-analyze-multiple,
+            .btn-analyze-pro,
+            .btn-save {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Journal Technique S3</h2>
+            <a href="/index-s3.html" class="btn-back">← TERMINAL S3 TRADINGVIEW</a>
+        </div>
+
+        <div class="sidebar-tools">
+            <button type="button" onclick="selectAllImages()">Tout sélectionner</button>
+            <button type="button" onclick="clearSelection()">Vider la sélection</button>
+            <div id="selection-count">0 capture sélectionnée.</div>
+        </div>
+
+        <div id="gallery-list">Chargement des captures S3...</div>
+    </div>
+
+    <div class="main-content">
+        <div class="info-panel" id="image-info">
+            <div class="advice-banner">
+                <strong>💡 RECOMMANDATION :</strong> 
+                <span id="dynamic-advice">Sélectionnez une capture S3 pour générer les conseils d'ingénierie.</span>
+            </div>
+
+            <div class="top-action-bar">
+                <div class="action-title">Commandes d'analyse</div>
+
+                <button 
+                    class="btn-analyze" 
+                    id="btn-trigger-ai" 
+                    title="Analyser uniquement le graphique affiché"
+                    onclick="triggerAIAnalysis()">
+                    Analyser
+                </button>
+
+                <button 
+                    class="btn-analyze-multiple" 
+                    id="btn-trigger-selected-ai" 
+                    title="Analyser toutes les captures cochées"
+                    onclick="triggerSelectedAIAnalysis()">
+                    Analyser la sélection
+                </button>
+
+                <button 
+                    class="btn-analyze-pro" 
+                    id="btn-trigger-concrete-ai" 
+                    title="Analyse concrète avec OpenAI Vision et sources de marché"
+                    onclick="triggerConcreteAIAnalysis()">
+                    Vision + Marché
+                </button>
+
+                <button 
+                    class="btn-analyze-multiple" 
+                    id="btn-check-screenshot" 
+                    title="Vérifier si la capture existe encore sur le serveur"
+                    onclick="testerCaptureServeur()">
+                    Vérifier capture
+                </button>
+
+                <button 
+                    class="btn-save" 
+                    id="btn-save-report"
+                    title="Archiver le rapport affiché"
+                    onclick="saveNotes()">
+                    Archiver le rapport
+                </button>
+
+                <span class="loading-spinner" id="spinner">ANALYSE EN COURS...</span>
+            </div>
+
+            <div class="meta-grid" id="meta-content">
+                <p id="placeholder-text" style="color: #787b86;">En attente de sélection...</p>
+            </div>
+
+            <div class="ai-dashboard" id="ai-panel">
+                <div class="ai-card">
+                    <b style="font-size: 10px; color: var(--text-dim);">DÉCISION IA</b>
+                    <div id="ai-decision" style="font-size: 22px; font-weight: 900; margin: 10px 0;">--</div>
+                    <div class="confidence-bar-container">
+                        <div class="confidence-bar" id="ai-bar"></div>
+                    </div>
+                    <span id="ai-percent" style="font-size: 12px; font-weight: 800; color: var(--accent);">0%</span>
+                </div>
+                <div class="ai-logs" id="ai-reasoning">> En attente du déclenchement de l'analyse...</div>
+            </div>
+
+            <div id="notes-section" style="display: none;">
+                <div class="engineer-container">
+                    <label> [ MODULE D'ANALYSE DÉCISIONNELLE ]</label>
+                    <textarea id="user-notes" placeholder="Rapport technique..."></textarea>
+                </div>
+
+                <div class="btn-group" style="display:none;">
+                    <button 
+                        class="btn-analyze" 
+                        id="btn-trigger-ai-bottom" 
+                        title="Analyser uniquement le graphique affiché"
+                        onclick="triggerAIAnalysis()">
+                        Analyser
+                    </button>
+
+                    <button 
+                        class="btn-analyze-multiple" 
+                        id="btn-trigger-selected-ai-bottom" 
+                        title="Analyser toutes les captures cochées"
+                        onclick="triggerSelectedAIAnalysis()">
+                        Analyser la sélection
+                    </button>
+
+                    <button 
+                        class="btn-save" 
+                        title="Archiver le rapport affiché"
+                        onclick="saveNotes()">
+                        Archiver le rapport
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <img id="viewer" src="" alt="Capture plein écran">
+    </div>
+
+    <script>
+        let currentFileName = "";
+        let currentCapture = null;
+        let allFiles = [];
+        let allCaptures = [];
+        const selectedFiles = new Set();
+        const captureMap = new Map();
+
+        /*
+            Service unique utilisé par analyse.html.
+            Correction importante :
+            - ne plus lire trading-g8ie ;
+            - rester sur expert-trading uniquement ;
+            - éviter d'afficher des captures venant d'une autre base PostgreSQL.
+        */
+        const API_BASE_URL_PRINCIPAL = "https://expert-trading.onrender.com";
+        const API_BASE_URL_SECOURS = "";
+
+        const viewer = document.getElementById('viewer');
+        const metaContent = document.getElementById('meta-content');
+        const notesSection = document.getElementById('notes-section');
+        const userNotes = document.getElementById('user-notes');
+
+        function getApiUrl(route) {
+            return API_BASE_URL_PRINCIPAL + route;
+        }
+
+        function getApiUrls(route) {
+            const urls = [];
+
+            /*
+                Priorité :
+                1. route relative si la page est déjà servie par expert-trading.onrender.com ;
+                2. URL absolue expert-trading ;
+                3. route relative locale pour tests éventuels.
+            */
+            if (window.location.hostname.includes("expert-trading.onrender.com")) {
+                urls.push(route);
+            }
+
+            if (API_BASE_URL_PRINCIPAL) {
+                urls.push(API_BASE_URL_PRINCIPAL + route);
+            }
+
+            if (
+                window.location.hostname === "localhost" ||
+                window.location.hostname === "127.0.0.1"
+            ) {
+                urls.push(route);
+            }
+
+            return [...new Set(urls)];
+        }
+
+        function getAuthToken() {
+            return (
+                localStorage.getItem("expert_trading_auth_token") ||
+                localStorage.getItem("expertTradingToken") ||
+                localStorage.getItem("expertTradingAuthToken") ||
+                localStorage.getItem("expertTradingJwt") ||
+                localStorage.getItem("authToken") ||
+                sessionStorage.getItem("expert_trading_auth_token") ||
+                sessionStorage.getItem("expertTradingToken") ||
+                sessionStorage.getItem("expertTradingAuthToken") ||
+                sessionStorage.getItem("expertTradingJwt") ||
+                sessionStorage.getItem("authToken") ||
+                ""
+            );
+        }
+
+        function getAuthHeaders(headers = {}) {
+            const token = getAuthToken();
+            const authHeaders = {
+                ...headers
+            };
+
+            if (token) {
+                authHeaders["Authorization"] = "Bearer " + token;
+            }
+
+            return authHeaders;
+        }
+
+        function verifierAuthentificationAnalyse(afficherAlerte = true) {
+            const token = getAuthToken();
+
+            if (!token) {
+                if (afficherAlerte) {
+                    alert("Authentification requise. Connectez-vous d'abord depuis index.html.");
+                }
+                window.location.href = "/";
+                return false;
+            }
+
+            return true;
+        }
+
+        async function verifierSessionAnalyse() {
+            const token = getAuthToken();
+
+            if (!token) {
+                verifierAuthentificationAnalyse(true);
+                return false;
+            }
+
+            try {
+                const response = await fetch(getApiUrl("/api/auth/me"), {
+                    method: "GET",
+                    mode: "cors",
+                    credentials: "omit",
+                    cache: "no-store",
+                    headers: getAuthHeaders({
+                        "Accept": "application/json"
+                    })
+                });
+
+                const data = await readResponseAsJson(response);
+                return Boolean(data.ok);
+            } catch (erreur) {
+                console.warn("Session invalide ou expirée :", erreur);
+                [
+                    "expert_trading_auth_token",
+                    "expertTradingToken",
+                    "expertTradingAuthToken",
+                    "expertTradingJwt",
+                    "authToken"
+                ].forEach(cle => {
+                    localStorage.removeItem(cle);
+                    sessionStorage.removeItem(cle);
+                });
+                alert("Session expirée ou invalide. Reconnectez-vous.");
+                window.location.href = "/";
+                return false;
+            }
+        }
+
+        async function fetchJsonAvecSecours(route, options = {}) {
+            const urls = getApiUrls(route);
+            let derniereErreur = null;
+
+            for (const url of urls) {
+                try {
+                    const response = await fetch(url, {
+                        ...options,
+                        mode: "cors",
+                        credentials: "omit",
+                        cache: "no-store",
+                        headers: getAuthHeaders({
+                            "Accept": "application/json",
+                            ...(options.headers || {})
+                        })
+                    });
+
+                    const data = await readResponseAsJson(response);
+
+                    return {
+                        data: data,
+                        url: url
+                    };
+                } catch (error) {
+                    derniereErreur = error;
+                    console.warn("Route indisponible :", url, error);
+                }
+            }
+
+            throw derniereErreur || new Error("Aucune route disponible pour " + route);
+        }
+
+        function safeDomId(fileName) {
+            return String(fileName || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+        }
+
+        function texteCourt(valeur, defaut = "N/A") {
+            if (valeur === undefined || valeur === null || String(valeur).trim() === "") {
+                return defaut;
+            }
+            return String(valeur);
+        }
+
+        async function readResponseAsJson(response) {
+            const rawText = await response.text();
+
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (error) {
+                throw new Error(
+                    "Le serveur n'a pas retourné du JSON valide.\n\n" +
+                    "Statut HTTP : " + response.status + "\n\n" +
+                    "Réponse brute :\n" + rawText
+                );
+            }
+
+            if (!response.ok || data.ok === false) {
+                const lignes = [];
+                lignes.push("Statut HTTP : " + response.status);
+                lignes.push("");
+                lignes.push("Message : " + (data.message || data.error || "Erreur serveur inconnue."));
+                if (data.details) {
+                    lignes.push("");
+                    lignes.push("Détails :");
+                    lignes.push(String(data.details));
+                }
+                if (data.model) {
+                    lignes.push("");
+                    lignes.push("Modèle : " + data.model);
+                }
+                lignes.push("");
+                lignes.push("Réponse JSON complète :");
+                lignes.push(JSON.stringify(data, null, 2));
+                throw new Error(lignes.join("\n"));
+            }
+
+            return data;
+        }
+
+        function setLoadingState(isLoading, message = "ANALYSE EN COURS...") {
+            const spinner = document.getElementById('spinner');
+
+            const buttons = [
+                document.getElementById('btn-trigger-ai'),
+                document.getElementById('btn-trigger-selected-ai'),
+                document.getElementById('btn-save-report'),
+                document.getElementById('btn-trigger-ai-bottom'),
+                document.getElementById('btn-trigger-selected-ai-bottom')
+            ];
+
+            buttons.forEach(button => {
+                if (button) button.disabled = isLoading;
+            });
+
+            spinner.innerText = message;
+            spinner.style.display = isLoading ? "inline" : "none";
+        }
+
+        function updateSelectionCount() {
+            const count = selectedFiles.size;
+            const label = document.getElementById("selection-count");
+
+            if (count <= 1) {
+                label.innerText = count + " capture sélectionnée.";
+            } else {
+                label.innerText = count + " captures sélectionnées.";
+            }
+
+            document.querySelectorAll(".thumb-container").forEach(container => {
+                const fileName = container.getAttribute("data-file");
+                if (selectedFiles.has(fileName)) {
+                    container.classList.add("selected");
+                } else {
+                    container.classList.remove("selected");
+                }
+            });
+        }
+
+        function toggleSelection(fileName, checked) {
+            if (checked) {
+                selectedFiles.add(fileName);
+            } else {
+                selectedFiles.delete(fileName);
+            }
+
+            updateSelectionCount();
+        }
+
+        function selectAllImages() {
+            allFiles.forEach(fileName => selectedFiles.add(fileName));
+
+            document.querySelectorAll(".thumb-selector").forEach(input => {
+                input.checked = true;
+            });
+
+            updateSelectionCount();
+        }
+
+        function clearSelection() {
+            /*
+                Correction :
+                Le bouton "Vider la sélection" doit vider les cases cochées,
+                retirer les styles visuels, et remettre l'état courant à zéro.
+            */
+            selectedFiles.clear();
+
+            document.querySelectorAll(".thumb-selector").forEach(input => {
+                input.checked = false;
+            });
+
+            document.querySelectorAll(".thumb-container").forEach(container => {
+                container.classList.remove("selected");
+                container.classList.remove("active");
+            });
+
+            currentFileName = "";
+            currentCapture = null;
+
+            if (viewer) {
+                viewer.removeAttribute("src");
+                viewer.style.display = "none";
+            }
+
+            if (notesSection) {
+                notesSection.style.display = "none";
+            }
+
+            const aiPanel = document.getElementById("ai-panel");
+            if (aiPanel) {
+                aiPanel.style.display = "none";
+            }
+
+            if (metaContent) {
+                metaContent.innerHTML = '<p id="placeholder-text" style="color: #787b86;">En attente de sélection...</p>';
+            }
+
+            if (userNotes) {
+                userNotes.value = "";
+            }
+
+            const dynamicAdvice = document.getElementById("dynamic-advice");
+            if (dynamicAdvice) {
+                dynamicAdvice.innerText = "Sélectionnez une capture S3 pour générer les conseils d'ingénierie.";
+            }
+
+            resetAIResults();
+            updateSelectionCount();
+        }
+
+        function normaliserImageBase64(valeur) {
+            if (valeur === undefined || valeur === null) return null;
+
+            const texte = String(valeur).trim();
+            if (!texte || texte === "null" || texte === "undefined") return null;
+
+            if (texte.startsWith("data:image/")) return texte;
+
+            /*
+                Certains serveurs renvoient seulement le bloc Base64, sans préfixe.
+                Dans ce cas, on reconstruit une vraie source d'image utilisable par <img>.
+            */
+            if (/^[A-Za-z0-9+/=\r\n]+$/.test(texte) && texte.length > 200) {
+                return "data:image/png;base64," + texte.replace(/\s+/g, "");
+            }
+
+            return texte;
+        }
+
+        function extraireImageCapture(capture, configuration) {
+            return normaliserImageBase64(
+                capture.screenshot_base64 ||
+                capture.screenshotBase64 ||
+                capture.image ||
+                capture.screenshot ||
+                configuration?.screenshot_base64 ||
+                configuration?.screenshotBase64 ||
+                configuration?.image ||
+                configuration?.snapshot?.screenshotBase64 ||
+                configuration?.snapshot?.screenshot_base64 ||
+                null
+            );
+        }
+
+        function creerNomCaptureLisible(capture, configuration, graphique) {
+            const id = capture.id ? "ID-" + capture.id : "ID-?";
+            const nomBase =
+                capture.nom_capture ||
+                capture.nom_fichier ||
+                configuration.nom_capture ||
+                configuration.nom ||
+                "capture";
+
+            const actif = capture.actif || graphique.actif || configuration.actif || "ACTIF";
+            const indicateur = capture.indicateur || graphique.indicateur || configuration.indicateur || "IND";
+            const intervalle = capture.intervalle || graphique.intervalle || configuration.intervalle || "INT";
+
+            const dateBrute = capture.date_capture || capture.created_at || configuration.dateConfiguration || configuration.dateCapture || null;
+            let dateTexte = "";
+
+            if (dateBrute) {
+                try {
+                    const d = new Date(dateBrute);
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, "0");
+                    const j = String(d.getDate()).padStart(2, "0");
+                    const h = String(d.getHours()).padStart(2, "0");
+                    const min = String(d.getMinutes()).padStart(2, "0");
+                    const s = String(d.getSeconds()).padStart(2, "0");
+                    dateTexte = y + "-" + m + "-" + j + " " + h + ":" + min + ":" + s;
+                } catch (erreur) {
+                    dateTexte = String(dateBrute);
+                }
+            }
+
+            /*
+                Le nom affiché inclut toujours l'ID PostgreSQL.
+                Ainsi, même si nom_capture est identique, les lignes restent distinguables.
+            */
+            return id + " — " + nomBase + " — " + actif + " / " + indicateur + " / " + intervalle + (dateTexte ? " — " + dateTexte : "");
+        }
+
+        function captureEstS3(capture) {
+            if (!capture) return false;
+
+            const configuration = capture.configuration_json || capture.configuration || {};
+            const graphique = configuration.graphique || {};
+            const tradingView = configuration.tradingView || {};
+
+            const valeurs = [
+                capture.source_parametres,
+                graphique.source,
+                tradingView.bibliotheque,
+                tradingView.widgetPresent ? "widgetPresent" : "",
+                capture.type_bougie,
+                capture.nom_capture,
+                capture.nom_fichier
+            ]
+                .filter(Boolean)
+                .map(v => String(v).toLowerCase());
+
+            return valeurs.some(v =>
+                v.includes("tradingview_tvjs_s3") ||
+                v.includes("tradingview tv.js") ||
+                v.includes("tv.js") ||
+                v.includes("s3")
+            );
+        }
+
+        function normaliserCapture(capture) {
+            const configuration = capture.configuration_json || capture.configuration || {};
+            const graphique = configuration.graphique || {};
+            const screenshot = extraireImageCapture(capture, configuration);
+            const dateCapture = capture.date_capture || capture.created_at || configuration.dateConfiguration || configuration.dateCapture || null;
+
+            const nomLisible = creerNomCaptureLisible(capture, configuration, graphique);
+
+            return {
+                id: capture.id,
+                key: "capture:" + capture.id,
+                nom: nomLisible,
+                nom_original: capture.nom_capture || capture.nom_fichier || "capture",
+                date: dateCapture,
+                actif: capture.actif || graphique.actif || configuration.actif || "N/A",
+                indicateur: capture.indicateur || graphique.indicateur || configuration.indicateur || "N/A",
+                intervalle: capture.intervalle || graphique.intervalle || configuration.intervalle || "N/A",
+                categorie: capture.categorie_analyse || configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "N/A",
+                image_presente: Boolean(screenshot || capture.image_presente),
+                screenshot: screenshot,
+                configuration: configuration,
+                brute: capture
+            };
+        }
+
+        async function chargerDetailCaptureSiNecessaire(capture) {
+            if (!capture || capture.screenshot || !capture.id) return capture;
+
+            try {
+                const resultatDetail = await fetchJsonAvecSecours(
+                    "/api/captures/" + encodeURIComponent(capture.id),
+                    { method: "GET" }
+                );
+
+                const brutDetail = resultatDetail.data.capture || resultatDetail.data;
+                const captureDetail = normaliserCapture({
+                    ...capture.brute,
+                    ...brutDetail
+                });
+
+                capture.screenshot = captureDetail.screenshot;
+                capture.configuration = captureDetail.configuration;
+                capture.brute = { ...capture.brute, ...brutDetail };
+
+                captureMap.set(capture.key, capture);
+                return capture;
+            } catch (erreur) {
+                console.warn("Impossible de charger l'image détaillée de la capture", capture.id, erreur);
+                return capture;
+            }
+        }
+
+        async function loadGallery() {
+            if (!(await verifierSessionAnalyse())) return;
+
+            const galleryList = document.getElementById('gallery-list');
+            galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Chargement des captures...</p>";
+
+            selectedFiles.clear();
+            captureMap.clear();
+            allFiles = [];
+            allCaptures = [];
+
+            try {
+                /*
+                    Correction importante :
+                    index.html enregistre les captures via /api/captures.
+                    L'ancien analyse.html lisait /api/list et /screenshots.
+                    Cette page lit maintenant uniquement les captures S3 depuis /api/captures.
+                */
+                const resultat = await fetchJsonAvecSecours('/api/captures', { method: "GET" });
+                const data = resultat.data;
+                const captures = Array.isArray(data.captures) ? data.captures : [];
+                const capturesS3 = captures.filter(captureEstS3);
+
+                if (captures.length === 0) {
+                    galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucune capture enregistrée dans /api/captures.</p>";
+                    updateSelectionCount();
+                    return;
+                }
+
+                if (capturesS3.length === 0) {
+                    galleryList.innerHTML = "<p style='color:var(--text-dim); padding:20px;'>Aucune capture S3 trouvée.<br><br>Créez une capture depuis index-s3.html.</p>";
+                    updateSelectionCount();
+                    return;
+                }
+
+                allCaptures = capturesS3.map(normaliserCapture);
+
+                /*
+                    La route /api/captures renvoie parfois seulement les métadonnées.
+                    On recharge chaque capture par /api/captures/:id pour récupérer screenshot_base64.
+                */
+                allCaptures = await Promise.all(
+                    allCaptures.map(capture => chargerDetailCaptureSiNecessaire(capture))
+                );
+
+                allFiles = allCaptures.map(capture => capture.key);
+
+                galleryList.innerHTML = "";
+
+                allCaptures.forEach(capture => {
+                    captureMap.set(capture.key, capture);
+
+                    const container = document.createElement('div');
+                    const domId = safeDomId(capture.key);
+                    const dateCapture = capture.date ? new Date(capture.date).toLocaleString("fr-CA") : "date inconnue";
+
+                    container.className = 'thumb-container';
+                    container.id = 'thumb-' + domId;
+                    container.setAttribute("data-file", capture.key);
+
+                    const apercu = capture.screenshot
+                        ? `<img src="${capture.screenshot}" alt="${capture.nom}">`
+                        : `<div style="height:135px;display:flex;align-items:center;justify-content:center;color:#facc15;background:#020617;padding:12px;text-align:center;font-size:12px;">
+                                Capture sans image<br>
+                                ${capture.image_presente ? "Image indiquée présente, mais non chargée" : "Image absente dans PostgreSQL"}
+                           </div>`;
+
+                    container.innerHTML = `
+                        <div class="thumb-check-zone" onclick="event.stopPropagation();">
+                            <input 
+                                type="checkbox" 
+                                class="thumb-selector" 
+                                id="check-${domId}"
+                                title="Sélectionner cette capture"
+                                onchange="toggleSelection('${capture.key}', this.checked)">
+                            <span>Sélection</span>
+                        </div>
+                        ${apercu}
+                        <div class="thumb-label">
+                            ${capture.nom}<br>
+                            ${capture.actif} / ${capture.intervalle}<br>
+                            ${dateCapture}
+                        </div>
+                    `;
+
+                    container.onclick = () => selectImage(capture.key);
+                    galleryList.appendChild(container);
+                });
+
+                document.getElementById('dynamic-advice').innerText =
+                    "Captures S3 chargées depuis : " + resultat.url;
+
+                updateSelectionCount();
+
+            } catch (errorCaptures) {
+                console.error("Lecture /api/captures impossible :", errorCaptures);
+
+                galleryList.innerHTML =
+                    "<p style='color:#f6465d; padding:20px;'>Erreur lors du chargement des captures depuis expert-trading.<br><br>" +
+                    String(errorCaptures.message).replace(/</g, "&lt;") + "</p>";
+
+                document.getElementById('dynamic-advice').innerText =
+                    "Erreur : impossible de lire les captures S3 sur expert-trading.";
+            }
+        }
+
+        async function selectImage(fileName) {
+            currentFileName = fileName;
+            currentCapture = captureMap.get(fileName) || null;
+
+            document.querySelectorAll('.thumb-container').forEach(t => t.classList.remove('active'));
+
+            const thumb = document.getElementById('thumb-' + safeDomId(fileName));
+            if (thumb) {
+                thumb.classList.add('active');
+            }
+
+            notesSection.style.display = "block";
+            document.getElementById('ai-panel').style.display = "grid";
+
+            if (currentCapture) {
+                currentCapture = await chargerDetailCaptureSiNecessaire(currentCapture);
+
+                if (currentCapture.screenshot) {
+                    viewer.src = currentCapture.screenshot;
+                    viewer.style.display = "block";
+                } else {
+                    viewer.removeAttribute("src");
+                    viewer.style.display = "none";
+                }
+
+                const dateCapture = currentCapture.date
+                    ? new Date(currentCapture.date).toLocaleString("fr-CA")
+                    : "N/A";
+
+                metaContent.innerHTML = `
+                    <div class="meta-item"><b>Date</b><span>${dateCapture}</span></div>
+                    <div class="meta-item"><b>Actif</b><span style="color:var(--accent)">${texteCourt(currentCapture.actif)}</span></div>
+                    <div class="meta-item"><b>Intervalle</b><span>${texteCourt(currentCapture.intervalle)}</span></div>
+                    <div class="meta-item"><b>Indicateur</b><span>${texteCourt(currentCapture.indicateur)}</span></div>
+                    <div class="meta-item"><b>Catégorie</b><span>${texteCourt(currentCapture.categorie)}</span></div>
+                    <div class="meta-item"><b>Source</b><span>/api/captures — S3</span></div>
+                `;
+
+                userNotes.value =
+                    currentCapture.configuration?.notes ||
+                    "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+
+                resetAIResults();
+
+                document.getElementById('dynamic-advice').innerText =
+                    "Capture S3 sélectionnée : " + currentCapture.nom;
+
+                return;
+            }
+
+            /*
+                Compatibilité avec l'ancienne logique par fichiers PNG.
+            */
+            viewer.src = getApiUrl('/screenshots/' + encodeURIComponent(fileName));
+            viewer.style.display = "block";
+
+            document.getElementById('dynamic-advice').innerText =
+                "Capture S3 sélectionnée : " + fileName;
+
+            try {
+                const jsonName = fileName.replace('.png', '.json');
+                const res = await fetch(getApiUrl('/screenshots/' + encodeURIComponent(jsonName)), {
+                    method: 'GET',
+                    headers: getAuthHeaders({ 'Accept': 'application/json' }),
+                    cache: 'no-store'
+                });
+
+                if (res.ok) {
+                    const meta = await res.json();
+
+                    metaContent.innerHTML = `
+                        <div class="meta-item"><b>Date</b><span>${meta.date || 'N/A'}</span></div>
+                        <div class="meta-item"><b>Actif</b><span style="color:var(--accent)">${meta.asset || 'N/A'}</span></div>
+                        <div class="meta-item"><b>Intervalle</b><span>${meta.interval || 'N/A'}</span></div>
+                    `;
+
+                    userNotes.value = meta.notes || "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+
+                    if (meta.ai_analysis) {
+                        renderAIResults(meta.ai_analysis);
+                    } else {
+                        resetAIResults();
+                    }
+                } else {
+                    metaContent.innerHTML = `
+                        <div class="meta-item"><b>Fichier</b><span>${fileName}</span></div>
+                        <div class="meta-item"><b>Métadonnées</b><span>JSON absent</span></div>
+                        <div class="meta-item"><b>Statut</b><span>Capture chargée</span></div>
+                    `;
+
+                    userNotes.value = "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+                    resetAIResults();
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert("Erreur lors du chargement des métadonnées.");
+            }
+        }
+
+        function resetAIResults() {
+            document.getElementById('ai-decision').innerText = "--";
+            document.getElementById('ai-decision').style.color = "#1e2329";
+            document.getElementById('ai-bar').style.width = "0%";
+            document.getElementById('ai-percent').innerText = "0%";
+            document.getElementById('ai-reasoning').innerText = "> En attente du déclenchement de l'analyse...";
+        }
+
+        function getActifDepuisMetaOuNomFichierPro(fileName) {
+            if (currentCapture) return currentCapture.actif || "BINANCE:BTCUSDT";
+
+            const metaActif = document.querySelector("#meta-content .meta-item:nth-child(2) span");
+            if (metaActif && metaActif.innerText && metaActif.innerText.trim() !== "N/A") {
+                const actifMeta = metaActif.innerText.trim().toUpperCase();
+                if (actifMeta.includes(":")) return actifMeta;
+                if (actifMeta.includes("BTC")) return "BINANCE:BTCUSDT";
+                if (actifMeta.includes("ETH")) return "BINANCE:ETHUSDT";
+                if (actifMeta.includes("SOL")) return "BINANCE:SOLUSDT";
+                if (actifMeta.includes("BNB")) return "BINANCE:BNBUSDT";
+                if (actifMeta.includes("XRP")) return "BINANCE:XRPUSDT";
+            }
+
+            const nom = String(fileName || "").toUpperCase();
+            if (nom.includes("ETH")) return "BINANCE:ETHUSDT";
+            if (nom.includes("SOL")) return "BINANCE:SOLUSDT";
+            if (nom.includes("BNB")) return "BINANCE:BNBUSDT";
+            if (nom.includes("XRP")) return "BINANCE:XRPUSDT";
+            return "BINANCE:BTCUSDT";
+        }
+
+        function getIntervalleDepuisMetaOuNomFichierPro(fileName) {
+            if (currentCapture) return currentCapture.intervalle || "D";
+
+            const metaIntervalle = document.querySelector("#meta-content .meta-item:nth-child(3) span");
+            if (metaIntervalle && metaIntervalle.innerText && metaIntervalle.innerText.trim() !== "N/A") {
+                return metaIntervalle.innerText.trim();
+            }
+
+            const nom = String(fileName || "").toLowerCase();
+            if (nom.includes("1m")) return "1m";
+            if (nom.includes("3m")) return "3m";
+            if (nom.includes("5m")) return "5m";
+            if (nom.includes("15m")) return "15m";
+            if (nom.includes("30m")) return "30m";
+            if (nom.includes("60") || nom.includes("1h")) return "1h";
+            if (nom.includes("240") || nom.includes("4h")) return "4h";
+            if (nom.includes("d")) return "1d";
+            return "1h";
+        }
+
+        function adapterAnalyseProPourAffichage(analyse) {
+            const decision = String(analyse.decision || analyse.signal || "ATTENDRE").toUpperCase();
+            let confidence = Number(analyse.confidence ?? analyse.confiance ?? 0);
+            if (!Number.isFinite(confidence)) confidence = 0;
+            if (confidence <= 1) confidence = confidence * 100;
+            confidence = Math.round(Math.max(0, Math.min(100, confidence)));
+
+            const lignes = [];
+            lignes.push("ANALYSE CONCRÈTE VISION + MARCHÉ");
+            lignes.push("================================");
+            lignes.push("");
+            lignes.push("Décision : " + decision);
+            lignes.push("Confiance : " + confidence + "%");
+            lignes.push("Tendance : " + (analyse.tendance || "N/A"));
+            lignes.push("Source marché : " + (analyse.source_marche || "N/A"));
+            lignes.push("Prix actuel : " + (analyse.prix_actuel ?? "N/A"));
+            lignes.push("Support : " + (analyse.support_principal ?? "N/A"));
+            lignes.push("Résistance : " + (analyse.resistance_principale ?? "N/A"));
+            lignes.push("Stop loss : " + (analyse.stop_loss ?? "N/A"));
+            lignes.push("Objectif 1 : " + (analyse.take_profit_1 ?? "N/A"));
+            lignes.push("Objectif 2 : " + (analyse.take_profit_2 ?? "N/A"));
+            if (analyse.resume) lignes.push("", "Résumé :", analyse.resume);
+            if (Array.isArray(analyse.raisons) && analyse.raisons.length) {
+                lignes.push("", "Raisons :");
+                analyse.raisons.forEach(x => lignes.push("- " + x));
+            }
+            if (Array.isArray(analyse.risques) && analyse.risques.length) {
+                lignes.push("", "Risques :");
+                analyse.risques.forEach(x => lignes.push("- " + x));
+            }
+            if (Array.isArray(analyse.recommandations) && analyse.recommandations.length) {
+                lignes.push("", "Recommandations :");
+                analyse.recommandations.forEach(x => lignes.push("- " + x));
+            }
+
+            return { decision, confidence, reasoning: lignes.join("\n") };
+        }
+
+        async function triggerAIAnalysis() {
+            return triggerConcreteAIAnalysis();
+        }
+
+        async function triggerConcreteAIAnalysis() {
+            if (!verifierAuthentificationAnalyse()) return;
+
+            if (!currentFileName) {
+                alert("Veuillez d'abord sélectionner un graphique à analyser.");
+                return;
+            }
+
+            setLoadingState(true, "ANALYSE VISION + MARCHÉ...");
+
+            try {
+                const actif = getActifDepuisMetaOuNomFichierPro(currentFileName);
+                const intervalle = getIntervalleDepuisMetaOuNomFichierPro(currentFileName);
+
+                const payload = currentCapture
+                    ? {
+                        captureId: currentCapture.id,
+                        fileName: currentCapture.nom,
+                        actif: actif,
+                        intervalle: intervalle,
+                        imageBase64: currentCapture.screenshot || null,
+                        configuration: {
+                            origine: "analyse-s3.html",
+                            source: "api_captures_s3",
+                            captureId: currentCapture.id,
+                            sourceCapture: "tradingview_tvjs_s3",
+                            capture: currentCapture.brute,
+                            configurationCapture: currentCapture.configuration,
+                            notes: userNotes ? userNotes.value : ""
+                        }
+                    }
+                    : {
+                        fileName: currentFileName,
+                        actif: actif,
+                        intervalle: intervalle,
+                        configuration: {
+                            origine: "analyse-s3.html",
+                            fileName: currentFileName,
+                            route: "/api/analyze-vision-pro",
+                            sourceCapture: "tradingview_tvjs_s3",
+                            notes: userNotes ? userNotes.value : ""
+                        }
+                    };
+
+                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await readResponseAsJson(response);
+                const analyse = data.analysis || data.analyse;
+                if (!analyse) throw new Error("La réponse du serveur ne contient pas le bloc analysis.");
+
+                const affichage = adapterAnalyseProPourAffichage(analyse);
+                renderAIResults(affichage);
+
+                userNotes.value +=
+                    "\n\n==================================================" +
+                    "\n[ANALYSE CONCRÈTE VISION + MARCHÉ]" +
+                    "\nCapture : " + (currentCapture ? currentCapture.nom : currentFileName) +
+                    "\nActif : " + actif +
+                    "\nIntervalle : " + intervalle +
+                    "\nSource marché : " + (analyse.source_marche || "N/A") +
+                    "\nDécision : " + affichage.decision +
+                    "\nConfiance : " + affichage.confidence + "%" +
+                    "\n\n" + affichage.reasoning +
+                    "\n==================================================\n";
+
+                document.getElementById('dynamic-advice').innerText =
+                    "Analyse Vision + Marché terminée pour : " + (currentCapture ? currentCapture.nom : currentFileName);
+
+                alert("Analyse Vision + Marché terminée.");
+
+            } catch (err) {
+                console.error("ERREUR ANALYSE VISION + MARCHÉ :", err);
+                alert("Erreur analyse Vision + Marché.\n\n" + err.message);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        async function testerCaptureServeur() {
+            if (!verifierAuthentificationAnalyse()) return;
+
+            if (!currentFileName) {
+                alert("Veuillez d'abord sélectionner une capture.");
+                return;
+            }
+
+            if (currentCapture) {
+                document.getElementById('ai-panel').style.display = "grid";
+                document.getElementById('ai-reasoning').innerText =
+                    "> CAPTURE CHARGÉE DEPUIS /api/captures\n" +
+                    JSON.stringify(currentCapture.brute, null, 2);
+                alert("Capture disponible dans /api/captures.");
+                return;
+            }
+
+            try {
+                setLoadingState(true, "VÉRIFICATION CAPTURE...");
+                const response = await fetch(getApiUrl('/api/check-screenshot?fileName=' + encodeURIComponent(currentFileName)), {
+                    method: 'GET',
+                    headers: getAuthHeaders({ 'Accept': 'application/json' }),
+                    cache: 'no-store'
+                });
+                const data = await readResponseAsJson(response);
+
+                document.getElementById('ai-panel').style.display = "grid";
+                document.getElementById('ai-reasoning').innerText =
+                    "> VÉRIFICATION CAPTURE\n" + JSON.stringify(data, null, 2);
+
+                alert("Capture trouvée sur le serveur.");
+
+            } catch (error) {
+                alert("Capture introuvable ou inaccessible.\n\n" + error.message);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        async function triggerAIAnalysisAncienneRoute() {
+            if (!verifierAuthentificationAnalyse()) return;
+
+            if (!currentFileName) {
+                alert("Veuillez d'abord sélectionner un graphique à analyser.");
+                return;
+            }
+
+            setLoadingState(true, "ANALYSE DU GRAPHIQUE AFFICHÉ...");
+
+            try {
+                const response = await fetch(getApiUrl('/api/analyze-vision'), {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ fileName: currentFileName })
+                });
+
+                const data = await readResponseAsJson(response);
+
+                if (!data.analysis) {
+                    throw new Error("La réponse du serveur ne contient pas le bloc analysis.");
+                }
+
+                renderAIResults(data.analysis);
+
+                userNotes.value +=
+                    "\n\n[IA DECISION] : " + data.analysis.decision +
+                    "\n[CONFIANCE] : " + data.analysis.confidence + "%" +
+                    "\n[RAISON] : " + data.analysis.reasoning;
+
+                alert("Analyse terminée.");
+
+            } catch (err) {
+                console.error("ERREUR ANALYSE IA :", err);
+                alert("Erreur analyse IA.\n\n" + err.message);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        async function triggerSelectedAIAnalysis() {
+            if (!verifierAuthentificationAnalyse()) return;
+
+            const filesToAnalyze = Array.from(selectedFiles);
+
+            if (filesToAnalyze.length === 0) {
+                alert("Veuillez cocher au moins une capture à analyser.");
+                return;
+            }
+
+            setLoadingState(true, "ANALYSE DE LA SÉLECTION...");
+
+            const results = [];
+            const errors = [];
+
+            try {
+                for (let i = 0; i < filesToAnalyze.length; i++) {
+                    const fileName = filesToAnalyze[i];
+
+                    setLoadingState(
+                        true,
+                        "ANALYSE " + (i + 1) + " / " + filesToAnalyze.length + " : " + fileName
+                    );
+
+                    try {
+                        const capture = captureMap.get(fileName);
+
+                        if (capture) {
+                            currentFileName = fileName;
+                            currentCapture = capture;
+                            await triggerConcreteAIAnalysis();
+                            results.push({
+                                fileName: capture.nom,
+                                analysis: {
+                                    decision: document.getElementById('ai-decision').innerText,
+                                    confidence: Number(document.getElementById('ai-percent').innerText.replace("%", "")) || 0,
+                                    reasoning: document.getElementById('ai-reasoning').innerText
+                                }
+                            });
+                        } else {
+                            const response = await fetch(getApiUrl('/api/analyze-vision'), {
+                                method: 'POST',
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                body: JSON.stringify({ fileName: fileName })
+                            });
+
+                            const data = await readResponseAsJson(response);
+
+                            if (!data.analysis) {
+                                throw new Error("Réponse reçue sans bloc analysis.");
+                            }
+
+                            results.push({
+                                fileName: fileName,
+                                analysis: data.analysis
+                            });
+                        }
+
+                    } catch (singleError) {
+                        errors.push({
+                            fileName: fileName,
+                            message: singleError.message
+                        });
+                    }
+                }
+
+                renderBatchResults(results, errors);
+
+                if (results.length > 0) {
+                    const lastResult = results[results.length - 1];
+                    renderAIResults(lastResult.analysis);
+                }
+
+                alert(
+                    "Analyse de la sélection terminée.\n\n" +
+                    "Succès : " + results.length + "\n" +
+                    "Erreurs : " + errors.length
+                );
+
+            } catch (err) {
+                console.error("ERREUR ANALYSE SÉLECTION :", err);
+                alert("Erreur pendant l'analyse de la sélection.\n\n" + err.message);
+            } finally {
+                setLoadingState(false);
+            }
+        }
+
+        function renderBatchResults(results, errors) {
+            let report = "\n\n==================================================";
+            report += "\n[ANALYSE IA MULTIPLE]";
+            report += "\nNombre de captures analysées avec succès : " + results.length;
+            report += "\nNombre d'erreurs : " + errors.length;
+            report += "\n==================================================\n";
+
+            results.forEach((item, index) => {
+                report += "\n[" + (index + 1) + "] " + item.fileName;
+                report += "\nDécision : " + item.analysis.decision;
+                report += "\nConfiance : " + item.analysis.confidence + "%";
+                report += "\nRaison : " + item.analysis.reasoning;
+                report += "\n";
+            });
+
+            if (errors.length > 0) {
+                report += "\n[ERREURS]\n";
+
+                errors.forEach((item, index) => {
+                    report += "\n[" + (index + 1) + "] " + item.fileName;
+                    report += "\nErreur : " + item.message;
+                    report += "\n";
+                });
+            }
+
+            userNotes.value += report;
+
+            const summary = buildBatchSummary(results);
+
+            document.getElementById('ai-panel').style.display = "grid";
+            document.getElementById('ai-reasoning').innerText = summary;
+            document.getElementById('dynamic-advice').innerText =
+                "Analyse multiple terminée : " + results.length + " succès, " + errors.length + " erreur(s).";
+        }
+
+        function buildBatchSummary(results) {
+            if (!results || results.length === 0) {
+                return "> Aucune analyse réussie.";
+            }
+
+            const counts = {
+                ACHETER: 0,
+                VENDRE: 0,
+                ATTENDRE: 0
+            };
+
+            let totalConfidence = 0;
+
+            results.forEach(item => {
+                const decision = String(item.analysis.decision || "ATTENDRE").toUpperCase();
+
+                if (counts[decision] === undefined) {
+                    counts.ATTENDRE++;
+                } else {
+                    counts[decision]++;
+                }
+
+                totalConfidence += Number(item.analysis.confidence || 0);
+            });
+
+            const averageConfidence = Math.round(totalConfidence / results.length);
+
+            let dominantDecision = "ATTENDRE";
+            if (counts.ACHETER > counts.VENDRE && counts.ACHETER > counts.ATTENDRE) {
+                dominantDecision = "ACHETER";
+            } else if (counts.VENDRE > counts.ACHETER && counts.VENDRE > counts.ATTENDRE) {
+                dominantDecision = "VENDRE";
+            }
+
+            document.getElementById('ai-decision').innerText = dominantDecision;
+            document.getElementById('ai-decision').style.color =
+                dominantDecision === "ACHETER"
+                    ? "var(--buy-green)"
+                    : (dominantDecision === "VENDRE" ? "var(--sell-red)" : "var(--yellow-pro)");
+
+            document.getElementById('ai-bar').style.width = averageConfidence + "%";
+            document.getElementById('ai-percent').innerText = averageConfidence + "%";
+
+            return (
+                "> SYNTHÈSE DE LA SÉLECTION\n" +
+                "Captures analysées : " + results.length + "\n" +
+                "Acheter : " + counts.ACHETER + "\n" +
+                "Vendre : " + counts.VENDRE + "\n" +
+                "Attendre : " + counts.ATTENDRE + "\n" +
+                "Décision dominante : " + dominantDecision + "\n" +
+                "Confiance moyenne : " + averageConfidence + "%"
+            );
+        }
+
+        function renderAIResults(data) {
+            if (!data) return;
+
+            const decisionEl = document.getElementById('ai-decision');
+            const barEl = document.getElementById('ai-bar');
+
+            const decision = String(data.decision || "ATTENDRE").toUpperCase();
+            const confidence = Number(data.confidence || 0);
+            const reasoning = data.reasoning || "Aucune justification retournée par l'IA.";
+
+            decisionEl.innerText = decision;
+            decisionEl.style.color =
+                decision === "ACHETER"
+                    ? "var(--buy-green)"
+                    : (decision === "VENDRE" ? "var(--sell-red)" : "var(--yellow-pro)");
+
+            barEl.style.width = Math.max(0, Math.min(100, confidence)) + "%";
+            document.getElementById('ai-percent').innerText = Math.max(0, Math.min(100, confidence)) + "%";
+            document.getElementById('ai-reasoning').innerText = "> ANALYSE TERMINÉE :\n" + reasoning;
+        }
+
+        async function saveNotes() {
+            if (!verifierAuthentificationAnalyse()) return;
+
+            if (!currentFileName) {
+                alert("Veuillez d'abord sélectionner une capture avant d'archiver le rapport.");
+                return;
+            }
+
+            if (currentCapture) {
+                const configuration = currentCapture.configuration || {};
+                configuration.notes = userNotes.value;
+                localStorage.setItem("rapportCapture-" + currentCapture.id, JSON.stringify({
+                    captureId: currentCapture.id,
+                    nom: currentCapture.nom,
+                    notes: userNotes.value,
+                    date: new Date().toISOString()
+                }));
+                alert("Rapport archivé localement pour cette capture.");
+                return;
+            }
+
+            try {
+                const response = await fetch(getApiUrl('/api/update-notes'), {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ 
+                        fileName: currentFileName.replace('.png', '.json'), 
+                        notes: userNotes.value 
+                    })
+                });
+
+                const data = await readResponseAsJson(response);
+
+                if (data.success) {
+                    alert("✅ Rapport archivé.");
+                } else {
+                    alert("Le serveur a répondu, mais l'archivage n'est pas confirmé.");
+                }
+
+            } catch (error) {
+                console.error("ERREUR ARCHIVAGE :", error);
+                alert("Erreur lors de l'archivage du rapport.\n\n" + error.message);
+            }
+        }
+
+        window.onload = loadGallery;
+    </script>
+</body>
+</html>
