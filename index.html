@@ -543,6 +543,16 @@
             </select>
         </div>
 
+        <div class="control-group">
+            <label for="capture-type-graphique">TYPE GRAPHIQUE :</label>
+            <select id="capture-type-graphique" onchange="appliquerParametresCaptureTradingView()" title="Type de graphique sauvegardé dans la configuration et appliqué au widget TradingView.">
+                <option value="candles" selected>Bougies</option>
+                <option value="bars">Barres</option>
+                <option value="line">Ligne</option>
+                <option value="area">Aire</option>
+            </select>
+        </div>
+
 
         <div class="control-group configuration-loader">
             <label for="configuration-sauvegardee-selector">CONFIG. :</label>
@@ -1051,6 +1061,8 @@
             }
 
             synchroniserIntervalleCaptureVersAncien();
+            synchroniserIntervalleCaptureVersAncien();
+            synchroniserTypeGraphiqueCustomVersAncien();
             afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
@@ -1140,7 +1152,9 @@
             const nomCapture =
                 nettoyerNomFichier(configuration.actif) + "-" +
                 nettoyerNomFichier(configuration.indicateur) + "-" +
-                nettoyerNomFichier(configuration.categorieAnalyseLibelle) + "-" +
+                nettoyerNomFichier(configuration.intervalle) + "-" +
+                nettoyerNomFichier(configuration.style) + "-" +
+                nettoyerNomFichier(configuration.categorieAnalyseLibelle || configuration.categorieAnalyse) + "-" +
                 genererTimestampFichier();
 
             const imageCapture =
@@ -1156,7 +1170,7 @@
                 actif_libelle: configuration.actif || null,
                 indicateur_libelle: configuration.indicateur || null,
                 intervalle_libelle: configuration.intervalle || null,
-                source_parametres: "tradingview_tvjs_s3",
+                source_parametres: "panneau_superieur_custom",
                 lecture_directe_graphique: false,
                 type_bougie: configuration.style || null,
                 type_bougie_libelle: configuration.style || null,
@@ -1398,6 +1412,50 @@
             return resultat;
         }
 
+        function obtenirTypeGraphiqueSelectionne() {
+            const typeCustom = document.getElementById("capture-type-graphique");
+            const typeAncien = document.getElementById("chart-type-selector");
+
+            if (typeCustom && typeCustom.value) {
+                return typeCustom.value;
+            }
+
+            if (typeAncien && typeAncien.value) {
+                return typeAncien.value;
+            }
+
+            return "candles";
+        }
+
+        function definirTypeGraphiqueSelectionne(valeur) {
+            let resultat = false;
+
+            if (valeur === undefined || valeur === null) {
+                return false;
+            }
+
+            const valeurTexte = String(valeur);
+
+            ["capture-type-graphique", "chart-type-selector"].forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+
+                const existe = Array.from(select.options).some(option => option.value === valeurTexte);
+                if (existe) {
+                    select.value = valeurTexte;
+                    resultat = true;
+                }
+            });
+
+            return resultat;
+        }
+
+        function synchroniserTypeGraphiqueCustomVersAncien() {
+            const valeur = obtenirTypeGraphiqueSelectionne();
+            definirTypeGraphiqueSelectionne(valeur);
+            return valeur;
+        }
+
         function synchroniserIntervalleCaptureVersAncien() {
             const valeur = obtenirIntervalleSelectionne();
             definirIntervalleSelectionne(valeur);
@@ -1406,6 +1464,7 @@
 
         function appliquerParametresCaptureTradingView() {
             synchroniserIntervalleCaptureVersAncien();
+            synchroniserTypeGraphiqueCustomVersAncien();
             afficherInfosGraphique();
             actualiserGraphique();
         }
@@ -1413,6 +1472,10 @@
         function definirValeurSelect(id, valeur) {
             if (id === "interval-selector" || id === "capture-intervalle") {
                 return definirIntervalleSelectionne(valeur);
+            }
+
+            if (id === "chart-type-selector" || id === "capture-type-graphique") {
+                return definirTypeGraphiqueSelectionne(valeur);
             }
 
             const select = document.getElementById(id);
@@ -1591,10 +1654,11 @@
             const actif = document.getElementById("asset-selector").value;
             const intervalle = obtenirIntervalleSelectionne();
             const indicateur = document.getElementById("indicator-selector").value;
-            const style = document.getElementById("chart-type-selector").value;
+            const style = obtenirTypeGraphiqueSelectionne();
 
             return {
                 nom: "Expert Trading Pro v2.0",
+                sourceParametres: "panneau_superieur_custom",
                 actif: actif,
                 intervalle: intervalle,
                 indicateur: indicateur,
@@ -1678,7 +1742,7 @@
                 "Code : " + configuration.actif,
                 "Intervalle : " + libelleOptionSelectionnee("capture-intervalle"),
                 "Indicateur : " + configuration.indicateur,
-                "Type : " + libelleOptionSelectionnee("chart-type-selector"),
+                "Type : " + libelleOptionSelectionnee("capture-type-graphique"),
                 "Analyse : " + configuration.categorieAnalyseLibelle,
                 "Source : " + source,
                 "Symbole : " + symbole,
@@ -1733,7 +1797,7 @@
                 '<span class="info-item"><strong>Code :</strong> ' + configuration.actif + '</span>' +
                 '<span class="info-item"><strong>Intervalle :</strong> ' + libelleOptionSelectionnee("capture-intervalle") + '</span>' +
                 '<span class="info-item"><strong>Indicateur :</strong> ' + configuration.indicateur + '</span>' +
-                '<span class="info-item"><strong>Type :</strong> ' + libelleOptionSelectionnee("chart-type-selector") + '</span>' +
+                '<span class="info-item"><strong>Type :</strong> ' + libelleOptionSelectionnee("capture-type-graphique") + '</span>' +
                 '<span class="info-item"><strong>Analyse :</strong> ' + configuration.categorieAnalyseLibelle + '</span>' +
                 '<span class="info-item"><strong>Source :</strong> ' + source + '</span>' +
                 '<span class="info-item"><strong>Symbole :</strong> ' + symbole + '</span>' +
@@ -1786,6 +1850,8 @@
                     "configuration-" +
                     nettoyerNomFichier(configuration.actif || "actif") + "-" +
                     nettoyerNomFichier(configuration.indicateur || "indicateur") + "-" +
+                    nettoyerNomFichier(configuration.intervalle || "intervalle") + "-" +
+                    nettoyerNomFichier(configuration.style || "type-graphique") + "-" +
                     nettoyerNomFichier(configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || "analyse") + "-" +
                     genererTimestampFichier() +
                     ".json";
@@ -1926,7 +1992,7 @@
 
             const actif = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
             const intervalle = convertirIntervallePourTradingView(obtenirIntervalleSelectionne() || "D");
-            const style = convertirStylePourTradingView(document.getElementById("chart-type-selector").value || "candles");
+            const style = convertirStylePourTradingView(obtenirTypeGraphiqueSelectionne() || "candles");
 
             conteneur.innerHTML = "";
             chart = null;
@@ -1969,11 +2035,17 @@
         }
 
         function changerStyleGraphique(rechargerDonnees = true) {
+            synchroniserTypeGraphiqueCustomVersAncien();
             afficherInfosGraphique();
 
             if (rechargerDonnees) {
                 actualiserGraphique();
             }
+        }
+
+        function changerIndicateur() {
+            afficherInfosGraphique();
+            actualiserGraphique();
         }
 
         async function chargerDonneesBinance(actif, intervalle) {
