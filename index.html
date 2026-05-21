@@ -1108,27 +1108,42 @@
         }
 
         function construireNomCapture(configuration) {
+            const parametresTV = configuration.parametresTradingView || {};
+
             const actif = valeurNomCapture(
-                configuration.actif || configuration.graphique?.actif,
+                parametresTV.actifCapture || parametresTV.actif || configuration.actif || configuration.graphique?.actif,
                 "ACTIF-TV"
             );
 
             const indicateur = valeurNomCapture(
-                configuration.indicateur || configuration.graphique?.indicateur,
+                parametresTV.indicateurCapture || parametresTV.indicateur || configuration.indicateur || configuration.graphique?.indicateur,
                 "INDICATEUR-TV"
             );
 
+            const typeGraphiqueBrut =
+                parametresTV.typeGraphiqueCapture ||
+                parametresTV.typeGraphique ||
+                configuration.typeGraphiqueCapture ||
+                configuration.style ||
+                configuration.graphique?.style ||
+                configuration.type_bougie;
+
             const typeGraphique = valeurNomCapture(
-                libelleTypeGraphiquePourNom(configuration.style || configuration.graphique?.style || configuration.type_bougie),
+                libelleTypeGraphiquePourNom(typeGraphiqueBrut),
                 "TYPE-GRAPHIQUE-TV"
             );
 
             const intervalle = valeurNomCapture(
-                configuration.intervalle || configuration.graphique?.intervalle,
+                parametresTV.intervalleCapture || parametresTV.intervalle || configuration.intervalle || configuration.graphique?.intervalle,
                 "INTERVALLE-TV"
             );
 
-            return actif + "-" + indicateur + "-" + typeGraphique + "-" + intervalle + "-" + genererTimestampFichier();
+            const typeAnalyse = valeurNomCapture(
+                configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || configuration.categorie_analyse,
+                "TYPE-ANALYSE"
+            );
+
+            return actif + "-" + indicateur + "-" + typeGraphique + "-" + intervalle + "-" + typeAnalyse + "-" + genererTimestampFichier();
         }
 
         function creerPayloadCapturePostgres(configuration) {
@@ -2170,6 +2185,81 @@
             }
         }
 
+        function demanderParametreCaptureDepuisGraphique(libelle, exemple) {
+            const valeur = prompt(
+                libelle + " visible dans le graphique TradingView :",
+                exemple || ""
+            );
+
+            if (valeur === null) {
+                throw new Error("Capture annulée : paramètres TradingView non confirmés.");
+            }
+
+            return String(valeur || "").trim();
+        }
+
+        function normaliserTypeGraphiqueCapture(valeur) {
+            const texte = String(valeur || "").trim();
+            const min = texte.toLowerCase();
+
+            if (["candle", "candles", "bougie", "bougies", "chandelles"].includes(min)) return "Bougies";
+            if (["bar", "bars", "barre", "barres"].includes(min)) return "Barres";
+            if (["line", "ligne"].includes(min)) return "Ligne";
+            if (["area", "aire", "zone"].includes(min)) return "Aire";
+
+            return texte || "TYPE-GRAPHIQUE-TV";
+        }
+
+        function demanderParametresVisuelsTradingView() {
+            /*
+                TradingView tv.js est dans une iframe externe.
+                Le navigateur ne permet pas de lire directement l'actif, l'indicateur,
+                l'intervalle ni le type de graphique choisis dans l'outil TradingView.
+                Après la capture, on demande donc à l'utilisateur de confirmer les valeurs
+                visibles dans le graphique, afin de construire un nom propre et exploitable.
+            */
+            const actif = demanderParametreCaptureDepuisGraphique("ACTIF", "BINANCE:BTCUSDT");
+            const indicateur = demanderParametreCaptureDepuisGraphique("INDICATEUR", "EMA");
+            const typeGraphique = demanderParametreCaptureDepuisGraphique("TYPE DE GRAPHIQUE", "Bougies / Ligne / Barres / Aire");
+            const intervalle = demanderParametreCaptureDepuisGraphique("INTERVALLE", "D / 1h / 4h / 15m");
+
+            return {
+                actif: actif || "BINANCE:BTCUSDT",
+                indicateur: (indicateur || "EMA").toUpperCase(),
+                typeGraphique: normaliserTypeGraphiqueCapture(typeGraphique),
+                intervalle: normaliserIntervalleCapture(intervalle || "D")
+            };
+        }
+
+        function appliquerParametresVisuelsTradingViewAConfiguration(configuration, parametresVisuels) {
+            if (!configuration || !parametresVisuels) return configuration;
+
+            configuration.actif = parametresVisuels.actif;
+            configuration.indicateur = parametresVisuels.indicateur;
+            configuration.intervalle = parametresVisuels.intervalle;
+            configuration.style = parametresVisuels.typeGraphique;
+            configuration.typeGraphiqueCapture = parametresVisuels.typeGraphique;
+
+            configuration.graphique = configuration.graphique || {};
+            configuration.graphique.actif = parametresVisuels.actif;
+            configuration.graphique.indicateur = parametresVisuels.indicateur;
+            configuration.graphique.intervalle = parametresVisuels.intervalle;
+            configuration.graphique.style = parametresVisuels.typeGraphique;
+            configuration.graphique.source = "tradingview_tvjs_s3_capture_visuelle";
+            configuration.graphique.lectureDepuisCapture = true;
+
+            configuration.parametresTradingView = configuration.parametresTradingView || {};
+            configuration.parametresTradingView.source = "capture_visuelle_du_graphique";
+            configuration.parametresTradingView.lectureDepuisCapture = true;
+            configuration.parametresTradingView.confirmesApresCapture = true;
+            configuration.parametresTradingView.actifCapture = parametresVisuels.actif;
+            configuration.parametresTradingView.indicateurCapture = parametresVisuels.indicateur;
+            configuration.parametresTradingView.intervalleCapture = parametresVisuels.intervalle;
+            configuration.parametresTradingView.typeGraphiqueCapture = parametresVisuels.typeGraphique;
+
+            return configuration;
+        }
+
         async function obtenirImagePourAnalyse() {
             const input = document.getElementById("screenshot-file");
 
@@ -2195,6 +2285,8 @@
                 }
 
                 const configuration = obtenirConfiguration();
+                const parametresVisuelsTradingView = demanderParametresVisuelsTradingView();
+                appliquerParametresVisuelsTradingViewAConfiguration(configuration, parametresVisuelsTradingView);
 
                 configuration.snapshot = configuration.snapshot || {};
                 configuration.snapshot.screenshotBase64 = dernierScreenshotBase64 || null;
