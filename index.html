@@ -854,6 +854,96 @@
                 max-width: none !important;
             }
         }
+
+
+        /* ============================================================
+           PANNEAU SUPÉRIEUR COMPACT
+           - Réduit la hauteur du panneau pour dégager le haut du graphique.
+           - Garde les champs lisibles sans les superposer.
+        ============================================================ */
+        body:not(.auth-locked) .header-pro {
+            padding: 4px 8px !important;
+            gap: 4px 6px !important;
+            align-items: center !important;
+            line-height: 1.15 !important;
+        }
+
+        body:not(.auth-locked) .header-pro .control-group,
+        body:not(.auth-locked) .configuration-loader,
+        body:not(.auth-locked) .capture-parametres-tv {
+            padding: 3px 6px !important;
+            gap: 4px !important;
+            border-radius: 8px !important;
+            min-height: 30px !important;
+        }
+
+        body:not(.auth-locked) .header-pro label,
+        body:not(.auth-locked) .capture-parametres-tv::before {
+            font-size: 11px !important;
+            line-height: 1.1 !important;
+        }
+
+        body:not(.auth-locked) .header-pro button,
+        body:not(.auth-locked) .header-pro select,
+        body:not(.auth-locked) .header-pro input,
+        body:not(.auth-locked) .capture-parametres-tv button,
+        body:not(.auth-locked) .capture-parametres-tv select,
+        body:not(.auth-locked) .capture-parametres-tv input {
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 3px 7px !important;
+            font-size: 11px !important;
+            border-radius: 7px !important;
+            line-height: 1.1 !important;
+        }
+
+        body:not(.auth-locked) #categorie-analyse-btc {
+            width: 118px !important;
+            min-width: 118px !important;
+            max-width: 118px !important;
+        }
+
+        body:not(.auth-locked) #chart-type-selector {
+            width: 96px !important;
+            min-width: 96px !important;
+            max-width: 96px !important;
+        }
+
+        body:not(.auth-locked) #indicator-selector {
+            width: 245px !important;
+            min-width: 190px !important;
+            max-width: 245px !important;
+        }
+
+        body:not(.auth-locked) #configuration-sauvegardee-selector {
+            width: min(390px, 100%) !important;
+            min-width: 220px !important;
+            max-width: 390px !important;
+        }
+
+        body:not(.auth-locked) .capture-parametres-tv #capture-indicateur {
+            min-width: 95px !important;
+            max-width: 125px !important;
+        }
+
+        body:not(.auth-locked) #chart-container {
+            min-height: calc(100vh - var(--hauteur-panneau-superieur-reelle, 95px)) !important;
+            height: calc(100vh - var(--hauteur-panneau-superieur-reelle, 95px)) !important;
+        }
+
+        @media (max-width: 1200px) {
+            body:not(.auth-locked) .header-pro {
+                padding: 4px 6px !important;
+                gap: 4px !important;
+            }
+
+            body:not(.auth-locked) .header-pro .control-group,
+            body:not(.auth-locked) .capture-parametres-tv {
+                flex-wrap: wrap !important;
+            }
+        }
+
 </style>
 </head>
 
@@ -3166,11 +3256,16 @@
             document.documentElement.style.setProperty("--hauteur-panneau-superieur", "0px");
             document.body.style.setProperty("padding-top", "0", "important");
 
+            const hauteurPanneau = Math.max(58, Math.ceil(panneau.getBoundingClientRect().height || 78));
+            document.documentElement.style.setProperty("--hauteur-panneau-superieur-reelle", hauteurPanneau + "px");
+
             graphique.style.setProperty("margin-top", "0", "important");
             graphique.style.setProperty("clear", "both", "important");
             graphique.style.setProperty("position", "relative", "important");
             graphique.style.setProperty("z-index", "1", "important");
             graphique.style.setProperty("isolation", "isolate", "important");
+            graphique.style.setProperty("height", "calc(100vh - " + hauteurPanneau + "px)", "important");
+            graphique.style.setProperty("min-height", "calc(100vh - " + hauteurPanneau + "px)", "important");
 
             if (tv) {
                 tv.style.setProperty("position", "relative", "important");
