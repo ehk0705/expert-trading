@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Expert Trading Pro v2.0 - Charting Library</title>
 
-    <!-- TradingView Charting Library officielle
-         À placer dans le projet :
-         /charting_library/charting_library.standalone.js
-         /datafeeds/udf/dist/bundle.js
+    <!--
+        TradingView Charting Library officielle.
+        Le fichier essaie d'abord de charger la Charting Library locale.
+        Si elle est absente, il bascule automatiquement vers le widget public tv.js,
+        afin d'éviter l'erreur bloquante "Charting Library n'est pas chargée".
     -->
-    <script src="charting_library/charting_library.standalone.js"></script>
-    <script src="datafeeds/udf/dist/bundle.js"></script>
-<script src="charting_library/charting_library.js"></script>
-<script src="datafeeds/udf/dist/bundle.js"></script>
+    <script>
+        window.__TV_CHARTING_LIBRARY_LOCALE_ABSENTE__ = false;
+        window.__TV_DATAFEED_UDF_ABSENT__ = false;
+    </script>
+    <script src="charting_library/charting_library.standalone.js" onerror="window.__TV_CHARTING_LIBRARY_LOCALE_ABSENTE__ = true;"></script>
+    <script src="datafeeds/udf/dist/bundle.js" onerror="window.__TV_DATAFEED_UDF_ABSENT__ = true;"></script>
 
     <link rel="stylesheet" href="style.css">
 
@@ -1600,6 +1603,58 @@
             etudes: []
         };
 
+        let modeTradingViewActif = "charting_library";
+
+        function chartingLibraryCompleteDisponible() {
+            return (
+                typeof TradingView !== "undefined" &&
+                typeof TradingView.widget === "function" &&
+                typeof Datafeeds !== "undefined" &&
+                typeof Datafeeds.UDFCompatibleDatafeed === "function"
+            );
+        }
+
+        function chargerScriptDynamique(src) {
+            return new Promise((resolve, reject) => {
+                const dejaPresent = Array.from(document.scripts).some(script => script.src && script.src.includes(src));
+                if (dejaPresent) {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement("script");
+                script.src = src;
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error("Impossible de charger : " + src));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function garantirBibliothequeTradingViewDisponible() {
+            if (chartingLibraryCompleteDisponible()) {
+                modeTradingViewActif = "charting_library";
+                return true;
+            }
+
+            try {
+                await chargerScriptDynamique("https://s3.tradingview.com/tv.js");
+            } catch (erreur) {
+                console.warn("Chargement du widget public tv.js impossible :", erreur);
+            }
+
+            if (typeof TradingView !== "undefined" && typeof TradingView.widget === "function") {
+                modeTradingViewActif = "tvjs_public";
+                return true;
+            }
+
+            return false;
+        }
+
+        function modeChartingLibraryComplet() {
+            return modeTradingViewActif === "charting_library" && chartingLibraryCompleteDisponible();
+        }
+
         function getApiUrl(route) {
             return API_BASE_URL + route;
         }
@@ -1641,11 +1696,17 @@
             return;
         }
 
-        function init() {
-            if (typeof TradingView === "undefined" || typeof TradingView.widget !== "function") {
-                afficherMessageGraphique("La bibliothèque TradingView Charting Library n'est pas chargée.", "erreur");
-                afficherStatus("Erreur : bibliothèque TradingView Charting Library absente.");
+        async function init() {
+            const bibliothequeOk = await garantirBibliothequeTradingViewDisponible();
+
+            if (!bibliothequeOk) {
+                afficherMessageGraphique("TradingView n'est pas chargé. Vérifie les fichiers locaux ou la connexion Internet.", "erreur");
+                afficherStatus("Erreur : aucune bibliothèque TradingView disponible.");
                 return;
+            }
+
+            if (modeTradingViewActif === "tvjs_public") {
+                afficherStatus("Charting Library locale absente : bascule automatique vers le widget public TradingView tv.js.");
             }
 
             synchroniserParametresCaptureVersChampsCaches(false);
@@ -3239,19 +3300,102 @@
             }
         }
 
-        function creerGraphiqueTradingViewS3() {
+
+        function obtenirEtudesTradingViewPublicDepuisIndicateur(indicateur) {
+            const valeur = String(indicateur || "").toUpperCase();
+
+            if (valeur.includes("MACD")) return ["STD;MACD"];
+            if (valeur.includes("RSI")) return ["STD;RSI"];
+            if (valeur.includes("BOLLINGER") || valeur.includes("BB_")) return ["STD;Bollinger_Bands"];
+            if (valeur.includes("VOLUME")) return ["STD;Volume"];
+            if (valeur.includes("STOCH")) return ["STD;Stochastic"];
+            if (valeur.includes("ATR")) return ["STD;Average_True_Range"];
+            if (valeur.includes("CCI")) return ["STD;Commodity_Channel_Index"];
+            if (valeur.includes("ICHIMOKU")) return ["STD;Ichimoku_Cloud"];
+            if (valeur.includes("ADX") || valeur.includes("DMI")) return ["STD;ADX"];
+            if (valeur.includes("VWAP")) return ["STD;VWAP"];
+
+            return ["STD;EMA"];
+        }
+
+        function creerGraphiqueTradingViewPublic() {
             const conteneur = document.getElementById("tradingview_chart");
             if (!conteneur) return;
 
             if (typeof TradingView === "undefined" || typeof TradingView.widget !== "function") {
-                afficherMessageGraphique("La Charting Library TradingView n'est pas chargée. Vérifie le dossier /charting_library/.", "erreur");
-                afficherStatus("Erreur : Charting Library absente.");
+                afficherMessageGraphique("TradingView tv.js n'est pas chargé.", "erreur");
+                afficherStatus("Erreur : widget public TradingView absent.");
                 return;
             }
 
-            if (typeof Datafeeds === "undefined" || typeof Datafeeds.UDFCompatibleDatafeed !== "function") {
-                afficherMessageGraphique("Le datafeed UDF est absent. Vérifie /datafeeds/udf/dist/bundle.js.", "erreur");
-                afficherStatus("Erreur : datafeed UDF absent.");
+            const symboleChamp = normaliserSymboleTradingView(obtenirValeurChamp("symbole-tv-lu", symboleTradingViewLu || "BINANCE:BTCUSDT")) || "BINANCE:BTCUSDT";
+            const intervallePersonnalise = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
+            const indicateurPersonnalise = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
+            const stylePersonnalise = obtenirStyleGraphiqueSelectionne();
+
+            symboleTradingViewLu = symboleChamp;
+            definirValeurChamp("capture-actif", symboleChamp);
+            definirValeurSelect("asset-selector", symboleChamp);
+            definirValeurSelect("interval-selector", intervallePersonnalise);
+            definirValeurSelect("indicator-selector", indicateurPersonnalise);
+            definirValeurSelect("chart-type-selector", stylePersonnalise);
+            afficherSymboleTradingViewLu(symboleChamp, "widget public tv.js");
+
+            conteneur.innerHTML = "";
+            chart = null;
+            mainSeries = null;
+            currentData = [];
+            widgetChartingLibraryPret = false;
+
+            dernierParametresGraphiqueLus = {
+                actif: symboleChamp,
+                intervalle: intervallePersonnalise,
+                indicateur: indicateurPersonnalise,
+                typeGraphique: obtenirLibelleStyleGraphiqueSelectionne(),
+                style: stylePersonnalise,
+                etudes: obtenirEtudesTradingViewPublicDepuisIndicateur(indicateurPersonnalise).map(nom => ({
+                    id: null,
+                    name: nom,
+                    shortName: nom
+                }))
+            };
+
+            tradingViewWidget = new TradingView.widget({
+                autosize: true,
+                symbol: symboleChamp,
+                interval: intervallePersonnalise,
+                timezone: "Etc/UTC",
+                theme: "dark",
+                style: convertirStylePourTradingView(stylePersonnalise),
+                locale: "fr",
+                toolbar_bg: "#020617",
+                enable_publishing: false,
+                allow_symbol_change: true,
+                withdateranges: true,
+                hide_side_toolbar: false,
+                save_image: false,
+                studies: obtenirEtudesTradingViewPublicDepuisIndicateur(indicateurPersonnalise),
+                container_id: "tradingview_chart"
+            });
+
+            derniereSourceMarche = {
+                source: "tradingview_tvjs_public_fallback",
+                symbole: symboleChamp,
+                bibliotheque: "tv.js"
+            };
+
+            afficherMessageGraphique("", "ok");
+            afficherStatus("Charting Library locale absente : graphique chargé avec le widget public TradingView tv.js.");
+            afficherInfosGraphique();
+            corrigerPanneauPlusieursFois();
+        }
+
+        function creerGraphiqueTradingViewS3() {
+            const conteneur = document.getElementById("tradingview_chart");
+            if (!conteneur) return;
+
+            if (!modeChartingLibraryComplet()) {
+                creerGraphiqueTradingViewPublic();
                 return;
             }
 
@@ -3425,8 +3569,8 @@
             const symbole = normaliserSymboleTradingView(obtenirValeurChamp("symbole-tv-lu", symboleTradingViewLu || "BINANCE:BTCUSDT")) || "BINANCE:BTCUSDT";
             const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
 
-            afficherMessageGraphique("Chargement de la Charting Library TradingView...", "attente");
-            afficherStatus("Chargement du graphique Charting Library...");
+            afficherMessageGraphique("Chargement du graphique TradingView...", "attente");
+            afficherStatus("Chargement du graphique TradingView...");
 
             try {
                 creerGraphiqueTradingViewS3();
@@ -3439,14 +3583,14 @@
                 currentData = [];
 
                 afficherMessageGraphique("", "ok");
-                afficherStatus("Graphique Charting Library demandé : " + symbole + " / intervalle : " + intervalle);
+                afficherStatus("Graphique TradingView demandé : " + symbole + " / intervalle : " + intervalle);
                 afficherInfosGraphique();
                 corrigerPanneauPlusieursFois();
 
             } catch (erreur) {
-                console.error("Erreur graphique Charting Library :", erreur);
-                afficherMessageGraphique("Impossible de charger la Charting Library : " + erreur.message, "erreur");
-                afficherStatus("Erreur Charting Library : " + erreur.message);
+                console.error("Erreur graphique TradingView :", erreur);
+                afficherMessageGraphique("Impossible de charger TradingView : " + erreur.message, "erreur");
+                afficherStatus("Erreur TradingView : " + erreur.message);
                 afficherInfosGraphique();
             }
         }
