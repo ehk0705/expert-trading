@@ -519,7 +519,9 @@
                 <option value="BINANCE:XRPUSDT">XRP / USDT</option>
                 <option value="OANDA:XAUUSD">Or / Dollar US</option>
                 <option value="OANDA:XAGUSD">Argent / Dollar US</option>
-                <option value="NASDAQ:NDX">Nasdaq 100</option>
+                <option value="OANDA:NAS100USD" data-symbole-original="NASDAQ:NDX">Nasdaq 100</option>
+                <option value="CME_MINI:NQ1!">Nasdaq 100 Futures</option>
+                <option value="FOREXCOM:NSXUSD">Nasdaq 100 CFD</option>
                 <option value="SP:SPX">S&amp;P 500</option>
                 <option value="TVC:DXY">Dollar Index</option>
                 <option value="FX:EURUSD">EUR / USD</option>
@@ -1481,7 +1483,12 @@
             const select = document.getElementById(id);
             if (!select || valeur === undefined || valeur === null) return false;
 
-            const valeurTexte = String(valeur);
+            let valeurTexte = String(valeur);
+
+            if (id === "asset-selector") {
+                valeurTexte = normaliserSymboleTradingViewWidget(valeurTexte);
+            }
+
             const existe = Array.from(select.options).some(option => option.value === valeurTexte);
 
             if (!existe) return false;
@@ -1980,6 +1987,27 @@
             return valeur;
         }
 
+        function normaliserSymboleTradingViewWidget(symbole) {
+            /*
+                Correction compatibilité TradingView tv.js :
+                certains symboles disponibles sur tradingview.com ne sont pas toujours
+                acceptés dans le widget intégré s3/tv.js.
+                On conserve le libellé utilisateur, mais on envoie un symbole accepté
+                au widget afin d'éviter le message "Ce symbole n'existe pas".
+            */
+            const valeur = String(symbole || "").trim().toUpperCase();
+
+            const correspondances = {
+                "NASDAQ:NDX": "OANDA:NAS100USD",
+                "NDX": "OANDA:NAS100USD",
+                "NASDAQ 100": "OANDA:NAS100USD",
+                "NAS100": "OANDA:NAS100USD",
+                "US100": "OANDA:NAS100USD"
+            };
+
+            return correspondances[valeur] || String(symbole || "BINANCE:BTCUSDT").trim();
+        }
+
         function creerGraphiqueTradingViewS3() {
             const conteneur = document.getElementById("tradingview_chart");
             if (!conteneur) return;
@@ -1990,7 +2018,8 @@
                 return;
             }
 
-            const actif = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const actifBrut = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const actif = normaliserSymboleTradingViewWidget(actifBrut);
             const intervalle = convertirIntervallePourTradingView(obtenirIntervalleSelectionne() || "D");
             const style = convertirStylePourTradingView(obtenirTypeGraphiqueSelectionne() || "candles");
 
@@ -2104,7 +2133,8 @@
 
         function ouvrirTradingView() {
             garderEnteteVisible();
-            const symbole = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const symboleBrut = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const symbole = normaliserSymboleTradingViewWidget(symboleBrut);
             const intervalle = obtenirIntervalleSelectionne() || "D";
             const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(symbole) + "&interval=" + encodeURIComponent(intervalle);
             window.open(url, "_blank");
