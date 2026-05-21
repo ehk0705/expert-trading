@@ -478,6 +478,27 @@
             transform: none !important;
         }
 
+
+        /* Correction : les paramètres ACTIF / INDICATEUR / INTERVALLE / TYPE ne sont plus visibles
+           dans le panneau supérieur. Ils restent seulement comme valeurs techniques de repli.
+           La source réelle demandée est la capture visuelle du graphique TradingView. */
+        body:not(.auth-locked) .capture-parametres-tv {
+            display: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            height: 0 !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            max-width: 0 !important;
+            max-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
     </style>
 </head>
 
@@ -1126,8 +1147,9 @@
                 actif_libelle: configuration.actif || null,
                 indicateur_libelle: configuration.indicateur || null,
                 intervalle_libelle: configuration.intervalle || null,
-                source_parametres: "tradingview_tvjs_s3",
+                source_parametres: "tradingview_tvjs_s3_capture_visuelle",
                 lecture_directe_graphique: false,
+                parametres_a_lire_depuis_capture: true,
                 type_bougie: configuration.style || null,
                 type_bougie_libelle: configuration.style || null,
                 nom_fichier: nomCapture,
@@ -1597,12 +1619,28 @@
                 categorieAnalyse: document.getElementById("categorie-analyse-btc").value,
                 categorieAnalyseLibelle: catText,
                 style: style,
+                /*
+                    Les champs ci-dessus restent des valeurs techniques de repli
+                    pour le serveur et pour éviter les erreurs de sources de marché.
+                    Les vrais paramètres choisis dans TradingView doivent être lus
+                    visuellement dans la capture, car tv.js est dans une iframe externe.
+                */
+                parametresTradingView: {
+                    source: "capture_visuelle_du_graphique",
+                    lectureDepuisCapture: true,
+                    actif: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                    intervalle: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                    indicateur: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                    typeGraphique: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                    typeAnalyse: catText
+                },
                 graphique: {
                     actif: actif,
                     intervalle: intervalle,
                     indicateur: indicateur,
                     style: style,
-                    source: "tradingview_tvjs_s3"
+                    source: "tradingview_tvjs_s3_capture_visuelle",
+                    lectureDepuisCapture: true
                 },
                 marcheLocal: {
                     derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
