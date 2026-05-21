@@ -437,6 +437,50 @@
             border: 0 !important;
         }
 
+
+
+        /* Correction panneau supérieur :
+           le panneau reste fixe au-dessus du graphique TradingView.
+           Le graphique ne peut plus remonter par-dessus le panneau après changement
+           d'actif, d'intervalle, d'indicateur ou de type de graphique. */
+        body:not(.auth-locked) {
+            padding-top: var(--hauteur-panneau-superieur, 120px) !important;
+        }
+
+        body:not(.auth-locked) .header-pro {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 2147483000 !important;
+            width: 100% !important;
+            max-height: 42vh !important;
+            overflow-y: auto !important;
+            box-sizing: border-box !important;
+            background: rgba(2, 6, 23, 0.99) !important;
+            border-bottom: 1px solid #334155 !important;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55) !important;
+            transform: translateZ(0) !important;
+        }
+
+        body:not(.auth-locked) #chart-container {
+            position: relative !important;
+            z-index: 1 !important;
+            margin-top: 0 !important;
+            min-height: calc(100vh - var(--hauteur-panneau-superieur, 120px)) !important;
+        }
+
+        body:not(.auth-locked) #result-panel {
+            position: relative !important;
+            z-index: 2 !important;
+        }
+
+        body:not(.auth-locked) #tradingview_chart,
+        body:not(.auth-locked) #tradingview_chart iframe {
+            position: relative !important;
+            z-index: 1 !important;
+        }
+
     </style>
 </head>
 
@@ -735,6 +779,7 @@
         function masquerEcranConnexion() {
             document.body.classList.remove("auth-locked");
             afficherMessageAuth("");
+            maintenirPanneauSuperieurVisible();
         }
 
         function afficherMessageAuth(message) {
@@ -931,7 +976,50 @@
             return;
         }
 
+
+
+        function maintenirPanneauSuperieurVisible() {
+            const panneau = document.querySelector(".header-pro");
+            if (!panneau) return;
+
+            panneau.style.display = "";
+            panneau.style.visibility = "visible";
+            panneau.style.opacity = "1";
+            panneau.style.position = "fixed";
+            panneau.style.top = "0";
+            panneau.style.left = "0";
+            panneau.style.right = "0";
+            panneau.style.zIndex = "2147483000";
+
+            mesurerHauteurPanneauSuperieur();
+        }
+
+        function mesurerHauteurPanneauSuperieur() {
+            const panneau = document.querySelector(".header-pro");
+            if (!panneau) return;
+
+            const hauteur = Math.ceil(panneau.getBoundingClientRect().height || panneau.offsetHeight || 120);
+            document.documentElement.style.setProperty("--hauteur-panneau-superieur", hauteur + "px");
+        }
+
+        function stabiliserAffichageApresTradingView() {
+            maintenirPanneauSuperieurVisible();
+            mesurerHauteurPanneauSuperieur();
+
+            requestAnimationFrame(() => {
+                maintenirPanneauSuperieurVisible();
+                mesurerHauteurPanneauSuperieur();
+            });
+
+            setTimeout(() => {
+                maintenirPanneauSuperieurVisible();
+                mesurerHauteurPanneauSuperieur();
+            }, 250);
+        }
+
         function init() {
+            maintenirPanneauSuperieurVisible();
+
             if (typeof TradingView === "undefined" || typeof TradingView.widget !== "function") {
                 afficherMessageGraphique("La bibliothèque TradingView tv.js n'est pas chargée.", "erreur");
                 afficherStatus("Erreur : bibliothèque TradingView tv.js absente.");
@@ -1848,6 +1936,8 @@
                 container_id: "tradingview_chart"
             });
 
+            stabiliserAffichageApresTradingView();
+
             derniereSourceMarche = {
                 source: "tradingview_tvjs_s3",
                 symbole: actif
@@ -1899,6 +1989,7 @@
         }
 
         async function actualiserGraphique() {
+            maintenirPanneauSuperieurVisible();
             synchroniserParametresCaptureVersChampsCaches(false);
 
             const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
@@ -1920,6 +2011,7 @@
                 afficherMessageGraphique("", "ok");
                 afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
                 afficherInfosGraphique();
+                stabiliserAffichageApresTradingView();
 
             } catch (erreur) {
                 console.error("Erreur graphique TradingView tv.js :", erreur);
@@ -2215,6 +2307,7 @@
                 Aucun redimensionnement manuel n'est nécessaire.
             */
             afficherInfosGraphique();
+            stabiliserAffichageApresTradingView();
         };
 		
 		
