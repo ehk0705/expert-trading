@@ -1238,6 +1238,44 @@ function symboleYahoo(actif) {
     return s;
 }
 
+function symboleStooq(actif) {
+    const s = normaliserActif(actif);
+    const original = String(actif || "").toUpperCase();
+
+    const correspondances = {
+        XAUUSD: "xauusd",
+        XAGUSD: "xagusd",
+        EURUSD: "eurusd",
+        GBPUSD: "gbpusd",
+        USDJPY: "usdjpy",
+        USDCAD: "usdcad",
+        USDCHF: "usdchf",
+        AUDUSD: "audusd",
+        NZDUSD: "nzdusd",
+        SPX: "^spx",
+        DXY: "dxy",
+        AAPL: "aapl.us",
+        TSLA: "tsla.us",
+        NVDA: "nvda.us",
+        MSFT: "msft.us",
+        AMZN: "amzn.us",
+        GOOGL: "googl.us",
+        GOOG: "goog.us"
+    };
+
+    if (correspondances[s]) return correspondances[s];
+
+    if (original.startsWith("NASDAQ:") || original.startsWith("NYSE:")) {
+        return s.toLowerCase() + ".us";
+    }
+
+    if (estActifForexOuMetaux(actif) && s.length === 6) {
+        return s.toLowerCase();
+    }
+
+    throw new Error("Symbole Stooq non reconnu pour : " + actif);
+}
+
 function intervalleYahoo(i) {
     const v = String(i || "1d").toLowerCase();
 
@@ -1338,7 +1376,7 @@ function actifOKX(actif) {
 function coinGeckoId(actif) {
     const s = normaliserActif(actif);
 
-    return {
+    const correspondances = {
         BTCUSDT: "bitcoin",
         BTCUSD: "bitcoin",
         ETHUSDT: "ethereum",
@@ -1536,14 +1574,80 @@ async function bougiesYahoo(actif, intervalle, limit = 300) {
     return bougies.slice(-limit);
 }
 
+async function bougiesStooq(actif, intervalle, limit = 300) {
+    /*
+        Source de secours sans clé API.
+        Utilisée surtout quand Yahoo Finance répond 429 Too Many Requests.
+        Stooq fournit principalement des données quotidiennes ; l'intervalle demandé est donc ignoré ici.
+    */
+    const symbole = symboleStooq(actif);
+    const url = new URL("https://stooq.com/q/d/l/");
+
+    url.searchParams.set("s", symbole);
+    url.searchParams.set("i", "d");
+
+    const r = await fetch(url, {
+        headers: {
+            "Accept": "text/csv,text/plain,*/*",
+            "User-Agent": "Mozilla/5.0 ExpertTradingPro/2.0"
+        }
+    });
+
+    const txt = await r.text();
+
+    if (!r.ok) {
+        throw new Error("Stooq HTTP " + r.status + " : " + txt);
+    }
+
+    const lignes = txt.trim().split(/\r?\n/).filter(Boolean);
+
+    if (lignes.length < 31 || !/^Date,/i.test(lignes[0])) {
+        throw new Error("Format Stooq inattendu ou historique insuffisant pour " + actif + " (" + symbole + ") : " + txt.slice(0, 160));
+    }
+
+    const bougies = lignes.slice(1).map(ligne => {
+        const colonnes = ligne.split(",");
+        const date = colonnes[0];
+        const open = Number(colonnes[1]);
+        const high = Number(colonnes[2]);
+        const low = Number(colonnes[3]);
+        const close = Number(colonnes[4]);
+        const volume = Number(colonnes[5] || 0);
+        const temps = new Date(date + "T00:00:00Z").getTime();
+
+        return {
+            openTime: temps,
+            open,
+            high,
+            low,
+            close,
+            volume: Number.isFinite(volume) ? volume : 0,
+            closeTime: temps,
+            source: "stooq"
+        };
+    }).filter(x =>
+        Number.isFinite(x.openTime) &&
+        Number.isFinite(x.open) &&
+        Number.isFinite(x.high) &&
+        Number.isFinite(x.low) &&
+        Number.isFinite(x.close)
+    );
+
+    if (bougies.length < 30) {
+        throw new Error("Historique Stooq insuffisant pour " + actif + " (" + symbole + ").");
+    }
+
+    return bougies.slice(-limit);
+}
+
 function sourceMarcheConfiguree() {
-    const sources = ["okx", "coingecko", "binance", "yahoo"];
+    const sources = ["okx", "coingecko", "binance", "yahoo", "stooq"];
     return sources.includes(MARKET_PRIMARY_SOURCE) ? MARKET_PRIMARY_SOURCE : "okx";
 }
 
 function ordreSourcesMarche(actif) {
     if (!estActifCrypto(actif)) {
-        return ["yahoo"];
+        return ["yahoo", "stooq"];
     }
 
     const defaut = ["okx", "coingecko", "binance"];
@@ -1563,9 +1667,16 @@ function enrichirErreurSourceMarche(source, erreur) {
         message.toLowerCase().includes("restricted location") ||
         message.toLowerCase().includes("service unavailable from a restricted location");
 
+    const limiteRequetes =
+        message.includes("HTTP 429") ||
+        message.toLowerCase().includes("too many requests") ||
+        message.toLowerCase().includes("rate limit");
+
     return {
         source,
-        type: restrictionGeographique ? "restriction_geographique" : "erreur_source",
+        type: restrictionGeographique
+            ? "restriction_geographique"
+            : (limiteRequetes ? "limite_requetes" : "erreur_source"),
         bloquant: false,
         message
     };
@@ -1608,6 +1719,16 @@ async function essayerSourceMarche(source, actif, intervalle, erreurs) {
             symbole: symboleYahoo(actif),
             intervalle: intervalleYahoo(intervalle) + " / " + rangeYahoo(intervalle),
             bougies: await bougiesYahoo(actif, intervalle),
+            erreurs
+        };
+    }
+
+    if (source === "stooq") {
+        return {
+            source: "stooq",
+            symbole: symboleStooq(actif),
+            intervalle: "1d",
+            bougies: await bougiesStooq(actif, intervalle),
             erreurs
         };
     }
