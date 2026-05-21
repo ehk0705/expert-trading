@@ -944,6 +944,52 @@
             }
         }
 
+
+        /* ============================================================
+           CHAMP SYMBOLE LU DEPUIS TRADINGVIEW
+           - Affiche le symbole utilisé par le widget TradingView.
+           - Le champ est en lecture seule : il ne remplace pas l'ACTIF du graphique.
+        ============================================================ */
+        body:not(.auth-locked) .control-symbole-tv {
+            border: 1px solid #334155 !important;
+            border-radius: 8px !important;
+            background: rgba(15, 23, 42, 0.92) !important;
+        }
+
+        body:not(.auth-locked) #symbole-tv-lu {
+            width: 155px !important;
+            min-width: 135px !important;
+            max-width: 170px !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 3px 7px !important;
+            border: 1px solid #475569 !important;
+            border-radius: 7px !important;
+            background: #020617 !important;
+            color: #38bdf8 !important;
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            line-height: 1.1 !important;
+            box-sizing: border-box !important;
+            text-transform: uppercase !important;
+        }
+
+        body:not(.auth-locked) #btn-lire-symbole-tv {
+            min-width: 28px !important;
+            width: 28px !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        @media (max-width: 900px) {
+            body:not(.auth-locked) #symbole-tv-lu {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+            }
+        }
+
 </style>
 </head>
 
@@ -968,6 +1014,24 @@
     <div class="header-pro">
         <div class="control-group control-actions-principales">
             <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché, enregistrer l’image et sauvegarder la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
+        </div>
+
+        <div class="control-group control-symbole-tv" title="Symbole actuellement connu pour le graphique TradingView. Avec le widget public tv.js, la lecture directe après changement interne dans l’iframe peut être bloquée par le navigateur.">
+            <label for="symbole-tv-lu">SYMBOLE :</label>
+            <input
+                id="symbole-tv-lu"
+                type="text"
+                value="BINANCE:BTCUSDT"
+                readonly
+                aria-readonly="true"
+                title="Symbole lu depuis l’iframe TradingView quand il est exposé, sinon dernier symbole connu du widget.">
+            <button
+                id="btn-lire-symbole-tv"
+                type="button"
+                onclick="synchroniserActifDepuisGraphiqueTradingView()"
+                title="Relire le symbole exposé par l’iframe TradingView.">
+                ↻
+            </button>
         </div>
 
         <!-- Boutons conservés en commentaire.
@@ -2026,6 +2090,21 @@
             return true;
         }
 
+        function afficherSymboleTradingViewLu(symbole, source = "") {
+            const champ = document.getElementById("symbole-tv-lu");
+            const valeur = normaliserSymboleTradingView(symbole) || normaliserSymboleTradingView(symboleTradingViewLu) || "BINANCE:BTCUSDT";
+
+            if (champ) {
+                champ.value = valeur;
+                champ.title = source
+                    ? "Symbole affiché : " + valeur + "
+Source : " + source
+                    : "Symbole affiché : " + valeur;
+            }
+
+            return valeur;
+        }
+
         function obtenirValeurChamp(id, valeurDefaut = "") {
             const champ = document.getElementById(id);
             if (!champ) return valeurDefaut;
@@ -2102,23 +2181,23 @@
                 symboleTradingViewLu ||
                 obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
 
-            const normalise = normaliserSymboleTradingView(symbole);
+            const normalise = normaliserSymboleTradingView(symbole) || "BINANCE:BTCUSDT";
+            const sourceSymbole = symboleIframe ? "iframe TradingView" : "dernier symbole connu du widget";
 
-            if (normalise) {
-                symboleTradingViewLu = normalise;
-                definirValeurChamp("capture-actif", normalise);
-                definirValeurSelect("asset-selector", normalise);
+            symboleTradingViewLu = normalise;
+            definirValeurChamp("capture-actif", normalise);
+            definirValeurSelect("asset-selector", normalise);
+            afficherSymboleTradingViewLu(normalise, sourceSymbole);
 
-                if (derniereSourceMarche) {
-                    derniereSourceMarche.symbole = normalise;
-                }
-
-                if (derniersParametresTVConfirmes) {
-                    derniersParametresTVConfirmes.actif = normalise;
-                }
+            if (derniereSourceMarche) {
+                derniereSourceMarche.symbole = normalise;
             }
 
-            return normalise || "BINANCE:BTCUSDT";
+            if (derniersParametresTVConfirmes) {
+                derniersParametresTVConfirmes.actif = normalise;
+            }
+
+            return normalise;
         }
 
         function synchroniserActifDepuisGraphiqueTradingView() {
@@ -2158,6 +2237,7 @@
         function synchroniserParametresCaptureVersChampsCaches(rechargerGraphique = false) {
             const actif = normaliserSymboleTradingView(symboleTradingViewLu || obtenirValeurChamp("capture-actif", "BINANCE:BTCUSDT")) || "BINANCE:BTCUSDT";
             symboleTradingViewLu = actif;
+            afficherSymboleTradingViewLu(actif, "paramètres du widget");
             const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", "D"));
             const indicateur = obtenirValeurChamp("capture-indicateur", "EMA").toUpperCase();
             const style = obtenirStyleGraphiqueSelectionne();
@@ -2385,6 +2465,7 @@
                 : "Technique";
 
             const actif = lireActifDepuisGraphiqueTradingView();
+            afficherSymboleTradingViewLu(actif, "symbole utilisé pour charger le graphique");
             const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
             const indicateur = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
             const style = obtenirLibelleStyleGraphiqueSelectionne();
@@ -2830,6 +2911,8 @@
                 source: "tradingview_tvjs_s3",
                 symbole: actif
             };
+            symboleTradingViewLu = actif;
+            afficherSymboleTradingViewLu(actif, "symbole appliqué au widget TradingView");
 
             setTimeout(() => {
                 window.dispatchEvent(new Event("resize"));
