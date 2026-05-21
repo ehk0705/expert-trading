@@ -206,13 +206,16 @@
 
 
         .capture-parametres-tv {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.92);
+            display: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+            overflow: hidden !important;
         }
 
         .capture-parametres-tv label {
@@ -423,66 +426,26 @@
             top: 24px !important;
         }
 
-
+    
 
         /* ============================================================
-           CORRECTION FORTE : panneau supérieur toujours visible
-           Cette règle est volontairement en fin de style pour écraser
-           les styles précédents et empêcher TradingView de recouvrir
-           le panneau après changement de paramètre.
+           CORRECTION DÉFINITIVE : paramètres TV et panneau supérieur
+           - Les paramètres personnalisés sont masqués.
+           - Le panneau supérieur reste fixe au-dessus de TradingView.
+           - Le graphique est toujours décalé sous le panneau.
         ============================================================ */
-        html:not(.auth-active) {
-            scroll-padding-top: var(--hauteur-panneau-superieur, 150px) !important;
+        :root {
+            --hauteur-panneau-superieur: 160px;
         }
 
         body:not(.auth-locked) {
-            padding-top: 0 !important;
+            padding-top: var(--hauteur-panneau-superieur) !important;
             overflow-x: hidden !important;
         }
 
-        body:not(.auth-locked) .header-pro {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 100vw !important;
-            min-height: 64px !important;
-            z-index: 2147483647 !important;
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            pointer-events: auto !important;
-            background: rgba(2, 6, 23, 0.99) !important;
-            border-bottom: 1px solid #334155 !important;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65) !important;
-            transform: none !important;
-            will-change: auto !important;
-        }
-
-        body:not(.auth-locked) #chart-container {
-            margin-top: calc(var(--hauteur-panneau-superieur, 150px) + 8px) !important;
-            position: relative !important;
-            z-index: 1 !important;
-            isolation: isolate !important;
-        }
-
-        body:not(.auth-locked) #result-panel {
-            position: relative !important;
-            z-index: 2 !important;
-        }
-
-        body:not(.auth-locked) #tradingview_chart,
-        body:not(.auth-locked) #tradingview_chart iframe {
-            position: relative !important;
-            z-index: 0 !important;
-            transform: none !important;
-        }
-
-
-        /* Correction : les paramètres ACTIF / INDICATEUR / INTERVALLE / TYPE ne sont plus visibles
-           dans le panneau supérieur. Ils restent seulement comme valeurs techniques de repli.
-           La source réelle demandée est la capture visuelle du graphique TradingView. */
-        body:not(.auth-locked) .capture-parametres-tv {
+        body:not(.auth-locked) .capture-parametres-tv,
+        body:not(.auth-locked) .controle-ancien-cache,
+        body:not(.auth-locked) #controles-techniques-masques {
             display: none !important;
             visibility: hidden !important;
             width: 0 !important;
@@ -491,12 +454,44 @@
             min-height: 0 !important;
             max-width: 0 !important;
             max-height: 0 !important;
+            overflow: hidden !important;
             padding: 0 !important;
             margin: 0 !important;
             border: 0 !important;
-            overflow: hidden !important;
-            opacity: 0 !important;
             pointer-events: none !important;
+        }
+
+        body:not(.auth-locked) .header-pro {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100vw !important;
+            z-index: 2147483647 !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            background: rgba(2, 6, 23, 0.99) !important;
+            border-bottom: 1px solid #334155 !important;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.70) !important;
+            transform: none !important;
+            will-change: auto !important;
+        }
+
+        body:not(.auth-locked) #chart-container {
+            margin-top: 0 !important;
+            position: relative !important;
+            z-index: 1 !important;
+            isolation: isolate !important;
+        }
+
+        body:not(.auth-locked) #tradingview_chart,
+        body:not(.auth-locked) #tradingview_chart iframe {
+            position: relative !important;
+            z-index: 0 !important;
         }
 
     </style>
@@ -549,6 +544,16 @@
                 <option value="inst">Inst.</option>
                 <option value="sentiment">Sentiment</option>
                 <option value="risques">Risques</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="chart-type-selector">STYLE :</label>
+            <select id="chart-type-selector" onchange="changerStyleGraphique()" title="Choisir le type de graphique à appliquer au widget TradingView et à sauvegarder dans le nom de capture.">
+                <option value="candles" selected>Bougies</option>
+                <option value="bars">Barres</option>
+                <option value="line">Ligne</option>
+                <option value="area">Aire</option>
             </select>
         </div>
 
@@ -633,13 +638,6 @@
         </div>
 
         <div id="controles-techniques-masques" class="controle-ancien-cache" aria-hidden="true">
-            <select id="chart-type-selector" onchange="changerStyleGraphique()">
-                <option value="candles" selected>Bougies</option>
-                <option value="bars">Barres</option>
-                <option value="line">Ligne</option>
-                <option value="area">Aire</option>
-            </select>
-
             <select id="indicator-selector" onchange="actualiserGraphique()">
                 <option value="EMA" selected>EMA</option>
                 <option value="RSI">RSI</option>
@@ -951,6 +949,7 @@
         let dernierScreenshotBase64 = null;
         let derniereSourceMarche = null;
         let configurationsSauvegardees = [];
+        let derniersParametresTVConfirmes = null;
 
         function getApiUrl(route) {
             return API_BASE_URL + route;
@@ -1093,57 +1092,151 @@
                 return nettoyerNomFichier(fallback);
             }
 
-            return nettoyerNomFichier(texte);
+            return nettoyerNomFichier(texte.replace(/[:\/\\]+/g, "-"));
         }
 
-        function libelleTypeGraphiquePourNom(style) {
-            const valeur = String(style || "candles").toLowerCase();
+        function normaliserTypeGraphiqueCapture(valeur) {
+            const texte = String(valeur || "").trim();
+            const min = texte.toLowerCase();
 
-            if (valeur === "candles") return "Bougies";
-            if (valeur === "bars") return "Barres";
-            if (valeur === "line") return "Ligne";
-            if (valeur === "area") return "Aire";
+            if (["1", "candle", "candles", "bougie", "bougies", "chandelle", "chandelles"].includes(min)) return "Bougies";
+            if (["0", "bar", "bars", "barre", "barres"].includes(min)) return "Barres";
+            if (["2", "line", "ligne"].includes(min)) return "Ligne";
+            if (["3", "area", "aire", "zone"].includes(min)) return "Aire";
 
-            return style || "TypeGraphique";
+            return "";
+        }
+
+        function normaliserValeurStyleSelect(valeur) {
+            const texte = String(valeur || "candles").trim().toLowerCase();
+
+            if (["0", "bar", "bars", "barre", "barres"].includes(texte)) return "bars";
+            if (["2", "line", "ligne"].includes(texte)) return "line";
+            if (["3", "area", "aire", "zone"].includes(texte)) return "area";
+
+            return "candles";
+        }
+
+        function obtenirStyleGraphiqueSelectionne() {
+            const select = document.getElementById("chart-type-selector");
+            return normaliserValeurStyleSelect(select ? select.value : "candles");
+        }
+
+        function obtenirLibelleStyleGraphiqueSelectionne() {
+            return normaliserTypeGraphiqueCapture(obtenirStyleGraphiqueSelectionne()) || "Bougies";
+        }
+
+        function valeurContientListe(valeur) {
+            return /[\/;,|]/.test(String(valeur || ""));
+        }
+
+        function demanderValeurTVValide(libelle, valeurParDefaut, valider, messageErreur) {
+            for (let tentative = 1; tentative <= 3; tentative++) {
+                const valeur = prompt(
+                    libelle + " visible dans le graphique TradingView :",
+                    valeurParDefaut || ""
+                );
+
+                if (valeur === null) {
+                    throw new Error("Capture annulée : paramètres TradingView non confirmés.");
+                }
+
+                const texte = String(valeur || "").trim();
+
+                if (valider(texte)) {
+                    return texte;
+                }
+
+                alert(messageErreur);
+            }
+
+            throw new Error("Paramètre TradingView invalide : " + libelle + ".");
+        }
+
+        function demanderParametresVisuelsTradingView() {
+            /*
+                Limite technique importante : le widget TradingView tv.js est chargé
+                dans une iframe externe. Le navigateur interdit à index.html de lire
+                directement l'actif, l'indicateur, l'intervalle et le type choisis
+                à l'intérieur du graphique. Les valeurs ci-dessous sont donc saisies
+                d'après ce qui est visible sur le graphique TradingView capturé.
+            */
+            const precedent = derniersParametresTVConfirmes || {};
+
+            const actif = demanderValeurTVValide(
+                "ACTIF",
+                precedent.actif || "BINANCE:BTCUSDT",
+                valeur => Boolean(valeur) && !valeurContientListe(valeur) && !valeur.includes("A_LIRE_SUR_CAPTURE"),
+                "Indique un seul actif visible, par exemple : BINANCE:BTCUSDT. Ne saisis pas une liste."
+            );
+
+            const indicateur = demanderValeurTVValide(
+                "INDICATEUR",
+                precedent.indicateur || "EMA",
+                valeur => Boolean(valeur) && !valeurContientListe(valeur) && !valeur.includes("A_LIRE_SUR_CAPTURE"),
+                "Indique un seul indicateur visible, par exemple : EMA, RSI ou MACD. Ne saisis pas une liste."
+            ).toUpperCase();
+
+            const typeGraphique = obtenirLibelleStyleGraphiqueSelectionne();
+
+            const intervalleSaisi = demanderValeurTVValide(
+                "INTERVALLE",
+                precedent.intervalle || "D",
+                valeur => Boolean(normaliserIntervalleCapture(valeur)) && !valeurContientListe(valeur),
+                "Indique un seul intervalle visible, par exemple : D, 1h, 4h ou 15m. Ne saisis pas une liste."
+            );
+            const intervalle = normaliserIntervalleCapture(intervalleSaisi);
+
+            derniersParametresTVConfirmes = {
+                actif,
+                indicateur,
+                typeGraphique,
+                intervalle
+            };
+
+            return derniersParametresTVConfirmes;
         }
 
         function construireNomCapture(configuration) {
-            const parametresTV = configuration.parametresTradingView || {};
+            const tv = configuration.parametresTradingView || derniersParametresTVConfirmes || {};
 
-            const actif = valeurNomCapture(
-                parametresTV.actifCapture || parametresTV.actif || configuration.actif || configuration.graphique?.actif,
-                "ACTIF-TV"
-            );
-
-            const indicateur = valeurNomCapture(
-                parametresTV.indicateurCapture || parametresTV.indicateur || configuration.indicateur || configuration.graphique?.indicateur,
-                "INDICATEUR-TV"
-            );
-
-            const typeGraphiqueBrut =
-                parametresTV.typeGraphiqueCapture ||
-                parametresTV.typeGraphique ||
-                configuration.typeGraphiqueCapture ||
-                configuration.style ||
-                configuration.graphique?.style ||
-                configuration.type_bougie;
-
-            const typeGraphique = valeurNomCapture(
-                libelleTypeGraphiquePourNom(typeGraphiqueBrut),
-                "TYPE-GRAPHIQUE-TV"
-            );
-
-            const intervalle = valeurNomCapture(
-                parametresTV.intervalleCapture || parametresTV.intervalle || configuration.intervalle || configuration.graphique?.intervalle,
-                "INTERVALLE-TV"
-            );
-
-            const typeAnalyse = valeurNomCapture(
-                configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || configuration.categorie_analyse,
-                "TYPE-ANALYSE"
-            );
+            const actif = valeurNomCapture(tv.actif || configuration.actif, "ACTIF-TV");
+            const indicateur = valeurNomCapture(tv.indicateur || configuration.indicateur, "INDICATEUR-TV");
+            const typeGraphique = valeurNomCapture(tv.typeGraphique || configuration.typeGraphiqueCapture || configuration.style, "TYPE-GRAPHIQUE-TV");
+            const intervalle = valeurNomCapture(tv.intervalle || configuration.intervalle, "INTERVALLE-TV");
+            const typeAnalyse = valeurNomCapture(configuration.categorieAnalyseLibelle || configuration.categorieAnalyse || configuration.categorie_analyse, "TYPE-ANALYSE");
 
             return actif + "-" + indicateur + "-" + typeGraphique + "-" + intervalle + "-" + typeAnalyse + "-" + genererTimestampFichier();
+        }
+
+        function appliquerParametresVisuelsTradingViewAConfiguration(configuration, parametresTV) {
+            if (!configuration || !parametresTV) return configuration;
+
+            configuration.actif = parametresTV.actif;
+            configuration.indicateur = parametresTV.indicateur;
+            configuration.intervalle = parametresTV.intervalle;
+            configuration.style = parametresTV.typeGraphique;
+            configuration.typeGraphiqueCapture = parametresTV.typeGraphique;
+
+            configuration.graphique = configuration.graphique || {};
+            configuration.graphique.actif = parametresTV.actif;
+            configuration.graphique.indicateur = parametresTV.indicateur;
+            configuration.graphique.intervalle = parametresTV.intervalle;
+            configuration.graphique.style = parametresTV.typeGraphique;
+            configuration.graphique.source = "tradingview_tvjs_s3_capture_visuelle";
+            configuration.graphique.lectureDepuisCapture = true;
+
+            configuration.parametresTradingView = {
+                source: "capture_visuelle_du_graphique",
+                lectureDepuisCapture: true,
+                confirmesApresCapture: true,
+                actif: parametresTV.actif,
+                indicateur: parametresTV.indicateur,
+                intervalle: parametresTV.intervalle,
+                typeGraphique: parametresTV.typeGraphique
+            };
+
+            return configuration;
         }
 
         function creerPayloadCapturePostgres(configuration) {
@@ -1420,7 +1513,7 @@
             const actif = obtenirValeurChamp("capture-actif", "BINANCE:BTCUSDT");
             const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", "D"));
             const indicateur = obtenirValeurChamp("capture-indicateur", "EMA").toUpperCase();
-            const style = obtenirValeurChamp("capture-style", "candles");
+            const style = obtenirStyleGraphiqueSelectionne();
 
             definirValeurSelect("asset-selector", actif);
             definirValeurSelect("interval-selector", intervalle);
@@ -1443,7 +1536,7 @@
             if (actifCache) definirValeurChamp("capture-actif", actifCache.value || "BINANCE:BTCUSDT");
             if (intervalleCache) definirValeurChamp("capture-intervalle", normaliserIntervalleCapture(intervalleCache.value || "D"));
             if (indicateurCache) definirValeurChamp("capture-indicateur", indicateurCache.value || "EMA");
-            if (styleCache) definirValeurChamp("capture-style", styleCache.value || "candles");
+            if (styleCache) definirValeurChamp("capture-style", normaliserValeurStyleSelect(styleCache.value || "candles"));
         }
 
         function appliquerParametresCaptureTradingView(rechargerGraphique = true) {
@@ -1525,12 +1618,13 @@
             definirValeurChamp("capture-actif", actif || "BINANCE:BTCUSDT");
             definirValeurChamp("capture-intervalle", intervalleNormalise);
             definirValeurChamp("capture-indicateur", indicateur || "EMA");
-            definirValeurChamp("capture-style", style || "candles");
+            const styleSelect = normaliserValeurStyleSelect(style || "candles");
+            definirValeurChamp("capture-style", styleSelect);
 
             definirValeurSelect("asset-selector", actif);
             const intervalleOk = definirValeurSelect("interval-selector", intervalleNormalise);
             definirValeurSelect("indicator-selector", indicateur);
-            definirValeurSelect("chart-type-selector", style);
+            definirValeurSelect("chart-type-selector", styleSelect);
             definirValeurSelect("categorie-analyse-btc", categorie);
 
             if (!intervalleOk) {
@@ -1576,12 +1670,13 @@
                 definirValeurChamp("capture-actif", actif || "BINANCE:BTCUSDT");
                 definirValeurChamp("capture-intervalle", intervalleNormalise);
                 definirValeurChamp("capture-indicateur", indicateur || "EMA");
-                definirValeurChamp("capture-style", style || "candles");
+                const styleSelect = normaliserValeurStyleSelect(style || "candles");
+                definirValeurChamp("capture-style", styleSelect);
 
                 definirValeurSelect("asset-selector", actif);
                 const intervalleOk = definirValeurSelect("interval-selector", intervalleNormalise);
                 definirValeurSelect("indicator-selector", indicateur);
-                definirValeurSelect("chart-type-selector", style);
+                definirValeurSelect("chart-type-selector", styleSelect);
                 definirValeurSelect("categorie-analyse-btc", categorie);
 
                 if (!intervalleOk) {
@@ -1617,38 +1712,25 @@
 
         function obtenirConfiguration() {
             const cat = document.getElementById("categorie-analyse-btc");
-            const catText = cat.options[cat.selectedIndex].text;
+            const catText = cat && cat.options && cat.options[cat.selectedIndex]
+                ? cat.options[cat.selectedIndex].text
+                : "Technique";
 
-            synchroniserParametresCaptureVersChampsCaches(false);
-
-            const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
-            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
-            const indicateur = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
-            const style = obtenirValeurChamp("capture-style", document.getElementById("chart-type-selector")?.value || "candles");
+            const tv = derniersParametresTVConfirmes || {};
+            const actif = tv.actif || obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
+            const intervalle = tv.intervalle || normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
+            const indicateur = tv.indicateur || obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
+            const style = obtenirLibelleStyleGraphiqueSelectionne();
 
             return {
                 nom: "Expert Trading Pro v2.0",
                 actif: actif,
                 intervalle: intervalle,
                 indicateur: indicateur,
-                categorieAnalyse: document.getElementById("categorie-analyse-btc").value,
+                categorieAnalyse: document.getElementById("categorie-analyse-btc")?.value || "technique",
                 categorieAnalyseLibelle: catText,
                 style: style,
-                /*
-                    Les champs ci-dessus restent des valeurs techniques de repli
-                    pour le serveur et pour éviter les erreurs de sources de marché.
-                    Les vrais paramètres choisis dans TradingView doivent être lus
-                    visuellement dans la capture, car tv.js est dans une iframe externe.
-                */
-                parametresTradingView: {
-                    source: "capture_visuelle_du_graphique",
-                    lectureDepuisCapture: true,
-                    actif: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
-                    intervalle: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
-                    indicateur: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
-                    typeGraphique: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
-                    typeAnalyse: catText
-                },
+                typeGraphiqueCapture: style,
                 graphique: {
                     actif: actif,
                     intervalle: intervalle,
@@ -1656,6 +1738,14 @@
                     style: style,
                     source: "tradingview_tvjs_s3_capture_visuelle",
                     lectureDepuisCapture: true
+                },
+                parametresTradingView: {
+                    source: "capture_visuelle_du_graphique",
+                    lectureDepuisCapture: true,
+                    actif: actif,
+                    indicateur: indicateur,
+                    intervalle: intervalle,
+                    typeGraphique: style
                 },
                 marcheLocal: {
                     derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
@@ -1674,7 +1764,6 @@
                 dateConfiguration: new Date().toISOString()
             };
         }
-
 
         function libelleOptionSelectionnee(id) {
             const select = document.getElementById(id);
@@ -1977,7 +2066,7 @@
 
             const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
             const intervalle = convertirIntervallePourTradingView(normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D")));
-            const style = convertirStylePourTradingView(obtenirValeurChamp("capture-style", document.getElementById("chart-type-selector")?.value || "candles"));
+            const style = convertirStylePourTradingView(obtenirStyleGraphiqueSelectionne());
 
             conteneur.innerHTML = "";
             chart = null;
@@ -2009,6 +2098,7 @@
             afficherMessageGraphique("", "ok");
             afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
             afficherInfosGraphique();
+            corrigerPanneauPlusieursFois();
         }
 
         function creerGraphiqueLightweight() {
@@ -2020,11 +2110,20 @@
         }
 
         function changerStyleGraphique(rechargerDonnees = true) {
+            const style = obtenirStyleGraphiqueSelectionne();
+            definirValeurChamp("capture-style", style);
+
+            if (derniersParametresTVConfirmes) {
+                derniersParametresTVConfirmes.typeGraphique = obtenirLibelleStyleGraphiqueSelectionne();
+            }
+
             afficherInfosGraphique();
 
             if (rechargerDonnees) {
                 actualiserGraphique();
             }
+
+            corrigerPanneauPlusieursFois();
         }
 
         async function chargerDonneesBinance(actif, intervalle) {
@@ -2073,6 +2172,7 @@
                 afficherMessageGraphique("", "ok");
                 afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
                 afficherInfosGraphique();
+                corrigerPanneauPlusieursFois();
 
             } catch (erreur) {
                 console.error("Erreur graphique TradingView tv.js :", erreur);
@@ -2185,81 +2285,6 @@
             }
         }
 
-        function demanderParametreCaptureDepuisGraphique(libelle, exemple) {
-            const valeur = prompt(
-                libelle + " visible dans le graphique TradingView :",
-                exemple || ""
-            );
-
-            if (valeur === null) {
-                throw new Error("Capture annulée : paramètres TradingView non confirmés.");
-            }
-
-            return String(valeur || "").trim();
-        }
-
-        function normaliserTypeGraphiqueCapture(valeur) {
-            const texte = String(valeur || "").trim();
-            const min = texte.toLowerCase();
-
-            if (["candle", "candles", "bougie", "bougies", "chandelles"].includes(min)) return "Bougies";
-            if (["bar", "bars", "barre", "barres"].includes(min)) return "Barres";
-            if (["line", "ligne"].includes(min)) return "Ligne";
-            if (["area", "aire", "zone"].includes(min)) return "Aire";
-
-            return texte || "TYPE-GRAPHIQUE-TV";
-        }
-
-        function demanderParametresVisuelsTradingView() {
-            /*
-                TradingView tv.js est dans une iframe externe.
-                Le navigateur ne permet pas de lire directement l'actif, l'indicateur,
-                l'intervalle ni le type de graphique choisis dans l'outil TradingView.
-                Après la capture, on demande donc à l'utilisateur de confirmer les valeurs
-                visibles dans le graphique, afin de construire un nom propre et exploitable.
-            */
-            const actif = demanderParametreCaptureDepuisGraphique("ACTIF", "BINANCE:BTCUSDT");
-            const indicateur = demanderParametreCaptureDepuisGraphique("INDICATEUR", "EMA");
-            const typeGraphique = demanderParametreCaptureDepuisGraphique("TYPE DE GRAPHIQUE", "Bougies / Ligne / Barres / Aire");
-            const intervalle = demanderParametreCaptureDepuisGraphique("INTERVALLE", "D / 1h / 4h / 15m");
-
-            return {
-                actif: actif || "BINANCE:BTCUSDT",
-                indicateur: (indicateur || "EMA").toUpperCase(),
-                typeGraphique: normaliserTypeGraphiqueCapture(typeGraphique),
-                intervalle: normaliserIntervalleCapture(intervalle || "D")
-            };
-        }
-
-        function appliquerParametresVisuelsTradingViewAConfiguration(configuration, parametresVisuels) {
-            if (!configuration || !parametresVisuels) return configuration;
-
-            configuration.actif = parametresVisuels.actif;
-            configuration.indicateur = parametresVisuels.indicateur;
-            configuration.intervalle = parametresVisuels.intervalle;
-            configuration.style = parametresVisuels.typeGraphique;
-            configuration.typeGraphiqueCapture = parametresVisuels.typeGraphique;
-
-            configuration.graphique = configuration.graphique || {};
-            configuration.graphique.actif = parametresVisuels.actif;
-            configuration.graphique.indicateur = parametresVisuels.indicateur;
-            configuration.graphique.intervalle = parametresVisuels.intervalle;
-            configuration.graphique.style = parametresVisuels.typeGraphique;
-            configuration.graphique.source = "tradingview_tvjs_s3_capture_visuelle";
-            configuration.graphique.lectureDepuisCapture = true;
-
-            configuration.parametresTradingView = configuration.parametresTradingView || {};
-            configuration.parametresTradingView.source = "capture_visuelle_du_graphique";
-            configuration.parametresTradingView.lectureDepuisCapture = true;
-            configuration.parametresTradingView.confirmesApresCapture = true;
-            configuration.parametresTradingView.actifCapture = parametresVisuels.actif;
-            configuration.parametresTradingView.indicateurCapture = parametresVisuels.indicateur;
-            configuration.parametresTradingView.intervalleCapture = parametresVisuels.intervalle;
-            configuration.parametresTradingView.typeGraphiqueCapture = parametresVisuels.typeGraphique;
-
-            return configuration;
-        }
-
         async function obtenirImagePourAnalyse() {
             const input = document.getElementById("screenshot-file");
 
@@ -2275,6 +2300,7 @@
         async function takeScreenshot() {
             try {
                 afficherStatus("Capture du graphique en cours...");
+                corrigerPanneauSuperieurDefinitif();
 
                 const inputCapture = document.getElementById("screenshot-file");
 
@@ -2284,9 +2310,8 @@
                     dernierScreenshotBase64 = await capturerCanvasEnBase64();
                 }
 
-                const configuration = obtenirConfiguration();
-                const parametresVisuelsTradingView = demanderParametresVisuelsTradingView();
-                appliquerParametresVisuelsTradingViewAConfiguration(configuration, parametresVisuelsTradingView);
+                const parametresTV = demanderParametresVisuelsTradingView();
+                const configuration = appliquerParametresVisuelsTradingViewAConfiguration(obtenirConfiguration(), parametresTV);
 
                 configuration.snapshot = configuration.snapshot || {};
                 configuration.snapshot.screenshotBase64 = dernierScreenshotBase64 || null;
@@ -2297,14 +2322,19 @@
                 afficherResultat(resultatSauvegarde);
                 afficherStatus("Configuration et image enregistrées dans la base PostgreSQL.");
                 await chargerListeConfigurationsSauvegardees();
+                corrigerPanneauSuperieurDefinitif();
 
                 const idCapture = resultatSauvegarde?.reponseServeur?.capture?.id || "non retourné";
                 const nomCapture = resultatSauvegarde?.reponseServeur?.capture?.nom_capture || resultatSauvegarde?.payloadEnvoye?.nom_capture || "capture";
 
                 alert(
-                    "Capture réussie.\n\n" +
-                    "Image et configuration JSON sauvegardées dans PostgreSQL.\n" +
-                    "Nom : " + nomCapture + "\n" +
+                    "Capture réussie.
+
+" +
+                    "Image et configuration JSON sauvegardées dans PostgreSQL.
+" +
+                    "Nom : " + nomCapture + "
+" +
                     "ID : " + idCapture
                 );
 
@@ -2313,7 +2343,10 @@
             } catch (err) {
                 console.error("Erreur capture :", err);
                 afficherStatus("Erreur capture : " + err.message);
-                alert("Erreur capture.\n\n" + err.message);
+                alert("Erreur capture.
+
+" + err.message);
+                corrigerPanneauSuperieurDefinitif();
                 return null;
             }
         }
@@ -2437,7 +2470,76 @@
             return lignes.join("\n");
         }
 
-        window.onload = demarrerApplication;
+
+
+        function corrigerPanneauSuperieurDefinitif() {
+            if (document.body.classList.contains("auth-locked")) return;
+
+            const panneau = document.querySelector(".header-pro");
+            const graphique = document.getElementById("chart-container");
+            const tv = document.getElementById("tradingview_chart");
+
+            if (!panneau || !graphique) return;
+
+            panneau.style.setProperty("position", "fixed", "important");
+            panneau.style.setProperty("top", "0", "important");
+            panneau.style.setProperty("left", "0", "important");
+            panneau.style.setProperty("right", "0", "important");
+            panneau.style.setProperty("width", "100vw", "important");
+            panneau.style.setProperty("z-index", "2147483647", "important");
+            panneau.style.setProperty("display", "flex", "important");
+            panneau.style.setProperty("flex-wrap", "wrap", "important");
+            panneau.style.setProperty("visibility", "visible", "important");
+            panneau.style.setProperty("opacity", "1", "important");
+            panneau.style.setProperty("pointer-events", "auto", "important");
+            panneau.style.setProperty("background", "rgba(2, 6, 23, 0.99)", "important");
+            panneau.style.setProperty("transform", "none", "important");
+
+            const hauteur = Math.max(80, Math.ceil(panneau.getBoundingClientRect().height || panneau.offsetHeight || 160));
+            document.documentElement.style.setProperty("--hauteur-panneau-superieur", hauteur + "px");
+            document.body.style.setProperty("padding-top", hauteur + "px", "important");
+
+            graphique.style.setProperty("margin-top", "0", "important");
+            graphique.style.setProperty("position", "relative", "important");
+            graphique.style.setProperty("z-index", "1", "important");
+            graphique.style.setProperty("isolation", "isolate", "important");
+
+            if (tv) {
+                tv.style.setProperty("position", "relative", "important");
+                tv.style.setProperty("z-index", "0", "important");
+                tv.querySelectorAll("iframe").forEach(function (iframe) {
+                    iframe.style.setProperty("position", "relative", "important");
+                    iframe.style.setProperty("z-index", "0", "important");
+                });
+            }
+        }
+
+        function corrigerPanneauPlusieursFois() {
+            corrigerPanneauSuperieurDefinitif();
+            requestAnimationFrame(corrigerPanneauSuperieurDefinitif);
+            setTimeout(corrigerPanneauSuperieurDefinitif, 100);
+            setTimeout(corrigerPanneauSuperieurDefinitif, 400);
+            setTimeout(corrigerPanneauSuperieurDefinitif, 900);
+        }
+
+        function installerSurveillancePanneauSuperieur() {
+            corrigerPanneauPlusieursFois();
+            window.addEventListener("resize", corrigerPanneauPlusieursFois);
+            document.addEventListener("click", corrigerPanneauPlusieursFois, true);
+            document.addEventListener("change", corrigerPanneauPlusieursFois, true);
+            document.addEventListener("input", corrigerPanneauPlusieursFois, true);
+
+            const observateur = new MutationObserver(corrigerPanneauPlusieursFois);
+            observateur.observe(document.body, { childList: true, subtree: true, attributes: true });
+
+            setInterval(corrigerPanneauSuperieurDefinitif, 350);
+        }
+
+
+        window.addEventListener("load", function () {
+            demarrerApplication();
+            installerSurveillancePanneauSuperieur();
+        });
 
         window.onresize = () => {
             /*
@@ -2497,86 +2599,5 @@
     }
 }
 </script>
-
-
-    <script>
-        /* ============================================================
-           Surveillance permanente du panneau supérieur
-           Objectif : empêcher le widget TradingView de remonter ou
-           de recouvrir le panneau après un changement de paramètre.
-        ============================================================ */
-        (function () {
-            function panneauActif() {
-                return !document.body.classList.contains("auth-locked");
-            }
-
-            function corrigerPanneauSuperieur() {
-                if (!panneauActif()) return;
-
-                const panneau = document.querySelector(".header-pro");
-                const graphique = document.getElementById("chart-container");
-                const tv = document.getElementById("tradingview_chart");
-
-                if (!panneau || !graphique) return;
-
-                panneau.style.setProperty("position", "fixed", "important");
-                panneau.style.setProperty("top", "0", "important");
-                panneau.style.setProperty("left", "0", "important");
-                panneau.style.setProperty("right", "0", "important");
-                panneau.style.setProperty("width", "100vw", "important");
-                panneau.style.setProperty("z-index", "2147483647", "important");
-                panneau.style.setProperty("display", "flex", "important");
-                panneau.style.setProperty("visibility", "visible", "important");
-                panneau.style.setProperty("opacity", "1", "important");
-                panneau.style.setProperty("pointer-events", "auto", "important");
-                panneau.style.setProperty("background", "rgba(2, 6, 23, 0.99)", "important");
-                panneau.style.setProperty("transform", "none", "important");
-
-                const hauteur = Math.max(80, Math.ceil(panneau.getBoundingClientRect().height || panneau.offsetHeight || 150));
-                document.documentElement.style.setProperty("--hauteur-panneau-superieur", hauteur + "px");
-
-                graphique.style.setProperty("margin-top", (hauteur + 8) + "px", "important");
-                graphique.style.setProperty("position", "relative", "important");
-                graphique.style.setProperty("z-index", "1", "important");
-                graphique.style.setProperty("isolation", "isolate", "important");
-
-                if (tv) {
-                    tv.style.setProperty("position", "relative", "important");
-                    tv.style.setProperty("z-index", "0", "important");
-
-                    tv.querySelectorAll("iframe").forEach(function (iframe) {
-                        iframe.style.setProperty("position", "relative", "important");
-                        iframe.style.setProperty("z-index", "0", "important");
-                    });
-                }
-            }
-
-            function corrigerPlusieursFois() {
-                corrigerPanneauSuperieur();
-                requestAnimationFrame(corrigerPanneauSuperieur);
-                setTimeout(corrigerPanneauSuperieur, 100);
-                setTimeout(corrigerPanneauSuperieur, 400);
-                setTimeout(corrigerPanneauSuperieur, 900);
-            }
-
-            window.corrigerPanneauSuperieur = corrigerPlusieursFois;
-
-            window.addEventListener("load", corrigerPlusieursFois);
-            window.addEventListener("resize", corrigerPlusieursFois);
-            document.addEventListener("change", corrigerPlusieursFois, true);
-            document.addEventListener("click", corrigerPlusieursFois, true);
-
-            const observateur = new MutationObserver(corrigerPlusieursFois);
-            observateur.observe(document.documentElement, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ["class", "style"]
-            });
-
-            setInterval(corrigerPanneauSuperieur, 1000);
-        })();
-    </script>
-
 </body>
 </html>
