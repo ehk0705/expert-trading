@@ -1244,6 +1244,185 @@
             return "1h";
         }
 
+
+        function valeurParametreMarcheValide(valeur) {
+            if (valeur === undefined || valeur === null) return false;
+
+            const texte = String(valeur).trim();
+            if (!texte) return false;
+            if (texte === "N/A") return false;
+            if (texte.includes("A_LIRE_SUR_CAPTURE")) return false;
+            if (texte.includes("LIRE_SUR_CAPTURE")) return false;
+            if (texte.includes("TRADINGVIEW")) return false;
+
+            return true;
+        }
+
+        function nettoyerTexteParametre(valeur) {
+            return String(valeur || "")
+                .trim()
+                .replace(/\s+/g, " ");
+        }
+
+        function extraireActifMarcheDepuisTexte(valeur) {
+            const texteOriginal = nettoyerTexteParametre(valeur);
+            const texte = texteOriginal.toUpperCase();
+
+            if (!valeurParametreMarcheValide(texte)) return "";
+
+            if (/^[A-Z0-9._-]+:[A-Z0-9._-]+$/.test(texte)) return texte;
+
+            if (texte.includes("BTC")) return "BINANCE:BTCUSDT";
+            if (texte.includes("ETH")) return "BINANCE:ETHUSDT";
+            if (texte.includes("SOL")) return "BINANCE:SOLUSDT";
+            if (texte.includes("BNB")) return "BINANCE:BNBUSDT";
+            if (texte.includes("XRP")) return "BINANCE:XRPUSDT";
+            if (texte.includes("AAPL")) return "NASDAQ:AAPL";
+            if (texte.includes("TSLA")) return "NASDAQ:TSLA";
+            if (texte.includes("NVDA")) return "NASDAQ:NVDA";
+            if (texte.includes("MSFT")) return "NASDAQ:MSFT";
+            if (texte.includes("AMZN")) return "NASDAQ:AMZN";
+            if (texte.includes("GOOGL") || texte.includes("GOOGLE")) return "NASDAQ:GOOGL";
+            if (texte.includes("XAU") || texte.includes("GOLD") || texte.includes("OR")) return "OANDA:XAUUSD";
+            if (texte.includes("DXY")) return "TVC:DXY";
+            if (texte.includes("SPX") || texte.includes("S&P")) return "SP:SPX";
+
+            return texteOriginal;
+        }
+
+        function normaliserIntervalleMarche(valeur) {
+            const texteOriginal = nettoyerTexteParametre(valeur);
+            if (!valeurParametreMarcheValide(texteOriginal)) return "";
+
+            const texte = texteOriginal.toLowerCase();
+
+            const correspondances = {
+                "1": "1m",
+                "1m": "1m",
+                "5": "5m",
+                "5m": "5m",
+                "15": "15m",
+                "15m": "15m",
+                "30": "30m",
+                "30m": "30m",
+                "60": "1h",
+                "60m": "1h",
+                "1h": "1h",
+                "240": "4h",
+                "240m": "4h",
+                "4h": "4h",
+                "d": "1d",
+                "1d": "1d",
+                "day": "1d",
+                "daily": "1d",
+                "jour": "1d",
+                "1j": "1d",
+                "w": "1w",
+                "1w": "1w",
+                "week": "1w",
+                "semaine": "1w",
+                "1s": "1w",
+                "m": "1M",
+                "1mth": "1M",
+                "1mo": "1M",
+                "month": "1M",
+                "mois": "1M"
+            };
+
+            return correspondances[texte] || texteOriginal;
+        }
+
+        function extrairePremierParametreValide(liste, transformateur) {
+            for (const valeur of liste) {
+                const resultat = transformateur ? transformateur(valeur) : valeur;
+                if (valeurParametreMarcheValide(resultat)) return resultat;
+            }
+
+            return "";
+        }
+
+        function corrigerParametresAnalyseAvantEnvoi(configuration, contexte = {}) {
+            const copie = JSON.parse(JSON.stringify(configuration || {}));
+            const capture = contexte.capture || currentCapture || null;
+            const brute = capture ? (capture.brute || {}) : {};
+            const cfgCapture = capture ? (capture.configuration || {}) : {};
+            const graphique = copie.graphique || cfgCapture.graphique || {};
+            const nom = contexte.fileName || (capture ? capture.nom : currentFileName) || "";
+
+            const actifMarche = extrairePremierParametreValide([
+                contexte.actif,
+                copie.actif,
+                copie.actif_reel,
+                copie.actifFallback,
+                copie.actif_fallback,
+                copie.symbole_marche,
+                graphique.actif,
+                graphique.actif_reel,
+                graphique.symbol,
+                cfgCapture.actif,
+                cfgCapture.actif_reel,
+                cfgCapture.symbole_marche,
+                brute.actif,
+                brute.actif_libelle,
+                brute.symbole_marche,
+                nom
+            ], extraireActifMarcheDepuisTexte) || "BINANCE:BTCUSDT";
+
+            const intervalleMarche = extrairePremierParametreValide([
+                contexte.intervalle,
+                copie.intervalle,
+                copie.intervalle_reel,
+                copie.intervalleFallback,
+                copie.intervalle_fallback,
+                graphique.intervalle,
+                graphique.intervalle_reel,
+                cfgCapture.intervalle,
+                cfgCapture.intervalle_reel,
+                brute.intervalle,
+                brute.intervalle_libelle,
+                nom
+            ], normaliserIntervalleMarche) || "1d";
+
+            const indicateur = extrairePremierParametreValide([
+                contexte.indicateur,
+                copie.indicateur,
+                copie.indicateur_reel,
+                copie.indicateurFallback,
+                copie.indicateur_fallback,
+                graphique.indicateur,
+                graphique.indicateur_reel,
+                cfgCapture.indicateur,
+                cfgCapture.indicateur_reel,
+                brute.indicateur,
+                brute.indicateur_libelle
+            ], valeur => nettoyerTexteParametre(valeur).toUpperCase()) || "EMA";
+
+            copie.actif = actifMarche;
+            copie.intervalle = intervalleMarche;
+            copie.indicateur = indicateur;
+            copie.parametres_visuels_tradingview = true;
+            copie.parametres_lus_depuis_capture = true;
+            copie.note_parametres =
+                "Les paramètres exacts du graphique TradingView doivent être lus visuellement dans la capture. " +
+                "Les champs actif, intervalle et indicateur envoyés au serveur servent de valeurs exploitables pour les sources de marché.";
+
+            copie.parametres_originaux = {
+                actif: contexte.actif || configuration?.actif || capture?.actif || null,
+                intervalle: contexte.intervalle || configuration?.intervalle || capture?.intervalle || null,
+                indicateur: contexte.indicateur || configuration?.indicateur || capture?.indicateur || null
+            };
+
+            copie.graphique = {
+                ...(copie.graphique || {}),
+                actif: actifMarche,
+                intervalle: intervalleMarche,
+                indicateur: indicateur,
+                source_parametres: "capture_visuelle_tradingview"
+            };
+
+            return copie;
+        }
+
         function adapterAnalyseProPourAffichage(analyse) {
             const decision = String(analyse.decision || analyse.signal || "ATTENDRE").toUpperCase();
             let confidence = Number(analyse.confidence ?? analyse.confiance ?? 0);
@@ -1297,8 +1476,39 @@
             setLoadingState(true, "ANALYSE VISION + MARCHÉ...");
 
             try {
-                const actif = getActifDepuisMetaOuNomFichierPro(currentFileName);
-                const intervalle = getIntervalleDepuisMetaOuNomFichierPro(currentFileName);
+                const actifInitial = getActifDepuisMetaOuNomFichierPro(currentFileName);
+                const intervalleInitial = getIntervalleDepuisMetaOuNomFichierPro(currentFileName);
+
+                const configurationInitiale = currentCapture
+                    ? {
+                        origine: "analyse.html",
+                        source: "api_captures",
+                        captureId: currentCapture.id,
+                        capture: currentCapture.brute,
+                        configurationCapture: currentCapture.configuration,
+                        ...(currentCapture.configuration || {}),
+                        notes: userNotes ? userNotes.value : ""
+                    }
+                    : {
+                        origine: "analyse.html",
+                        fileName: currentFileName,
+                        route: "/api/analyze-vision-pro",
+                        notes: userNotes ? userNotes.value : ""
+                    };
+
+                const configurationCorrigee = corrigerParametresAnalyseAvantEnvoi(
+                    configurationInitiale,
+                    {
+                        actif: actifInitial,
+                        intervalle: intervalleInitial,
+                        capture: currentCapture,
+                        fileName: currentFileName
+                    }
+                );
+
+                const actif = configurationCorrigee.actif;
+                const intervalle = configurationCorrigee.intervalle;
+                const indicateur = configurationCorrigee.indicateur;
 
                 const payload = currentCapture
                     ? {
@@ -1306,26 +1516,16 @@
                         fileName: currentCapture.nom,
                         actif: actif,
                         intervalle: intervalle,
+                        indicateur: indicateur,
                         imageBase64: currentCapture.screenshot || null,
-                        configuration: {
-                            origine: "analyse.html",
-                            source: "api_captures",
-                            captureId: currentCapture.id,
-                            capture: currentCapture.brute,
-                            configurationCapture: currentCapture.configuration,
-                            notes: userNotes ? userNotes.value : ""
-                        }
+                        configuration: configurationCorrigee
                     }
                     : {
                         fileName: currentFileName,
                         actif: actif,
                         intervalle: intervalle,
-                        configuration: {
-                            origine: "analyse.html",
-                            fileName: currentFileName,
-                            route: "/api/analyze-vision-pro",
-                            notes: userNotes ? userNotes.value : ""
-                        }
+                        indicateur: indicateur,
+                        configuration: configurationCorrigee
                     };
 
                 const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
