@@ -203,67 +203,6 @@
 
 
 
-
-
-        .capture-parametres-tv {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.92);
-        }
-
-        .capture-parametres-tv label {
-            color: #facc15;
-            font-size: 12px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .capture-parametres-tv input,
-        .capture-parametres-tv select {
-            min-height: 34px;
-            border-radius: 8px;
-            border: 1px solid #475569;
-            background: #020617;
-            color: #ffffff;
-            padding: 6px 8px;
-            font-size: 12px;
-        }
-
-        .capture-parametres-tv input {
-            min-width: 150px;
-        }
-
-        .capture-parametres-tv button {
-            white-space: nowrap;
-        }
-
-        .controle-ancien-cache {
-            display: none !important;
-            visibility: hidden !important;
-            width: 0 !important;
-            height: 0 !important;
-            overflow: hidden !important;
-        }
-
-        @media (max-width: 900px) {
-            .capture-parametres-tv {
-                width: 100%;
-                flex-wrap: wrap;
-                align-items: stretch;
-            }
-
-            .capture-parametres-tv input,
-            .capture-parametres-tv select,
-            .capture-parametres-tv button {
-                width: 100%;
-                min-width: 0;
-            }
-        }
-
         body.auth-locked .header-pro,
         body.auth-locked #chart-container,
         body.auth-locked #result-panel {
@@ -423,6 +362,80 @@
             top: 24px !important;
         }
 
+
+        /* ============================================================
+           Correction : entête figé
+           Les boutons et le titre restent visibles quand le graphique se recharge
+           ou quand une action déplace le contenu de la page.
+        ============================================================ */
+        html {
+            scroll-padding-top: 170px;
+        }
+
+        body:not(.auth-locked) {
+            overflow-x: hidden;
+        }
+
+        body:not(.auth-locked) .header-pro {
+            position: sticky !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 99999 !important;
+            background: linear-gradient(135deg, rgba(2, 6, 23, 0.98), rgba(15, 23, 42, 0.98)) !important;
+            border-bottom: 1px solid #334155 !important;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        body:not(.auth-locked) .header-pro h1 {
+            position: relative;
+            z-index: 100000;
+            margin-top: 4px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+
+        body:not(.auth-locked) .header-pro .control-group,
+        body:not(.auth-locked) .header-pro button,
+        body:not(.auth-locked) .header-pro select,
+        body:not(.auth-locked) .header-pro a {
+            position: relative;
+            z-index: 100001;
+        }
+
+        body:not(.auth-locked) #chart-container {
+            scroll-margin-top: 170px;
+            position: relative;
+            z-index: 1;
+        }
+
+        body:not(.auth-locked) #tradingview_chart {
+            position: relative;
+            z-index: 1;
+        }
+
+        body:not(.auth-locked) #tradingview_chart iframe {
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (max-width: 900px) {
+            html {
+                scroll-padding-top: 260px;
+            }
+
+            body:not(.auth-locked) .header-pro {
+                max-height: 48vh;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+            }
+
+            body:not(.auth-locked) #chart-container {
+                scroll-margin-top: 260px;
+            }
+        }
+
     </style>
 </head>
 
@@ -494,7 +507,7 @@
             </button>
         </div>
 
-        <div class="control-group controle-ancien-cache">
+        <div class="control-group">
             <label for="asset-selector">ACTIF :</label>
             <select id="asset-selector" onchange="actualiserGraphique()" title="Choisir l’actif à afficher et à analyser.">
                 <option value="BINANCE:BTCUSDT">BTC/USDT</option>
@@ -512,79 +525,6 @@
                 <option value="NASDAQ:GOOGL">GOOGL</option>
                 <option value="SP:SPX">S&P 500</option>
                 <option value="TVC:DXY">DXY</option>
-            </select>
-        </div>
-
-        <div class="control-group capture-parametres-tv" title="Paramètres utilisés pour la capture et la configuration. TradingView ne permet pas toujours de lire automatiquement ces valeurs depuis son iframe.">
-            <label for="capture-actif">ACTIF TV :</label>
-            <input
-                id="capture-actif"
-                type="text"
-                value="BINANCE:BTCUSDT"
-                placeholder="Exemple : BINANCE:BTCUSDT"
-                onchange="appliquerParametresCaptureTradingView()"
-                title="Actif affiché dans TradingView et sauvegardé dans la capture.">
-
-            <label for="capture-intervalle">INTERVALLE :</label>
-            <select id="capture-intervalle" onchange="appliquerParametresCaptureTradingView()" title="Intervalle sauvegardé dans la configuration et appliqué au widget TradingView.">
-                <option value="1">1m</option>
-                <option value="5">5m</option>
-                <option value="15">15m</option>
-                <option value="30">30m</option>
-                <option value="60">1h</option>
-                <option value="240">4h</option>
-                <option value="D" selected>1J</option>
-                <option value="W">1S</option>
-                <option value="M">1M</option>
-            </select>
-
-            <label for="capture-indicateur">INDICATEUR :</label>
-            <input
-                id="capture-indicateur"
-                type="text"
-                value="EMA"
-                placeholder="EMA, RSI, MACD..."
-                onchange="appliquerParametresCaptureTradingView(false)"
-                title="Indicateur à inscrire dans la configuration de capture.">
-
-            <label for="capture-style">TYPE :</label>
-            <select id="capture-style" onchange="appliquerParametresCaptureTradingView()" title="Type de graphique à appliquer au widget TradingView et à sauvegarder.">
-                <option value="candles" selected>Bougies</option>
-                <option value="bars">Barres</option>
-                <option value="line">Ligne</option>
-                <option value="area">Aire</option>
-            </select>
-        </div>
-
-        <div id="controles-techniques-masques" class="controle-ancien-cache" aria-hidden="true">
-            <select id="chart-type-selector" onchange="changerStyleGraphique()">
-                <option value="candles" selected>Bougies</option>
-                <option value="bars">Barres</option>
-                <option value="line">Ligne</option>
-                <option value="area">Aire</option>
-            </select>
-
-            <select id="indicator-selector" onchange="actualiserGraphique()">
-                <option value="EMA" selected>EMA</option>
-                <option value="RSI">RSI</option>
-                <option value="MACD">MACD</option>
-                <option value="SUPERTREND">SUPERTREND</option>
-                <option value="BOLLINGER">BOLLINGER</option>
-                <option value="ATR">ATR</option>
-                <option value="VOLUME">VOLUME</option>
-                <option value="LIQUIDITY">LIQUIDITY</option>
-            </select>
-
-            <select id="interval-selector" onchange="actualiserGraphique()">
-                <option value="1">1m</option>
-                <option value="5">5m</option>
-                <option value="15">15m</option>
-                <option value="30">30m</option>
-                <option value="60">1h</option>
-                <option value="240">4h</option>
-                <option value="D" selected>1J</option>
-                <option value="W">1S</option>
-                <option value="M">1M</option>
             </select>
         </div>
 <!--
@@ -627,6 +567,41 @@
             </select>
         </div>
 -->
+        <!-- Contrôles techniques masqués :
+             ils restent présents dans le DOM pour permettre le chargement des anciennes configurations JSON.
+             Ne pas les supprimer, sinon les fonctions JavaScript ne trouvent plus interval-selector, indicator-selector ou chart-type-selector. -->
+        <div id="controles-techniques-masques" style="display:none !important;">
+            <select id="chart-type-selector" onchange="changerStyleGraphique()" title="Choisir le style visuel du graphique : bougies, barres, ligne ou aire.">
+                <option value="candles" selected>Bougies</option>
+                <option value="bars">Barres</option>
+                <option value="line">Ligne</option>
+                <option value="area">Aire</option>
+            </select>
+
+            <select id="indicator-selector" onchange="actualiserGraphique()" title="Choisir l’indicateur technique principal associé à la configuration.">
+                <option value="EMA" selected>EMA</option>
+                <option value="RSI">RSI</option>
+                <option value="MACD">MACD</option>
+                <option value="SUPERTREND">ST</option>
+                <option value="BOLLINGER">BB</option>
+                <option value="ATR">ATR</option>
+                <option value="VOLUME">VOL</option>
+                <option value="LIQUIDITY">LIQ</option>
+            </select>
+
+            <select id="interval-selector" onchange="actualiserGraphique()" title="Choisir l’unité de temps du graphique.">
+                <option value="1">1m</option>
+                <option value="5">5m</option>
+                <option value="15">15m</option>
+                <option value="30">30m</option>
+                <option value="60">1h</option>
+                <option value="240">4h</option>
+                <option value="D" selected>1J</option>
+                <option value="W">1S</option>
+                <option value="M">1M</option>
+            </select>
+        </div>
+
         <div class="control-group">
             <button class="btn-technique" onclick="testerAnalyseTechnique()" title="Générer et afficher le JSON technique calculé côté serveur pour l’actif, l’intervalle et l’indicateur sélectionnés.">Générer JSON</button>
 
@@ -924,7 +899,6 @@
                 return;
             }
 
-            synchroniserParametresCaptureVersChampsCaches(false);
             afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
@@ -1241,86 +1215,6 @@
             return true;
         }
 
-        function definirValeurChamp(id, valeur) {
-            const champ = document.getElementById(id);
-            if (!champ || valeur === undefined || valeur === null) return false;
-            champ.value = String(valeur);
-            return true;
-        }
-
-        function obtenirValeurChamp(id, valeurDefaut = "") {
-            const champ = document.getElementById(id);
-            if (!champ) return valeurDefaut;
-            const valeur = String(champ.value || "").trim();
-            return valeur || valeurDefaut;
-        }
-
-        function normaliserIntervalleCapture(valeur) {
-            const texte = String(valeur || "D").trim();
-            const min = texte.toLowerCase();
-
-            const correspondances = {
-                "1m": "1",
-                "5m": "5",
-                "15m": "15",
-                "30m": "30",
-                "1h": "60",
-                "60m": "60",
-                "4h": "240",
-                "240m": "240",
-                "1d": "D",
-                "d": "D",
-                "jour": "D",
-                "daily": "D",
-                "1w": "W",
-                "w": "W",
-                "week": "W",
-                "1mo": "M",
-                "1mth": "M",
-                "mois": "M"
-            };
-
-            return correspondances[min] || texte;
-        }
-
-        function synchroniserParametresCaptureVersChampsCaches(rechargerGraphique = false) {
-            const actif = obtenirValeurChamp("capture-actif", "BINANCE:BTCUSDT");
-            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", "D"));
-            const indicateur = obtenirValeurChamp("capture-indicateur", "EMA").toUpperCase();
-            const style = obtenirValeurChamp("capture-style", "candles");
-
-            definirValeurSelect("asset-selector", actif);
-            definirValeurSelect("interval-selector", intervalle);
-            definirValeurSelect("chart-type-selector", style);
-            definirValeurSelect("indicator-selector", indicateur);
-
-            afficherInfosGraphique();
-
-            if (rechargerGraphique) {
-                actualiserGraphique();
-            }
-        }
-
-        function synchroniserChampsCachesVersParametresCapture() {
-            const actifCache = document.getElementById("asset-selector");
-            const intervalleCache = document.getElementById("interval-selector");
-            const indicateurCache = document.getElementById("indicator-selector");
-            const styleCache = document.getElementById("chart-type-selector");
-
-            if (actifCache) definirValeurChamp("capture-actif", actifCache.value || "BINANCE:BTCUSDT");
-            if (intervalleCache) definirValeurChamp("capture-intervalle", normaliserIntervalleCapture(intervalleCache.value || "D"));
-            if (indicateurCache) definirValeurChamp("capture-indicateur", indicateurCache.value || "EMA");
-            if (styleCache) definirValeurChamp("capture-style", styleCache.value || "candles");
-        }
-
-        function appliquerParametresCaptureTradingView(rechargerGraphique = true) {
-            synchroniserParametresCaptureVersChampsCaches(false);
-
-            if (rechargerGraphique) {
-                actualiserGraphique();
-            }
-        }
-
         async function chargerConfigurationJsonDepuisTable() {
             const select = document.getElementById("configuration-sauvegardee-selector");
 
@@ -1387,25 +1281,23 @@
             const style = configuration.style || graphique.style || capture.type_bougie;
             const categorie = configuration.categorieAnalyse || configuration.categorie_analyse || capture.categorie_analyse;
 
-            const intervalleNormalise = normaliserIntervalleCapture(intervalle || "D");
-
-            definirValeurChamp("capture-actif", actif || "BINANCE:BTCUSDT");
-            definirValeurChamp("capture-intervalle", intervalleNormalise);
-            definirValeurChamp("capture-indicateur", indicateur || "EMA");
-            definirValeurChamp("capture-style", style || "candles");
-
-            definirValeurSelect("asset-selector", actif);
-            const intervalleOk = definirValeurSelect("interval-selector", intervalleNormalise);
+            const actifOk = definirValeurSelect("asset-selector", actif);
+            const intervalleOk = definirValeurSelect("interval-selector", intervalle);
             definirValeurSelect("indicator-selector", indicateur);
-            definirValeurSelect("chart-type-selector", style);
+            const styleOk = definirValeurSelect("chart-type-selector", style);
             definirValeurSelect("categorie-analyse-btc", categorie);
+
+            if (!actifOk) {
+                throw new Error("Actif absent de la liste : " + actif);
+            }
 
             if (!intervalleOk) {
                 throw new Error("Intervalle absent de la liste : " + intervalle);
             }
 
-            synchroniserParametresCaptureVersChampsCaches(false);
-            changerStyleGraphique(false);
+            if (styleOk) {
+                changerStyleGraphique(false);
+            }
 
             await actualiserGraphique();
             afficherInfosGraphique();
@@ -1438,25 +1330,23 @@
                 const style = configuration.style || graphique.style || capture.type_bougie;
                 const categorie = configuration.categorieAnalyse || configuration.categorie_analyse || capture.categorie_analyse;
 
-                const intervalleNormalise = normaliserIntervalleCapture(intervalle || "D");
-
-                definirValeurChamp("capture-actif", actif || "BINANCE:BTCUSDT");
-                definirValeurChamp("capture-intervalle", intervalleNormalise);
-                definirValeurChamp("capture-indicateur", indicateur || "EMA");
-                definirValeurChamp("capture-style", style || "candles");
-
-                definirValeurSelect("asset-selector", actif);
-                const intervalleOk = definirValeurSelect("interval-selector", intervalleNormalise);
-                definirValeurSelect("indicator-selector", indicateur);
-                definirValeurSelect("chart-type-selector", style);
+                const actifOk = definirValeurSelect("asset-selector", actif);
+                const intervalleOk = definirValeurSelect("interval-selector", intervalle);
+                const indicateurOk = definirValeurSelect("indicator-selector", indicateur);
+                const styleOk = definirValeurSelect("chart-type-selector", style);
                 definirValeurSelect("categorie-analyse-btc", categorie);
+
+                if (!actifOk) {
+                    throw new Error("Actif absent de la liste : " + actif);
+                }
 
                 if (!intervalleOk) {
                     throw new Error("Intervalle absent de la liste : " + intervalle);
                 }
 
-                synchroniserParametresCaptureVersChampsCaches(false);
-                changerStyleGraphique(false);
+                if (styleOk) {
+                    changerStyleGraphique(false);
+                }
 
                 await actualiserGraphique();
                 afficherInfosGraphique();
@@ -1486,12 +1376,10 @@
             const cat = document.getElementById("categorie-analyse-btc");
             const catText = cat.options[cat.selectedIndex].text;
 
-            synchroniserParametresCaptureVersChampsCaches(false);
-
-            const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
-            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
-            const indicateur = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
-            const style = obtenirValeurChamp("capture-style", document.getElementById("chart-type-selector")?.value || "candles");
+            const actif = document.getElementById("asset-selector").value;
+            const intervalle = document.getElementById("interval-selector").value;
+            const indicateur = document.getElementById("indicator-selector").value;
+            const style = document.getElementById("chart-type-selector").value;
 
             return {
                 nom: "Expert Trading Pro v2.0",
@@ -1824,11 +1712,9 @@
                 return;
             }
 
-            synchroniserParametresCaptureVersChampsCaches(false);
-
-            const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
-            const intervalle = convertirIntervallePourTradingView(normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D")));
-            const style = convertirStylePourTradingView(obtenirValeurChamp("capture-style", document.getElementById("chart-type-selector")?.value || "candles"));
+            const actif = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const intervalle = convertirIntervallePourTradingView(document.getElementById("interval-selector").value || "D");
+            const style = convertirStylePourTradingView(document.getElementById("chart-type-selector").value || "candles");
 
             conteneur.innerHTML = "";
             chart = null;
@@ -1903,10 +1789,9 @@
         }
 
         async function actualiserGraphique() {
-            synchroniserParametresCaptureVersChampsCaches(false);
-
-            const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
-            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
+            garderEnteteVisible();
+            const actif = document.getElementById("asset-selector").value;
+            const intervalle = document.getElementById("interval-selector").value;
 
             afficherMessageGraphique("Chargement du widget TradingView tv.js...", "attente");
             afficherStatus("Chargement du graphique TradingView tv.js...");
@@ -1934,10 +1819,9 @@
         }
 
         function ouvrirTradingView() {
-            synchroniserParametresCaptureVersChampsCaches(false);
-
-            const symbole = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
-            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
+            garderEnteteVisible();
+            const symbole = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const intervalle = document.getElementById("interval-selector").value || "D";
             const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(symbole) + "&interval=" + encodeURIComponent(intervalle);
             window.open(url, "_blank");
         }
@@ -2049,6 +1933,7 @@
         }
 
         async function takeScreenshot() {
+            garderEnteteVisible();
             try {
                 afficherStatus("Capture du graphique en cours...");
 
@@ -2093,6 +1978,7 @@
         }
 
         async function testerAnalyseTechnique() {
+            garderEnteteVisible();
             try {
                 const configuration = obtenirConfiguration();
 
@@ -2123,6 +2009,7 @@
         }
 
         async function analyserVisionMarche() {
+            garderEnteteVisible();
             try {
                 const configuration = obtenirConfiguration();
 
@@ -2211,6 +2098,13 @@
             return lignes.join("\n");
         }
 
+
+        function garderEnteteVisible() {
+            const entete = document.querySelector(".header-pro");
+            if (!entete || document.body.classList.contains("auth-locked")) return;
+            entete.style.transform = "translateZ(0)";
+        }
+
         window.onload = demarrerApplication;
 
         window.onresize = () => {
@@ -2223,6 +2117,7 @@
 		
 		
 	async function viderCaptures() {
+            garderEnteteVisible();
     const confirmation = confirm(
         "Voulez-vous vraiment supprimer toutes les captures ?\n\nCette action est irréversible."
     );
