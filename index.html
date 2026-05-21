@@ -423,6 +423,20 @@
             top: 24px !important;
         }
 
+
+        /* Les paramètres Actif, Intervalle, Indicateur et Type sont maintenant choisis directement dans TradingView.
+           Les anciens champs personnalisés restent dans le DOM uniquement pour compatibilité interne. */
+        body:not(.auth-locked) .capture-parametres-tv {
+            display: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+        }
+
     </style>
 </head>
 
@@ -1030,7 +1044,7 @@
                 actif_libelle: configuration.actif || null,
                 indicateur_libelle: configuration.indicateur || null,
                 intervalle_libelle: configuration.intervalle || null,
-                source_parametres: "tradingview_tvjs_s3",
+                source_parametres: "tradingview_tvjs_s3_capture_visuelle",
                 lecture_directe_graphique: false,
                 type_bougie: configuration.style || null,
                 type_bougie_libelle: configuration.style || null,
@@ -1482,43 +1496,81 @@
             }
         }
 
+        function obtenirParametresVisuelsTradingView() {
+            /*
+                TradingView tv.js est affiché dans une iframe externe.
+                Le navigateur interdit à index.html de lire directement le symbole,
+                l'intervalle, les indicateurs et le type de graphique que l'utilisateur
+                sélectionne dans cette iframe.
+
+                Donc la source fiable devient la capture d'écran TradingView.
+                analyse.html et l'analyse IA doivent lire ces paramètres directement
+                dans l'image capturée.
+            */
+            return {
+                actif: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                intervalle: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                indicateur: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                style: "A_LIRE_SUR_CAPTURE_TRADINGVIEW",
+                sourceLecture: "capture_visuelle_tradingview",
+                lectureDepuisIframe: false,
+                lectureDepuisCapture: true,
+                note: "Actif, intervalle, indicateur et type de graphique doivent être lus dans la capture TradingView."
+            };
+        }
+
         function obtenirConfiguration() {
             const cat = document.getElementById("categorie-analyse-btc");
-            const catText = cat.options[cat.selectedIndex].text;
+            const catText = cat && cat.options && cat.options[cat.selectedIndex]
+                ? cat.options[cat.selectedIndex].text
+                : "Technique";
 
-            synchroniserParametresCaptureVersChampsCaches(false);
-
-            const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
-            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
-            const indicateur = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
-            const style = obtenirValeurChamp("capture-style", document.getElementById("chart-type-selector")?.value || "candles");
+            const parametresTV = obtenirParametresVisuelsTradingView();
+            const typeAnalyse = document.getElementById("categorie-analyse-btc")?.value || "technique";
 
             return {
                 nom: "Expert Trading Pro v2.0",
-                actif: actif,
-                intervalle: intervalle,
-                indicateur: indicateur,
-                categorieAnalyse: document.getElementById("categorie-analyse-btc").value,
+                actif: parametresTV.actif,
+                intervalle: parametresTV.intervalle,
+                indicateur: parametresTV.indicateur,
+                categorieAnalyse: typeAnalyse,
                 categorieAnalyseLibelle: catText,
-                style: style,
+                style: parametresTV.style,
                 graphique: {
-                    actif: actif,
-                    intervalle: intervalle,
-                    indicateur: indicateur,
-                    style: style,
-                    source: "tradingview_tvjs_s3"
-                },
-                marcheLocal: {
-                    derniereBougie: currentData.length ? currentData[currentData.length - 1] : null,
-                    nombreBougies: currentData.length,
-                    source: derniereSourceMarche
+                    actif: parametresTV.actif,
+                    intervalle: parametresTV.intervalle,
+                    indicateur: parametresTV.indicateur,
+                    style: parametresTV.style,
+                    source: "tradingview_tvjs_s3_capture_visuelle",
+                    lectureDepuisIframe: false,
+                    lectureDepuisCapture: true,
+                    parametresALireDepuisImage: true,
+                    note: parametresTV.note
                 },
                 tradingView: {
                     widgetPresent: true,
                     bibliotheque: "TradingView tv.js",
                     theme: "dark",
-                    capturable: false
+                    capturable: true,
+                    parametresSelectionnesDansTradingView: true,
+                    parametresALireDepuisImage: true,
+                    actif: parametresTV.actif,
+                    intervalle: parametresTV.intervalle,
+                    indicateur: parametresTV.indicateur,
+                    style: parametresTV.style,
+                    note: parametresTV.note
                 },
+                marcheLocal: {
+                    derniereBougie: null,
+                    nombreBougies: 0,
+                    source: {
+                        source: "tradingview_tvjs_s3_capture_visuelle",
+                        symbole: "A_LIRE_SUR_CAPTURE_TRADINGVIEW"
+                    }
+                },
+                lectureDepuisCapture: true,
+                parametresALireDepuisImage: true,
+                noteAnalyseHtml: "analyse.html doit utiliser l'image capturée pour lire l'actif, l'intervalle, l'indicateur et le type de graphique. Seul le type d'analyse vient du menu de cette page.",
                 snapshot: {
                     screenshotBase64: dernierScreenshotBase64 || null
                 },
@@ -1549,42 +1601,14 @@
         function obtenirLignesInfosGraphiquePourCapture() {
             const configuration = obtenirConfiguration();
 
-            const source =
-                configuration.marcheLocal &&
-                configuration.marcheLocal.source &&
-                configuration.marcheLocal.source.source
-                    ? configuration.marcheLocal.source.source
-                    : "non définie";
-
-            const symbole =
-                configuration.marcheLocal &&
-                configuration.marcheLocal.source &&
-                configuration.marcheLocal.source.symbole
-                    ? configuration.marcheLocal.source.symbole
-                    : "N/A";
-
-            const nombreBougies =
-                configuration.marcheLocal && Number.isFinite(Number(configuration.marcheLocal.nombreBougies))
-                    ? Number(configuration.marcheLocal.nombreBougies)
-                    : 0;
-
-            const derniereBougie =
-                configuration.marcheLocal && configuration.marcheLocal.derniereBougie
-                    ? configuration.marcheLocal.derniereBougie
-                    : null;
-
             return [
-                "Actif : " + libelleOptionSelectionnee("asset-selector"),
-                "Code : " + configuration.actif,
-                "Intervalle : " + libelleOptionSelectionnee("interval-selector"),
-                "Indicateur : " + configuration.indicateur,
-                "Type : " + libelleOptionSelectionnee("chart-type-selector"),
-                "Analyse : " + configuration.categorieAnalyseLibelle,
-                "Source : " + source,
-                "Symbole : " + symbole,
-                "Bougies : " + nombreBougies,
-                "Dernier prix : " + formatterDerniereBougie(derniereBougie),
-                "Bibliothèque : TradingView tv.js"
+                "Actif : à lire sur le graphique TradingView capturé",
+                "Intervalle : à lire sur le graphique TradingView capturé",
+                "Indicateur : à lire sur le graphique TradingView capturé",
+                "Type de graphique : à lire sur le graphique TradingView capturé",
+                "Type d'analyse : " + configuration.categorieAnalyseLibelle,
+                "Source : TradingView tv.js / capture visuelle",
+                "Note : les paramètres réels sont ceux visibles dans l'image sauvegardée."
             ];
         }
 
@@ -1603,43 +1627,15 @@
                 return;
             }
 
-            const source =
-                configuration.marcheLocal &&
-                configuration.marcheLocal.source &&
-                configuration.marcheLocal.source.source
-                    ? configuration.marcheLocal.source.source
-                    : "non définie";
-
-            const symbole =
-                configuration.marcheLocal &&
-                configuration.marcheLocal.source &&
-                configuration.marcheLocal.source.symbole
-                    ? configuration.marcheLocal.source.symbole
-                    : "N/A";
-
-            const derniereBougie =
-                configuration.marcheLocal && configuration.marcheLocal.derniereBougie
-                    ? configuration.marcheLocal.derniereBougie
-                    : null;
-
-            const nombreBougies =
-                configuration.marcheLocal && Number.isFinite(Number(configuration.marcheLocal.nombreBougies))
-                    ? Number(configuration.marcheLocal.nombreBougies)
-                    : 0;
-
             zone.innerHTML =
                 '<div class="infos-titre">Informations du graphique</div>' +
-                '<span class="info-item"><strong>Actif :</strong> ' + libelleOptionSelectionnee("asset-selector") + '</span>' +
-                '<span class="info-item"><strong>Code :</strong> ' + configuration.actif + '</span>' +
-                '<span class="info-item"><strong>Intervalle :</strong> ' + libelleOptionSelectionnee("interval-selector") + '</span>' +
-                '<span class="info-item"><strong>Indicateur :</strong> ' + configuration.indicateur + '</span>' +
-                '<span class="info-item"><strong>Type :</strong> ' + libelleOptionSelectionnee("chart-type-selector") + '</span>' +
-                '<span class="info-item"><strong>Analyse :</strong> ' + configuration.categorieAnalyseLibelle + '</span>' +
-                '<span class="info-item"><strong>Source :</strong> ' + source + '</span>' +
-                '<span class="info-item"><strong>Symbole :</strong> ' + symbole + '</span>' +
-                '<span class="info-item"><strong>Bougies :</strong> ' + nombreBougies + '</span>' +
-                '<span class="info-item"><strong>Dernier prix :</strong> ' + formatterDerniereBougie(derniereBougie) + '</span>' +
-                '<span class="info-note">Ce bandeau est intégré dans la capture sauvegardée et sera donc visible dans analyse.html.</span>';
+                '<span class="info-item"><strong>Actif :</strong> à lire sur TradingView</span>' +
+                '<span class="info-item"><strong>Intervalle :</strong> à lire sur TradingView</span>' +
+                '<span class="info-item"><strong>Indicateur :</strong> à lire sur TradingView</span>' +
+                '<span class="info-item"><strong>Type :</strong> à lire sur TradingView</span>' +
+                '<span class="info-item"><strong>Type d’analyse :</strong> ' + configuration.categorieAnalyseLibelle + '</span>' +
+                '<span class="info-item"><strong>Source :</strong> capture visuelle TradingView</span>' +
+                '<span class="info-note">Les paramètres du graphique sont lus depuis l’image capturée. Les champs personnalisés du panneau supérieur sont masqués.</span>';
         }
 
         function dessinerTexteMultiligne(ctx, texte, x, y, largeurMax, hauteurLigne) {
