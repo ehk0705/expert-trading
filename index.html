@@ -656,6 +656,94 @@
             }
         }
 
+
+        /* ============================================================
+           CORRECTION ALIGNEMENT DES CHAMPS DU PANNEAU SUPÉRIEUR
+           - Chaque bloc de contrôle garde son espace.
+           - Type d'analyse et STYLE ne peuvent plus se chevaucher.
+           - Les longues listes se réduisent proprement sans piétiner.
+        ============================================================ */
+        body:not(.auth-locked) .header-pro {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            align-content: flex-start !important;
+            gap: 8px 12px !important;
+            overflow: visible !important;
+        }
+
+        body:not(.auth-locked) .header-pro .control-group {
+            flex: 0 1 auto !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            min-width: fit-content !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            white-space: nowrap !important;
+        }
+
+        body:not(.auth-locked) .header-pro label {
+            flex: 0 0 auto !important;
+            white-space: nowrap !important;
+        }
+
+        body:not(.auth-locked) #categorie-analyse-btc {
+            width: 132px !important;
+            min-width: 132px !important;
+            max-width: 132px !important;
+        }
+
+        body:not(.auth-locked) #chart-type-selector {
+            width: 112px !important;
+            min-width: 112px !important;
+            max-width: 112px !important;
+        }
+
+        body:not(.auth-locked) #indicator-selector {
+            width: 300px !important;
+            min-width: 220px !important;
+            max-width: 300px !important;
+        }
+
+        body:not(.auth-locked) #configuration-sauvegardee-selector {
+            width: min(520px, 100%) !important;
+            min-width: 260px !important;
+            max-width: 520px !important;
+        }
+
+        body:not(.auth-locked) .header-pro h1 {
+            flex: 1 1 280px !important;
+            min-width: 260px !important;
+            margin: 0 0 0 auto !important;
+            text-align: right !important;
+        }
+
+        @media (max-width: 900px) {
+            body:not(.auth-locked) .header-pro .control-group {
+                width: 100% !important;
+                min-width: 0 !important;
+                flex-wrap: wrap !important;
+                white-space: normal !important;
+            }
+
+            body:not(.auth-locked) #categorie-analyse-btc,
+            body:not(.auth-locked) #chart-type-selector,
+            body:not(.auth-locked) #indicator-selector,
+            body:not(.auth-locked) #configuration-sauvegardee-selector {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+            }
+
+            body:not(.auth-locked) .header-pro h1 {
+                width: 100% !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                text-align: center !important;
+            }
+        }
+
     </style>
 </head>
 
@@ -678,9 +766,12 @@
     </div>
 
     <div class="header-pro">
-        <div class="control-group">
+        <div class="control-group control-actions-principales">
             <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché, enregistrer l’image et sauvegarder la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
-			<!--
+        </div>
+
+        <!-- Boutons conservés en commentaire.
+        <div class="control-group">
             <button
                 class="btn-json"
                 id="btn-json-config"
@@ -691,7 +782,7 @@
             </button>
             <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()" title="Lancer l’analyse IA de l’image du graphique avec les données de marché et les indicateurs techniques.">Vision + Marché</button>
         </div>
-		-->
+        -->
 
 
 
