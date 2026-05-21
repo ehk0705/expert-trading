@@ -744,7 +744,117 @@
             }
         }
 
-    </style>
+    
+
+        /* ============================================================
+           PARAMÈTRES PERSONNALISÉS APPLIQUÉS AU GRAPHIQUE TV
+           - ACTIF / symbole : lu depuis le graphique TradingView.
+           - Intervalle, indicateur et style : choisis dans les champs personnalisés.
+        ============================================================ */
+        body:not(.auth-locked) .capture-parametres-tv {
+            display: flex !important;
+            visibility: visible !important;
+            width: auto !important;
+            height: auto !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            max-width: 100% !important;
+            max-height: none !important;
+            padding: 8px 10px !important;
+            margin: 0 !important;
+            border: 1px solid #334155 !important;
+            border-radius: 10px !important;
+            overflow: visible !important;
+            pointer-events: auto !important;
+            background: rgba(15, 23, 42, 0.92) !important;
+            align-items: center !important;
+            gap: 8px !important;
+            flex-wrap: nowrap !important;
+        }
+
+        body:not(.auth-locked) .capture-parametres-tv::before {
+            content: "PARAMÈTRES :";
+            color: #38bdf8;
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        body:not(.auth-locked) .capture-parametres-tv label[for="capture-actif"],
+        body:not(.auth-locked) .capture-parametres-tv #capture-actif {
+            display: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+            pointer-events: none !important;
+        }
+
+        body:not(.auth-locked) .capture-parametres-tv label {
+            color: #facc15 !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+        }
+
+        body:not(.auth-locked) .capture-parametres-tv input,
+        body:not(.auth-locked) .capture-parametres-tv select {
+            display: inline-block !important;
+            visibility: visible !important;
+            width: auto !important;
+            min-width: 90px !important;
+            max-width: 190px !important;
+            height: 34px !important;
+            min-height: 34px !important;
+            max-height: 34px !important;
+            padding: 6px 8px !important;
+            margin: 0 !important;
+            border: 1px solid #475569 !important;
+            border-radius: 8px !important;
+            background: #020617 !important;
+            color: #ffffff !important;
+            font-size: 12px !important;
+            box-sizing: border-box !important;
+        }
+
+        body:not(.auth-locked) .capture-parametres-tv #capture-indicateur {
+            min-width: 110px !important;
+            max-width: 170px !important;
+            text-transform: uppercase;
+        }
+
+
+
+        body:not(.auth-locked) .capture-parametres-tv button {
+            display: inline-block !important;
+            visibility: visible !important;
+            height: 34px !important;
+            min-height: 34px !important;
+            padding: 6px 10px !important;
+            border-radius: 8px !important;
+            font-size: 12px !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+        }
+
+        @media (max-width: 900px) {
+            body:not(.auth-locked) .capture-parametres-tv {
+                width: 100% !important;
+                flex-wrap: wrap !important;
+                align-items: stretch !important;
+            }
+
+            body:not(.auth-locked) .capture-parametres-tv input,
+            body:not(.auth-locked) .capture-parametres-tv select {
+                width: 100% !important;
+                min-width: 0 !important;
+                max-width: none !important;
+            }
+        }
+</style>
 </head>
 
 <body class="auth-locked">
@@ -931,7 +1041,7 @@
             </select>
         </div>
 
-        <h1>EXPERT TRADING PRO</h1>
+        <!--<h1>EXPERT TRADING PRO</h1>-->
 
         <div class="control-group configuration-loader">
             <label for="configuration-sauvegardee-selector">CONFIG. :</label>
@@ -1009,6 +1119,10 @@
                 <option value="line">Ligne</option>
                 <option value="area">Aire</option>
             </select>
+
+            <button type="button" class="btn-json" onclick="appliquerParametresCaptureTradingView(true)" title="Appliquer l’intervalle, l’indicateur et le style personnalisés au graphique TradingView. Le symbole ACTIF reste lu depuis le graphique.">
+                Appliquer
+            </button>
         </div>
 
         <div id="controles-techniques-masques" class="controle-ancien-cache" aria-hidden="true">
@@ -1483,8 +1597,14 @@
         }
 
         function obtenirStyleGraphiqueSelectionne() {
-            const select = document.getElementById("chart-type-selector");
-            return normaliserValeurStyleSelect(select ? select.value : "candles");
+            const champPersonnalise = document.getElementById("capture-style");
+            const selectPanneau = document.getElementById("chart-type-selector");
+
+            if (champPersonnalise && champPersonnalise.value) {
+                return normaliserValeurStyleSelect(champPersonnalise.value);
+            }
+
+            return normaliserValeurStyleSelect(selectPanneau ? selectPanneau.value : "candles");
         }
 
         function obtenirLibelleStyleGraphiqueSelectionne() {
@@ -1520,32 +1640,14 @@
 
         function demanderParametresVisuelsTradingView() {
             /*
-                Limite technique importante : le widget TradingView tv.js est chargé
-                dans une iframe externe. Le navigateur interdit à index.html de lire
-                directement l'actif, l'indicateur, l'intervalle et le type choisis
-                à l'intérieur du graphique. Les valeurs ci-dessous sont donc saisies
-                d'après ce qui est visible sur le graphique TradingView capturé.
+                ACTIF / symbole : lu depuis le graphique TradingView.
+                Intervalle, indicateur et style : lus depuis les paramètres personnalisés.
+                Aucune saisie manuelle n'est demandée lors de la capture.
             */
-            const precedent = derniersParametresTVConfirmes || {};
-
             const actif = lireActifDepuisGraphiqueTradingView();
-
-            const indicateur = demanderValeurTVValide(
-                "INDICATEUR",
-                precedent.indicateur || "EMA",
-                valeur => Boolean(valeur) && !valeurContientListe(valeur) && !valeur.includes("A_LIRE_SUR_CAPTURE"),
-                "Indique un seul indicateur visible, par exemple : EMA, RSI ou MACD. Ne saisis pas une liste."
-            ).toUpperCase();
-
+            const indicateur = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
+            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
             const typeGraphique = obtenirLibelleStyleGraphiqueSelectionne();
-
-            const intervalleSaisi = demanderValeurTVValide(
-                "INTERVALLE",
-                precedent.intervalle || "D",
-                valeur => Boolean(normaliserIntervalleCapture(valeur)) && !valeurContientListe(valeur),
-                "Indique un seul intervalle visible, par exemple : D, 1h, 4h ou 15m. Ne saisis pas une liste."
-            );
-            const intervalle = normaliserIntervalleCapture(intervalleSaisi);
 
             derniersParametresTVConfirmes = {
                 actif,
@@ -1964,12 +2066,13 @@
         }
 
         function synchroniserParametresCaptureVersChampsCaches(rechargerGraphique = false) {
-            const actif = normaliserSymboleTradingView(obtenirValeurChamp("capture-actif", symboleTradingViewLu || "BINANCE:BTCUSDT")) || "BINANCE:BTCUSDT";
+            const actif = normaliserSymboleTradingView(symboleTradingViewLu || obtenirValeurChamp("capture-actif", "BINANCE:BTCUSDT")) || "BINANCE:BTCUSDT";
             symboleTradingViewLu = actif;
             const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", "D"));
             const indicateur = obtenirValeurChamp("capture-indicateur", "EMA").toUpperCase();
             const style = obtenirStyleGraphiqueSelectionne();
 
+            definirValeurChamp("capture-actif", actif);
             definirValeurSelect("asset-selector", actif);
             definirValeurSelect("interval-selector", intervalle);
             definirValeurSelect("chart-type-selector", style);
@@ -1995,7 +2098,27 @@
         }
 
         function appliquerParametresCaptureTradingView(rechargerGraphique = true) {
-            synchroniserParametresCaptureVersChampsCaches(false);
+            const actif = lireActifDepuisGraphiqueTradingView();
+            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", "D"));
+            const indicateur = obtenirValeurChamp("capture-indicateur", "EMA").toUpperCase();
+            const style = obtenirStyleGraphiqueSelectionne();
+
+            definirValeurChamp("capture-actif", actif);
+            definirValeurChamp("capture-intervalle", intervalle);
+            definirValeurChamp("capture-indicateur", indicateur);
+            definirValeurSelect("asset-selector", actif);
+            definirValeurSelect("interval-selector", intervalle);
+            definirValeurSelect("indicator-selector", indicateur);
+            definirValeurSelect("chart-type-selector", style);
+
+            derniersParametresTVConfirmes = {
+                actif,
+                indicateur,
+                intervalle,
+                typeGraphique: obtenirLibelleStyleGraphiqueSelectionne()
+            };
+
+            afficherInfosGraphique();
 
             if (rechargerGraphique) {
                 actualiserGraphique();
@@ -2171,10 +2294,9 @@
                 ? cat.options[cat.selectedIndex].text
                 : "Technique";
 
-            const tv = derniersParametresTVConfirmes || {};
             const actif = lireActifDepuisGraphiqueTradingView();
-            const intervalle = tv.intervalle || normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
-            const indicateur = tv.indicateur || obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
+            const intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
+            const indicateur = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
             const style = obtenirLibelleStyleGraphiqueSelectionne();
 
             return {
@@ -2520,6 +2642,50 @@
             return "12M";
         }
 
+
+        function obtenirEtudesTradingViewDepuisIndicateur(indicateur) {
+            /*
+                Le widget public tv.js accepte seulement certains identifiants d'études.
+                Pour les indicateurs non exposés par tv.js, on garde la valeur dans le JSON
+                et dans le nom de capture, sans forcer l'affichage dans TradingView.
+            */
+            const valeur = String(indicateur || "").trim().toUpperCase();
+
+            const correspondances = {
+                "RSI": ["RSI@tv-basicstudies"],
+                "MACD": ["MACD@tv-basicstudies"],
+                "VOLUME": ["Volume@tv-basicstudies"],
+                "VOLUME_MA": ["Volume@tv-basicstudies"],
+                "BOLLINGER": ["BB@tv-basicstudies"],
+                "BB_WIDTH": ["BB@tv-basicstudies"],
+                "BB_PERCENT_B": ["BB@tv-basicstudies"],
+                "EMA": ["MAExp@tv-basicstudies"],
+                "EMA20": ["MAExp@tv-basicstudies"],
+                "EMA50": ["MAExp@tv-basicstudies"],
+                "EMA100": ["MAExp@tv-basicstudies"],
+                "EMA200": ["MAExp@tv-basicstudies"],
+                "SMA": ["MASimple@tv-basicstudies"],
+                "SMA20": ["MASimple@tv-basicstudies"],
+                "SMA50": ["MASimple@tv-basicstudies"],
+                "SMA100": ["MASimple@tv-basicstudies"],
+                "SMA200": ["MASimple@tv-basicstudies"],
+                "STOCH": ["Stochastic@tv-basicstudies"],
+                "ATR": ["ATR@tv-basicstudies"],
+                "CCI": ["CCI@tv-basicstudies"],
+                "ROC": ["ROC@tv-basicstudies"],
+                "MOMENTUM": ["Momentum@tv-basicstudies"],
+                "WILLIAMS_R": ["WilliamsR@tv-basicstudies"],
+                "ADX": ["ADX@tv-basicstudies"],
+                "OBV": ["OBV@tv-basicstudies"],
+                "MFI": ["MFI@tv-basicstudies"],
+                "VWAP": ["VWAP@tv-basicstudies"],
+                "ICHIMOKU": ["IchimokuCloud@tv-basicstudies"],
+                "PSAR": ["PSAR@tv-basicstudies"]
+            };
+
+            return correspondances[valeur] || [];
+        }
+
         function creerGraphiqueTradingViewS3() {
             const conteneur = document.getElementById("tradingview_chart");
             if (!conteneur) return;
@@ -2532,13 +2698,20 @@
 
             synchroniserParametresCaptureVersChampsCaches(false);
 
-            const actif = normaliserSymboleTradingView(obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT")) || "BINANCE:BTCUSDT";
-            symboleTradingViewLu = actif;
+            const actif = lireActifDepuisGraphiqueTradingView();
+            const intervallePersonnalise = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D"));
+            const indicateurPersonnalise = obtenirValeurChamp("capture-indicateur", document.getElementById("indicator-selector")?.value || "EMA").toUpperCase();
+            const stylePersonnalise = obtenirStyleGraphiqueSelectionne();
+            const intervalle = convertirIntervallePourTradingView(intervallePersonnalise);
+            const style = convertirStylePourTradingView(stylePersonnalise);
+            const plage = obtenirPlageTradingView(intervalle);
+            const etudesTradingView = obtenirEtudesTradingViewDepuisIndicateur(indicateurPersonnalise);
+
             definirValeurChamp("capture-actif", actif);
             definirValeurSelect("asset-selector", actif);
-            const intervalle = convertirIntervallePourTradingView(normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D")));
-            const style = convertirStylePourTradingView(obtenirStyleGraphiqueSelectionne());
-            const plage = obtenirPlageTradingView(intervalle);
+            definirValeurSelect("interval-selector", intervallePersonnalise);
+            definirValeurSelect("indicator-selector", indicateurPersonnalise);
+            definirValeurSelect("chart-type-selector", stylePersonnalise);
 
             conteneur.innerHTML = "";
             chart = null;
@@ -2559,7 +2732,7 @@
                 hide_top_toolbar: false,
                 hide_side_toolbar: false,
                 save_image: false,
-                studies: [],
+                studies: etudesTradingView,
                 container_id: "tradingview_chart"
             });
 
@@ -2610,7 +2783,8 @@
         }
 
         function changerStyleGraphique(rechargerDonnees = true) {
-            const style = obtenirStyleGraphiqueSelectionne();
+            const selectPanneau = document.getElementById("chart-type-selector");
+            const style = normaliserValeurStyleSelect(selectPanneau ? selectPanneau.value : obtenirStyleGraphiqueSelectionne());
             definirValeurChamp("capture-style", style);
 
             if (derniersParametresTVConfirmes) {
