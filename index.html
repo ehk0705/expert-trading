@@ -948,7 +948,7 @@
         /* ============================================================
            CHAMP SYMBOLE DU GRAPHIQUE
            - Le changement interne dans l'iframe TradingView n'est pas lisible de façon fiable.
-           - Ce champ devient donc la source fiable pour changer le symbole du widget.
+           - Ce champ est la source fiable pour changer le symbole du widget.
         ============================================================ */
         body:not(.auth-locked) .control-symbole-tv {
             border: 1px solid #334155 !important;
@@ -1016,7 +1016,7 @@
             <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché, enregistrer l’image et sauvegarder la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
         </div>
 
-        <div class="control-group control-symbole-tv" title="Symbole TradingView à appliquer au graphique. Si le symbole est changé à l’intérieur de l’iframe, tv.js ne permet pas de le récupérer de façon fiable.">
+        <div class="control-group control-symbole-tv" title="Symbole TradingView utilisé par le widget. Le changement fait directement dans l’iframe ne peut pas être lu par tv.js ; utilise ce champ pour changer l’actif.">
             <label for="symbole-tv-lu">SYMBOLE :</label>
             <input
                 id="symbole-tv-lu"
@@ -1024,12 +1024,12 @@
                 value="BINANCE:BTCUSDT"
                 onchange="appliquerSymbolePersonnalise(true)"
                 onkeydown="if (event.key === 'Enter') { event.preventDefault(); appliquerSymbolePersonnalise(true); }"
-                title="Saisir le symbole TradingView à appliquer au graphique. Exemple : BINANCE:BTCUSDT, NASDAQ:MSFT, OANDA:XAUUSD.">
+                title="Source fiable du symbole TradingView. Exemple : BINANCE:BTCUSDT, NASDAQ:MSFT, OANDA:XAUUSD." placeholder="NASDAQ:MSFT">
             <button
                 id="btn-lire-symbole-tv"
                 type="button"
                 onclick="appliquerSymbolePersonnalise(true)"
-                title="Appliquer le symbole saisi au graphique TradingView.">
+                title="Appliquer ce symbole au graphique TradingView.">
                 OK
             </button>
         </div>
@@ -2243,22 +2243,26 @@
 
         function lireActifDepuisGraphiqueTradingView() {
             /*
-                Avec tv.js, le symbole modifié directement dans l'iframe TradingView
-                n'est pas récupérable de façon fiable à cause des règles de sécurité
-                du navigateur. Le champ SYMBOLE visible devient donc la source fiable.
+                Le widget public TradingView tv.js est dans une iframe externe.
+                Quand l'utilisateur modifie le symbole directement dans cette iframe,
+                index.html ne peut pas lire ce nouvel état interne.
+
+                Source fiable retenue : le champ SYMBOLE du panneau supérieur.
+                Pour éviter les contradictions, le changement de symbole interne
+                du widget est désactivé avec allow_symbol_change: false.
             */
             const symboleChamp = obtenirSymboleDepuisChampVisible();
             const symboleIframe = lireSymboleDepuisIframeTradingView();
             const symbole =
                 symboleChamp ||
-                symboleIframe ||
                 symboleTradingViewLu ||
+                symboleIframe ||
                 obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
 
             const normalise = normaliserSymboleTradingView(symbole) || "BINANCE:BTCUSDT";
             const sourceSymbole = symboleChamp
                 ? "champ SYMBOLE"
-                : (symboleIframe ? "iframe TradingView" : "dernier symbole connu du widget");
+                : (symboleTradingViewLu ? "dernier symbole appliqué au widget" : "paramètre initial TradingView");
 
             symboleTradingViewLu = normalise;
             definirValeurChamp("capture-actif", normalise);
@@ -2975,7 +2979,7 @@
                 style: style,
                 locale: "fr",
                 enable_publishing: false,
-                allow_symbol_change: true,
+                allow_symbol_change: false,
                 hide_top_toolbar: false,
                 hide_side_toolbar: false,
                 save_image: false,
