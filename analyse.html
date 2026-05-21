@@ -1251,6 +1251,8 @@
             const texte = String(valeur).trim();
             if (!texte) return false;
             if (texte === "N/A") return false;
+            if (texte.toUpperCase() === "IMAGE_SEULE") return true;
+            if (texte.toUpperCase() === "IMAGE SEULE") return true;
             if (texte.includes("A_LIRE_SUR_CAPTURE")) return false;
             if (texte.includes("LIRE_SUR_CAPTURE")) return false;
             if (texte.includes("TRADINGVIEW")) return false;
@@ -1341,6 +1343,33 @@
             return "";
         }
 
+
+        function captureEstImageSeule(capture, configuration = {}) {
+            const brute = capture ? (capture.brute || {}) : {};
+            const cfg = configuration || capture?.configuration || {};
+            const valeurs = [
+                capture?.actif,
+                brute.actif,
+                brute.actif_libelle,
+                cfg.actif,
+                cfg.type,
+                cfg.categorieAnalyse,
+                cfg.categorieAnalyseLibelle,
+                brute.source_parametres,
+                cfg.source_parametres,
+                cfg?.graphique?.source
+            ].map(x => String(x || "").toUpperCase());
+
+            return valeurs.some(v =>
+                v === "IMAGE_SEULE" ||
+                v === "IMAGE SEULE" ||
+                v === "CAPTURE_IMAGE_SEULE" ||
+                v.includes("IMAGE_SEULE") ||
+                v.includes("IMAGE SEULE") ||
+                v.includes("CAPTURE_IMAGE_SEULE")
+            );
+        }
+
         function corrigerParametresAnalyseAvantEnvoi(configuration, contexte = {}) {
             const copie = JSON.parse(JSON.stringify(configuration || {}));
             const capture = contexte.capture || currentCapture || null;
@@ -1348,8 +1377,11 @@
             const cfgCapture = capture ? (capture.configuration || {}) : {};
             const graphique = copie.graphique || cfgCapture.graphique || {};
             const nom = contexte.fileName || (capture ? capture.nom : currentFileName) || "";
+            const modeImageSeule = captureEstImageSeule(capture, copie) || captureEstImageSeule(capture, cfgCapture);
 
-            const actifMarche = extrairePremierParametreValide([
+            const actifMarche = modeImageSeule
+                ? "IMAGE_SEULE"
+                : (extrairePremierParametreValide([
                 contexte.actif,
                 copie.actif,
                 copie.actif_reel,
@@ -1366,9 +1398,11 @@
                 brute.actif_libelle,
                 brute.symbole_marche,
                 nom
-            ], extraireActifMarcheDepuisTexte) || "BINANCE:BTCUSDT";
+            ], extraireActifMarcheDepuisTexte) || "BINANCE:BTCUSDT");
 
-            const intervalleMarche = extrairePremierParametreValide([
+            const intervalleMarche = modeImageSeule
+                ? null
+                : (extrairePremierParametreValide([
                 contexte.intervalle,
                 copie.intervalle,
                 copie.intervalle_reel,
@@ -1381,9 +1415,11 @@
                 brute.intervalle,
                 brute.intervalle_libelle,
                 nom
-            ], normaliserIntervalleMarche) || "1d";
+            ], normaliserIntervalleMarche) || "1d");
 
-            const indicateur = extrairePremierParametreValide([
+            const indicateur = modeImageSeule
+                ? "IMAGE_SEULE"
+                : (extrairePremierParametreValide([
                 contexte.indicateur,
                 copie.indicateur,
                 copie.indicateur_reel,
@@ -1395,16 +1431,17 @@
                 cfgCapture.indicateur_reel,
                 brute.indicateur,
                 brute.indicateur_libelle
-            ], valeur => nettoyerTexteParametre(valeur).toUpperCase()) || "EMA";
+            ], valeur => nettoyerTexteParametre(valeur).toUpperCase()) || "EMA");
 
             copie.actif = actifMarche;
             copie.intervalle = intervalleMarche;
             copie.indicateur = indicateur;
             copie.parametres_visuels_tradingview = true;
             copie.parametres_lus_depuis_capture = true;
-            copie.note_parametres =
-                "Les paramètres exacts du graphique TradingView doivent être lus visuellement dans la capture. " +
-                "Les champs actif, intervalle et indicateur envoyés au serveur servent de valeurs exploitables pour les sources de marché.";
+            copie.note_parametres = modeImageSeule
+                ? "Capture image seule : aucune source de marché ne sera appelée. L'IA tente de lire les paramètres directement dans l'image."
+                : "Les paramètres exacts du graphique TradingView doivent être lus visuellement dans la capture. " +
+                  "Les champs actif, intervalle et indicateur envoyés au serveur servent de valeurs exploitables pour les sources de marché.";
 
             copie.parametres_originaux = {
                 actif: contexte.actif || configuration?.actif || capture?.actif || null,
@@ -1431,13 +1468,19 @@
             confidence = Math.round(Math.max(0, Math.min(100, confidence)));
 
             const lignes = [];
-            lignes.push("ANALYSE CONCRÈTE VISION + MARCHÉ");
-            lignes.push("================================");
+            const modeVisionSeule = analyse.mode === "vision_seule" || analyse.source === "ia_vision_seule_image";
+            lignes.push(modeVisionSeule ? "ANALYSE VISION SEULE" : "ANALYSE CONCRÈTE VISION + MARCHÉ");
+            lignes.push(modeVisionSeule ? "====================" : "================================");
             lignes.push("");
             lignes.push("Décision : " + decision);
             lignes.push("Confiance : " + confidence + "%");
             lignes.push("Tendance : " + (analyse.tendance || "N/A"));
             lignes.push("Source marché : " + (analyse.source_marche || "N/A"));
+            if (analyse.parametres_lus_image) {
+                lignes.push("Symbole lu image : " + (analyse.parametres_lus_image.symbole || "N/A"));
+                lignes.push("Intervalle lu image : " + (analyse.parametres_lus_image.intervalle || "N/A"));
+                lignes.push("Fiabilité lecture image : " + (analyse.parametres_lus_image.fiabilite || "N/A"));
+            }
             lignes.push("Prix actuel : " + (analyse.prix_actuel ?? "N/A"));
             lignes.push("Support : " + (analyse.support_principal ?? "N/A"));
             lignes.push("Résistance : " + (analyse.resistance_principale ?? "N/A"));
@@ -1473,7 +1516,7 @@
                 return;
             }
 
-            setLoadingState(true, "ANALYSE VISION + MARCHÉ...");
+            setLoadingState(true, "ANALYSE VISION...");
 
             try {
                 const actifInitial = getActifDepuisMetaOuNomFichierPro(currentFileName);
@@ -1543,11 +1586,12 @@
 
                 userNotes.value +=
                     "\n\n==================================================" +
-                    "\n[ANALYSE CONCRÈTE VISION + MARCHÉ]" +
+                    "\n[" + ((analyse.mode === "vision_seule" || analyse.source === "ia_vision_seule_image") ? "ANALYSE VISION SEULE" : "ANALYSE CONCRÈTE VISION + MARCHÉ") + "]" +
                     "\nCapture : " + (currentCapture ? currentCapture.nom : currentFileName) +
-                    "\nActif : " + actif +
-                    "\nIntervalle : " + intervalle +
+                    "\nActif envoyé : " + actif +
+                    "\nIntervalle envoyé : " + (intervalle || "N/A") +
                     "\nSource marché : " + (analyse.source_marche || "N/A") +
+                    "\nMode : " + (analyse.mode || "vision_plus_marche") +
                     "\nDécision : " + affichage.decision +
                     "\nConfiance : " + affichage.confidence + "%" +
                     "\n\n" + affichage.reasoning +

@@ -1994,6 +1994,175 @@ ${JSON.stringify(configuration || {}, null, 2)}
 N'invente jamais de prix. Si incertain, choisis attendre.`;
 }
 
+function estActifImageSeule(valeur) {
+    const texte = String(valeur || "").trim().toUpperCase();
+
+    return (
+        !texte ||
+        texte === "IMAGE_SEULE" ||
+        texte === "IMAGE SEULE" ||
+        texte === "IMAGE-ONLY" ||
+        texte === "IMAGE_ONLY" ||
+        texte === "NON_RENSEIGNE" ||
+        texte === "N/A" ||
+        texte.includes("A_LIRE_SUR_CAPTURE")
+    );
+}
+
+function construirePromptAnalyseVisionSeule({ configuration }) {
+    return `Tu es un analyste technique prudent. Tu reçois uniquement une image de graphique TradingView, sans données de marché externes fiables.
+
+Objectif :
+1. Lire visuellement l'image.
+2. Tenter d'identifier les paramètres visibles :
+   - symbole exact si visible, par exemple NASDAQ:MSFT, BINANCE:BTCUSDT, OANDA:XAUUSD ;
+   - nom de l'actif si visible ;
+   - intervalle ou unité de temps si visible ;
+   - indicateurs visibles ;
+   - type de graphique ;
+   - tendance visuelle.
+3. Donner une analyse prudente uniquement à partir de l'image.
+4. Ne jamais inventer de prix exact si le prix n'est pas clairement lisible.
+
+Réponds uniquement en JSON valide avec cette structure exacte :
+{
+  "signal": "acheter | vendre | attendre",
+  "confiance": 0,
+  "tendance": "haussiere | baissiere | neutre | indeterminee",
+  "resume": "",
+  "raisons": [],
+  "risques": [],
+  "recommandations": [],
+  "stop_loss": null,
+  "take_profit_1": null,
+  "take_profit_2": null,
+  "analyse_visuelle": {
+    "commentaire": "",
+    "symbole_visible": null,
+    "actif_visible": null,
+    "intervalle_visible": null,
+    "indicateurs_visibles": [],
+    "type_graphique_visible": null,
+    "prix_lisible": null
+  },
+  "parametres_lus_image": {
+    "symbole": null,
+    "actif": null,
+    "intervalle": null,
+    "indicateurs": [],
+    "type_graphique": null,
+    "fiabilite": "faible | moyenne | forte"
+  }
+}
+
+Configuration reçue :
+${JSON.stringify(configuration || {}, null, 2)}
+
+Règles :
+- Si le symbole ou l'intervalle n'est pas clairement visible, mets null.
+- Si l'image est insuffisante, choisis "attendre".
+- Cette analyse ne doit pas prétendre utiliser Yahoo, Stooq, Binance, OKX, CoinGecko ou une autre source de marché.`;
+}
+
+async function analyseVisionSeule({ imageBase64, configuration }) {
+    const prompt = construirePromptAnalyseVisionSeule({ configuration });
+    const image = await preparerImagePourIA(imageBase64);
+    const erreursIA = [];
+    const ordre = ordreFournisseursIA();
+
+    for (const provider of ordre) {
+        if (!providerIAConfigure(provider)) {
+            erreursIA.push({
+                fournisseur: provider,
+                ignore: true,
+                message: "Clé API absente. Fournisseur ignoré."
+            });
+            continue;
+        }
+
+        try {
+            const resultat = await appelerFournisseurIA(provider, {
+                prompt,
+                image
+            });
+
+            resultat._erreurs_ia = erreursIA;
+            return resultat;
+        } catch (erreur) {
+            erreursIA.push({
+                fournisseur: provider,
+                message: erreur.message
+            });
+        }
+    }
+
+    const erreurFinale = new Error(
+        "Aucun fournisseur IA disponible ou fonctionnel pour l'analyse Vision seule : " +
+        JSON.stringify(erreursIA, null, 2)
+    );
+    erreurFinale.erreursIA = erreursIA;
+    erreurFinale.httpStatus = 500;
+    throw erreurFinale;
+}
+
+function normaliserDecisionVisionSeule(j, configuration = {}) {
+    const sig = ["acheter", "vendre", "attendre"].includes(
+        String(j.signal || j.decision || "attendre").toLowerCase()
+    )
+        ? String(j.signal || j.decision).toLowerCase()
+        : "attendre";
+
+    let conf = Number(j.confiance ?? j.confidence ?? 0);
+
+    if (!Number.isFinite(conf)) conf = 0;
+    if (conf <= 1) conf *= 100;
+
+    const analyseVisuelle = j.analyse_visuelle || {};
+    const parametresLus = j.parametres_lus_image || {
+        symbole: analyseVisuelle.symbole_visible || null,
+        actif: analyseVisuelle.actif_visible || null,
+        intervalle: analyseVisuelle.intervalle_visible || null,
+        indicateurs: Array.isArray(analyseVisuelle.indicateurs_visibles) ? analyseVisuelle.indicateurs_visibles : [],
+        type_graphique: analyseVisuelle.type_graphique_visible || null,
+        fiabilite: "faible"
+    };
+
+    return {
+        ok: true,
+        statut: "ok",
+        mode: "vision_seule",
+        source: "ia_vision_seule_image",
+        fournisseur_ia: j._fournisseur_ia || "inconnu",
+        modele_ia: j._modele_ia || null,
+        erreurs_ia: Array.isArray(j._erreurs_ia) ? j._erreurs_ia : [],
+        source_marche: "non_utilisee",
+        symbole_marche: null,
+        erreurs_sources: [],
+        actif: parametresLus.symbole || parametresLus.actif || configuration?.actif || "IMAGE_SEULE",
+        intervalle: parametresLus.intervalle || configuration?.intervalle || null,
+        signal: sig,
+        decision: sig.toUpperCase(),
+        confiance: arrondir(Math.max(0, Math.min(100, conf)), 1),
+        tendance: j.tendance || "indeterminee",
+        prix_actuel: analyseVisuelle.prix_lisible || null,
+        support_principal: null,
+        resistance_principale: null,
+        stop_loss: Number.isFinite(Number(j.stop_loss)) ? Number(j.stop_loss) : null,
+        take_profit_1: Number.isFinite(Number(j.take_profit_1)) ? Number(j.take_profit_1) : null,
+        take_profit_2: Number.isFinite(Number(j.take_profit_2)) ? Number(j.take_profit_2) : null,
+        resume: j.resume || j.raison || "",
+        raisons: Array.isArray(j.raisons) ? j.raisons : [],
+        risques: Array.isArray(j.risques) ? j.risques : [],
+        recommandations: Array.isArray(j.recommandations) ? j.recommandations : [],
+        analyse_visuelle: analyseVisuelle,
+        parametres_lus_image: parametresLus,
+        analyse_technique: null,
+        avertissement: "Analyse Vision seule informative. Les paramètres sont lus depuis l'image quand ils sont visibles. Ce n'est pas un conseil financier.",
+        date: maintenantIso()
+    };
+}
+
+
 function providerIAConfigure(provider) {
     if (provider === "openai") return Boolean(process.env.OPENAI_API_KEY);
     if (provider === "gemini") return Boolean(process.env.GEMINI_API_KEY);
@@ -2501,7 +2670,7 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
                 return res.status(404).json({
                     ok: false,
                     message: "Capture introuvable sur le serveur.",
-                    details: "Le fichier n'existe pas dans /screenshots. Recréez une capture.",
+                    details: "Le fichier n'existe pas dans /screenshots. Recréez une capture ou envoyez imageBase64.",
                     fileName: safe,
                     date: maintenantIso()
                 });
@@ -2519,13 +2688,63 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
             });
         }
 
-        const marche = await recupererBougiesMarche(actif, intervalle);
-        const tech = analyseTechnique({ actif, intervalle, marche });
+        const configurationFinale = configuration || {};
+        const actifFinal =
+            actif ||
+            configurationFinale?.actif ||
+            configurationFinale?.graphique?.actif ||
+            "IMAGE_SEULE";
+
+        const intervalleFinal =
+            intervalle ||
+            configurationFinale?.intervalle ||
+            configurationFinale?.graphique?.intervalle ||
+            null;
+
+        /*
+            Cas important :
+            Les captures issues de index_gr.html sont volontairement des images seules.
+            Il ne faut pas appeler Yahoo, Stooq, Binance, OKX ou CoinGecko avec IMAGE_SEULE.
+            On lance donc une analyse Vision seule et l'IA tente de lire le symbole,
+            l'intervalle et les indicateurs directement depuis l'image.
+        */
+        if (estActifImageSeule(actifFinal) || configurationFinale?.type === "capture_image_seule") {
+            const iaVisionSeule = await analyseVisionSeule({
+                imageBase64: imageBase64Final || imageUrl,
+                configuration: {
+                    ...configurationFinale,
+                    actif: "IMAGE_SEULE",
+                    intervalle: intervalleFinal,
+                    mode_analyse: "vision_seule"
+                }
+            });
+
+            const finalVisionSeule = normaliserDecisionVisionSeule(iaVisionSeule, configurationFinale);
+
+            return res.json({
+                ok: true,
+                statut: "ok",
+                mode: "vision_seule",
+                message: "Analyse Vision seule effectuée. Aucune source de marché externe n'a été appelée.",
+                analysis: finalVisionSeule,
+                analyse: finalVisionSeule,
+                parametres_lus_image: finalVisionSeule.parametres_lus_image,
+                avertissement: finalVisionSeule.avertissement,
+                date: maintenantIso()
+            });
+        }
+
+        const marche = await recupererBougiesMarche(actifFinal, intervalleFinal || "1h");
+        const tech = analyseTechnique({
+            actif: actifFinal,
+            intervalle: intervalleFinal || "1h",
+            marche
+        });
 
         const ia = await openaiVision({
             imageBase64: imageBase64Final || imageUrl,
             analyseTechnique: tech,
-            configuration
+            configuration: configurationFinale
         });
 
         const final = normaliserDecision(ia, tech);
@@ -2533,8 +2752,10 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
         res.json({
             ok: true,
             statut: "ok",
+            mode: "vision_plus_marche",
             analysis: final,
-            analyse: final
+            analyse: final,
+            date: maintenantIso()
         });
 
     } catch (erreur) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading Pro - Capture graphique</title>
+    <title>Expert Trading Pro - Capture image seule</title>
 
     <script src="https://s3.tradingview.com/tv.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -268,7 +268,7 @@
     </div>
 
     <div class="header-gr">
-        <h1>EXPERT TRADING PRO - CAPTURE GRAPHIQUE</h1>
+        <h1>EXPERT TRADING PRO - CAPTURE IMAGE SEULE</h1>
         <div class="spacer"></div>
         <button class="btn-capture" id="btn-capture" type="button" onclick="takeScreenshot()" title="Capturer uniquement l'image affichée du graphique TradingView.">📷 Capturer l’image</button>
         <a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Ouvrir la page d’analyse des captures.">
@@ -629,9 +629,10 @@
                 categorie_analyse: "Image seule",
                 categorieAnalyse: "Image seule",
                 configuration_json: {
-                    nom: "Expert Trading Pro - Capture graphique",
+                    nom: "Expert Trading Pro - Capture image seule",
                     type: "capture_image_seule",
-                    commentaire: "Aucun paramètre personnalisé. Seule l'image affichée est capturée.",
+                    commentaire: "Aucun paramètre personnalisé. Seule l'image affichée est capturée. L'analyse Vision seule tentera de lire le symbole, l'intervalle et les indicateurs directement depuis l'image.",
+                    mode_analyse_recommande: "vision_seule",
                     tradingView: {
                         widgetPresent: true,
                         bibliotheque: "TradingView tv.js",
