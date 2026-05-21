@@ -1603,6 +1603,13 @@
             etudes: []
         };
 
+
+        let synchronisationGraphiqueTimer = null;
+        let synchronisationGraphiqueInstallee = false;
+        let derniereSignatureParametresGraphique = "";
+        let lectureParametresGraphiqueEnCours = false;
+
+
         let modeTradingViewActif = "charting_library";
 
         function chartingLibraryCompleteDisponible() {
@@ -2159,6 +2166,26 @@
             return true;
         }
 
+        function definirValeurSelectOuAjouter(id, valeur, libelle = null) {
+            const select = document.getElementById(id);
+            if (!select || valeur === undefined || valeur === null) return false;
+
+            const valeurTexte = String(valeur).trim();
+            if (!valeurTexte) return false;
+
+            let option = Array.from(select.options).find(opt => opt.value === valeurTexte);
+
+            if (!option) {
+                option = document.createElement("option");
+                option.value = valeurTexte;
+                option.textContent = libelle || valeurTexte;
+                select.appendChild(option);
+            }
+
+            select.value = valeurTexte;
+            return true;
+        }
+
         function definirValeurChamp(id, valeur) {
             const champ = document.getElementById(id);
             if (!champ || valeur === undefined || valeur === null) return false;
@@ -2401,86 +2428,100 @@
         }
 
         function lireParametresDepuisGraphiqueChartingLibrary() {
-            const graphique = obtenirGraphiqueChartingLibraryActif();
-
-            const actifLocal =
-                normaliserSymboleTradingView(symboleTradingViewLu) ||
-                normaliserSymboleTradingView(obtenirValeurChamp("symbole-tv-lu", "BINANCE:BTCUSDT")) ||
-                "BINANCE:BTCUSDT";
-
-            let actif = actifLocal;
-            let intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", "D"));
-            let styleInfo = {
-                style: obtenirStyleGraphiqueSelectionne(),
-                libelle: obtenirLibelleStyleGraphiqueSelectionne()
-            };
-
-            if (graphique) {
-                try {
-                    if (typeof graphique.symbol === "function") {
-                        actif = normaliserSymboleTradingView(graphique.symbol()) || actifLocal;
-                    }
-                } catch (erreur) {
-                    console.warn("Lecture du symbole impossible :", erreur);
-                }
-
-                try {
-                    if (typeof graphique.resolution === "function") {
-                        intervalle = normaliserIntervalleCapture(graphique.resolution() || intervalle);
-                    } else if (typeof graphique.interval === "function") {
-                        intervalle = normaliserIntervalleCapture(graphique.interval() || intervalle);
-                    }
-                } catch (erreur) {
-                    console.warn("Lecture de l'intervalle impossible :", erreur);
-                }
-
-                try {
-                    if (typeof graphique.chartType === "function") {
-                        styleInfo = normaliserTypeGraphiqueDepuisChartingLibrary(graphique.chartType());
-                    }
-                } catch (erreur) {
-                    console.warn("Lecture du type de graphique impossible :", erreur);
-                }
+            if (lectureParametresGraphiqueEnCours) {
+                return dernierParametresGraphiqueLus;
             }
 
-            const etudes = lireEtudesDepuisGraphiqueChartingLibrary();
-            const indicateur = extraireIndicateurPrincipalDepuisEtudes(etudes);
+            lectureParametresGraphiqueEnCours = true;
 
-            dernierParametresGraphiqueLus = {
-                actif,
-                intervalle,
-                indicateur,
-                typeGraphique: styleInfo.libelle,
-                style: styleInfo.style,
-                etudes
-            };
+            try {
+                const graphique = obtenirGraphiqueChartingLibraryActif();
 
-            symboleTradingViewLu = actif;
-            definirValeurChamp("capture-actif", actif);
-            definirValeurChamp("capture-intervalle", intervalle);
-            definirValeurChamp("capture-indicateur", indicateur);
-            definirValeurChamp("capture-style", styleInfo.style);
+                const actifLocal =
+                    normaliserSymboleTradingView(symboleTradingViewLu) ||
+                    normaliserSymboleTradingView(obtenirValeurChamp("symbole-tv-lu", "BINANCE:BTCUSDT")) ||
+                    "BINANCE:BTCUSDT";
 
-            definirValeurSelect("asset-selector", actif);
-            definirValeurSelect("interval-selector", intervalle);
-            definirValeurSelect("indicator-selector", indicateur);
-            definirValeurSelect("chart-type-selector", styleInfo.style);
-            afficherSymboleTradingViewLu(actif, "lu depuis activeChart() Charting Library");
+                let actif = actifLocal;
+                let intervalle = normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", "D"));
+                let styleInfo = {
+                    style: obtenirStyleGraphiqueSelectionne(),
+                    libelle: obtenirLibelleStyleGraphiqueSelectionne()
+                };
 
-            if (derniersParametresTVConfirmes) {
-                derniersParametresTVConfirmes.actif = actif;
-                derniersParametresTVConfirmes.intervalle = intervalle;
-                derniersParametresTVConfirmes.indicateur = indicateur;
-                derniersParametresTVConfirmes.typeGraphique = styleInfo.libelle;
+                if (graphique && modeChartingLibraryComplet()) {
+                    try {
+                        if (typeof graphique.symbol === "function") {
+                            actif = normaliserSymboleTradingView(graphique.symbol()) || actif;
+                        }
+                    } catch (erreur) {
+                        console.warn("Lecture du symbole impossible :", erreur);
+                    }
+
+                    try {
+                        if (typeof graphique.resolution === "function") {
+                            intervalle = normaliserIntervalleCapture(graphique.resolution() || intervalle);
+                        } else if (typeof graphique.interval === "function") {
+                            intervalle = normaliserIntervalleCapture(graphique.interval() || intervalle);
+                        }
+                    } catch (erreur) {
+                        console.warn("Lecture de l'intervalle impossible :", erreur);
+                    }
+
+                    try {
+                        if (typeof graphique.chartType === "function") {
+                            styleInfo = normaliserTypeGraphiqueDepuisChartingLibrary(graphique.chartType());
+                        }
+                    } catch (erreur) {
+                        console.warn("Lecture du type de graphique impossible :", erreur);
+                    }
+                }
+
+                const etudes = modeChartingLibraryComplet()
+                    ? lireEtudesDepuisGraphiqueChartingLibrary()
+                    : (dernierParametresGraphiqueLus.etudes || []);
+
+                const indicateur = extraireIndicateurPrincipalDepuisEtudes(etudes);
+
+                dernierParametresGraphiqueLus = {
+                    actif,
+                    intervalle,
+                    indicateur,
+                    typeGraphique: styleInfo.libelle,
+                    style: styleInfo.style,
+                    etudes
+                };
+
+                symboleTradingViewLu = actif;
+
+                definirValeurChamp("capture-actif", actif);
+                definirValeurChamp("capture-intervalle", intervalle);
+                definirValeurChamp("capture-indicateur", indicateur);
+                definirValeurChamp("capture-style", styleInfo.style);
+
+                definirValeurSelectOuAjouter("asset-selector", actif, actif);
+                definirValeurSelectOuAjouter("interval-selector", intervalle, intervalle);
+                definirValeurSelectOuAjouter("indicator-selector", indicateur, indicateur);
+                definirValeurSelectOuAjouter("chart-type-selector", styleInfo.style, styleInfo.libelle);
+                afficherSymboleTradingViewLu(actif, modeChartingLibraryComplet() ? "lu depuis activeChart()" : "widget public : lecture interne limitée");
+
+                if (derniersParametresTVConfirmes) {
+                    derniersParametresTVConfirmes.actif = actif;
+                    derniersParametresTVConfirmes.intervalle = intervalle;
+                    derniersParametresTVConfirmes.indicateur = indicateur;
+                    derniersParametresTVConfirmes.typeGraphique = styleInfo.libelle;
+                    derniersParametresTVConfirmes.etudes = etudes;
+                }
+
+                if (derniereSourceMarche) {
+                    derniereSourceMarche.symbole = actif;
+                }
+
+                return dernierParametresGraphiqueLus;
+
+            } finally {
+                lectureParametresGraphiqueEnCours = false;
             }
-
-            if (derniereSourceMarche) {
-                derniereSourceMarche.symbole = actif;
-            }
-
-            afficherInfosGraphique();
-
-            return dernierParametresGraphiqueLus;
         }
 
         function lireActifDepuisGraphiqueTradingView() {
@@ -3255,35 +3296,92 @@
             }
         }
 
+        function synchroniserChampsDepuisGraphiqueTradingView(source = "événement graphique") {
+            const avant = derniereSignatureParametresGraphique;
+            const parametres = lireParametresDepuisGraphiqueChartingLibrary();
+            const signature = JSON.stringify({
+                actif: parametres.actif,
+                intervalle: parametres.intervalle,
+                indicateur: parametres.indicateur,
+                typeGraphique: parametres.typeGraphique,
+                etudes: (parametres.etudes || []).map(etude => etude.shortName || etude.name || "")
+            });
+
+            if (signature !== avant) {
+                derniereSignatureParametresGraphique = signature;
+                afficherInfosGraphique();
+
+                const suffixeMode = modeChartingLibraryComplet()
+                    ? "Charting Library"
+                    : "widget public tv.js";
+
+                afficherStatus(
+                    "Paramètres lus depuis le graphique (" + suffixeMode + ", " + source + ") : " +
+                    (parametres.actif || "N/A") + " / " +
+                    (parametres.intervalle || "N/A") + " / " +
+                    (parametres.typeGraphique || "N/A") + " / " +
+                    (parametres.indicateur || "N/A")
+                );
+            }
+
+            return parametres;
+        }
+
+        function demarrerSynchronisationContinueGraphique() {
+            if (synchronisationGraphiqueTimer) {
+                clearInterval(synchronisationGraphiqueTimer);
+                synchronisationGraphiqueTimer = null;
+            }
+
+            synchronisationGraphiqueTimer = setInterval(() => {
+                try {
+                    synchroniserChampsDepuisGraphiqueTradingView("lecture périodique");
+                } catch (erreur) {
+                    console.warn("Synchronisation périodique impossible :", erreur);
+                }
+            }, 1000);
+        }
+
         function installerEcouteursParametresChartingLibrary() {
             const graphique = obtenirGraphiqueChartingLibraryActif();
             if (!graphique) return;
 
+            if (synchronisationGraphiqueInstallee) {
+                demarrerSynchronisationContinueGraphique();
+                return;
+            }
+
+            synchronisationGraphiqueInstallee = true;
+
+            const relire = (source) => {
+                setTimeout(() => {
+                    try {
+                        synchroniserChampsDepuisGraphiqueTradingView(source);
+                    } catch (erreur) {
+                        console.warn("Lecture des paramètres impossible après " + source + " :", erreur);
+                    }
+                }, 80);
+            };
+
             try {
-                if (graphique.onSymbolChanged && typeof graphique.onSymbolChanged === "function") {
-                    graphique.onSymbolChanged().subscribe(null, () => {
-                        lireParametresDepuisGraphiqueChartingLibrary();
-                    });
+                if (typeof graphique.onSymbolChanged === "function") {
+                    graphique.onSymbolChanged().subscribe(null, () => relire("changement symbole"));
                 }
             } catch (erreur) {
                 console.warn("Abonnement symbole impossible :", erreur);
             }
 
             try {
-                if (graphique.onIntervalChanged && typeof graphique.onIntervalChanged === "function") {
-                    graphique.onIntervalChanged().subscribe(null, () => {
-                        lireParametresDepuisGraphiqueChartingLibrary();
-                    });
+                if (typeof graphique.onIntervalChanged === "function") {
+                    graphique.onIntervalChanged().subscribe(null, () => relire("changement intervalle"));
                 }
             } catch (erreur) {
                 console.warn("Abonnement intervalle impossible :", erreur);
             }
 
             try {
-                if (graphique.onChartTypeChanged && typeof graphique.onChartTypeChanged === "function") {
-                    graphique.onChartTypeChanged().subscribe(null, () => {
-                        lireParametresDepuisGraphiqueChartingLibrary();
-                    });
+                if (typeof graphique.onChartTypeChanged === "function") {
+                    graphique.onChartTypeChanged().subscribe(null, () => relire("changement type"));
                 }
             } catch (erreur) {
                 console.warn("Abonnement type graphique impossible :", erreur);
@@ -3291,13 +3389,20 @@
 
             try {
                 if (tradingViewWidget && typeof tradingViewWidget.subscribe === "function") {
-                    tradingViewWidget.subscribe("study", () => {
-                        lireParametresDepuisGraphiqueChartingLibrary();
+                    ["study", "drawing", "series", "chart_loaded"].forEach(evenement => {
+                        try {
+                            tradingViewWidget.subscribe(evenement, () => relire("événement " + evenement));
+                        } catch (erreurEvenement) {
+                            // Certains événements ne sont pas disponibles selon la version.
+                        }
                     });
                 }
             } catch (erreur) {
-                console.warn("Abonnement études impossible :", erreur);
+                console.warn("Abonnement aux événements widget impossible :", erreur);
             }
+
+            demarrerSynchronisationContinueGraphique();
+            relire("initialisation");
         }
 
 
@@ -3346,6 +3451,12 @@
             mainSeries = null;
             currentData = [];
             widgetChartingLibraryPret = false;
+            synchronisationGraphiqueInstallee = false;
+            if (synchronisationGraphiqueTimer) {
+                clearInterval(synchronisationGraphiqueTimer);
+                synchronisationGraphiqueTimer = null;
+            }
+            derniereSignatureParametresGraphique = "";
 
             dernierParametresGraphiqueLus = {
                 actif: symboleChamp,
@@ -3384,8 +3495,8 @@
                 bibliotheque: "tv.js"
             };
 
-            afficherMessageGraphique("", "ok");
-            afficherStatus("Charting Library locale absente : graphique chargé avec le widget public TradingView tv.js.");
+            afficherMessageGraphique("Mode secours tv.js : les changements faits directement dans l'iframe ne peuvent pas être lus. Pour une synchronisation réelle des champs, il faut charger la Charting Library locale.", "attente");
+            afficherStatus("Mode secours tv.js : les champs ne peuvent pas suivre les changements internes de l'iframe. Installe la Charting Library locale pour la lecture réelle.");
             afficherInfosGraphique();
             corrigerPanneauPlusieursFois();
         }
@@ -3418,6 +3529,12 @@
             mainSeries = null;
             currentData = [];
             widgetChartingLibraryPret = false;
+            synchronisationGraphiqueInstallee = false;
+            if (synchronisationGraphiqueTimer) {
+                clearInterval(synchronisationGraphiqueTimer);
+                synchronisationGraphiqueTimer = null;
+            }
+            derniereSignatureParametresGraphique = "";
 
             const datafeedUrl = window.EXPERT_TRADING_DATAFEED_URL || "https://demo-feed-data.tradingview.com";
 
@@ -3465,7 +3582,7 @@
 
                 creerEtudeChartingLibraryDepuisIndicateur(indicateurPersonnalise);
                 installerEcouteursParametresChartingLibrary();
-                lireParametresDepuisGraphiqueChartingLibrary();
+                synchroniserChampsDepuisGraphiqueTradingView("graphique prêt");
 
                 derniereSourceMarche = {
                     source: "tradingview_charting_library",
