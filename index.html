@@ -946,9 +946,9 @@
 
 
         /* ============================================================
-           CHAMP SYMBOLE LU DEPUIS TRADINGVIEW
-           - Affiche le symbole utilisé par le widget TradingView.
-           - Le champ est en lecture seule : il ne remplace pas l'ACTIF du graphique.
+           CHAMP SYMBOLE DU GRAPHIQUE
+           - Le changement interne dans l'iframe TradingView n'est pas lisible de façon fiable.
+           - Ce champ devient donc la source fiable pour changer le symbole du widget.
         ============================================================ */
         body:not(.auth-locked) .control-symbole-tv {
             border: 1px solid #334155 !important;
@@ -1016,21 +1016,21 @@
             <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché, enregistrer l’image et sauvegarder la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
         </div>
 
-        <div class="control-group control-symbole-tv" title="Symbole actuellement connu pour le graphique TradingView. Avec le widget public tv.js, la lecture directe après changement interne dans l’iframe peut être bloquée par le navigateur.">
+        <div class="control-group control-symbole-tv" title="Symbole TradingView à appliquer au graphique. Si le symbole est changé à l’intérieur de l’iframe, tv.js ne permet pas de le récupérer de façon fiable.">
             <label for="symbole-tv-lu">SYMBOLE :</label>
             <input
                 id="symbole-tv-lu"
                 type="text"
                 value="BINANCE:BTCUSDT"
-                readonly
-                aria-readonly="true"
-                title="Symbole lu depuis l’iframe TradingView quand il est exposé, sinon dernier symbole connu du widget.">
+                onchange="appliquerSymbolePersonnalise(true)"
+                onkeydown="if (event.key === 'Enter') { event.preventDefault(); appliquerSymbolePersonnalise(true); }"
+                title="Saisir le symbole TradingView à appliquer au graphique. Exemple : BINANCE:BTCUSDT, NASDAQ:MSFT, OANDA:XAUUSD.">
             <button
                 id="btn-lire-symbole-tv"
                 type="button"
-                onclick="synchroniserActifDepuisGraphiqueTradingView()"
-                title="Relire le symbole exposé par l’iframe TradingView.">
-                ↻
+                onclick="appliquerSymbolePersonnalise(true)"
+                title="Appliquer le symbole saisi au graphique TradingView.">
+                OK
             </button>
         </div>
 
@@ -2104,6 +2104,42 @@
             return valeur;
         }
 
+        function obtenirSymboleDepuisChampVisible() {
+            const champ = document.getElementById("symbole-tv-lu");
+            return normaliserSymboleTradingView(champ ? champ.value : "");
+        }
+
+        function appliquerSymbolePersonnalise(rechargerGraphique = true) {
+            const symbole = obtenirSymboleDepuisChampVisible();
+
+            if (!symbole) {
+                alert("Symbole invalide. Exemple : BINANCE:BTCUSDT, NASDAQ:MSFT ou OANDA:XAUUSD.");
+                afficherSymboleTradingViewLu(symboleTradingViewLu || "BINANCE:BTCUSDT", "dernier symbole valide");
+                return symboleTradingViewLu || "BINANCE:BTCUSDT";
+            }
+
+            symboleTradingViewLu = symbole;
+            definirValeurChamp("capture-actif", symbole);
+            definirValeurSelect("asset-selector", symbole);
+            afficherSymboleTradingViewLu(symbole, "champ SYMBOLE appliqué au widget");
+
+            if (derniereSourceMarche) {
+                derniereSourceMarche.symbole = symbole;
+            }
+
+            if (derniersParametresTVConfirmes) {
+                derniersParametresTVConfirmes.actif = symbole;
+            }
+
+            afficherInfosGraphique();
+
+            if (rechargerGraphique) {
+                actualiserGraphique();
+            }
+
+            return symbole;
+        }
+
         function obtenirValeurChamp(id, valeurDefaut = "") {
             const champ = document.getElementById(id);
             if (!champ) return valeurDefaut;
@@ -2128,6 +2164,38 @@
                 .replace(/^["']|["']$/g, "")
                 .trim()
                 .toUpperCase();
+
+            const aliasSymboles = {
+                "MICROSOFT CORP": "NASDAQ:MSFT",
+                "MICROSOFT": "NASDAQ:MSFT",
+                "MSFT": "NASDAQ:MSFT",
+                "APPLE": "NASDAQ:AAPL",
+                "APPLE INC": "NASDAQ:AAPL",
+                "AAPL": "NASDAQ:AAPL",
+                "TESLA": "NASDAQ:TSLA",
+                "TESLA INC": "NASDAQ:TSLA",
+                "TSLA": "NASDAQ:TSLA",
+                "NVIDIA": "NASDAQ:NVDA",
+                "NVIDIA CORP": "NASDAQ:NVDA",
+                "NVDA": "NASDAQ:NVDA",
+                "AMAZON": "NASDAQ:AMZN",
+                "AMAZON.COM INC": "NASDAQ:AMZN",
+                "AMZN": "NASDAQ:AMZN",
+                "GOOGLE": "NASDAQ:GOOGL",
+                "ALPHABET": "NASDAQ:GOOGL",
+                "GOOGL": "NASDAQ:GOOGL",
+                "OR": "OANDA:XAUUSD",
+                "GOLD": "OANDA:XAUUSD",
+                "XAUUSD": "OANDA:XAUUSD",
+                "BTCUSDT": "BINANCE:BTCUSDT",
+                "BTCUSD": "COINBASE:BTCUSD",
+                "ETHUSDT": "BINANCE:ETHUSDT",
+                "SOLUSDT": "BINANCE:SOLUSDT"
+            };
+
+            if (aliasSymboles[texte]) {
+                texte = aliasSymboles[texte];
+            }
 
             if (!texte || texte.includes("A_LIRE_SUR_CAPTURE")) return "";
             if (valeurContientListe(texte)) return "";
@@ -2174,14 +2242,23 @@
         }
 
         function lireActifDepuisGraphiqueTradingView() {
+            /*
+                Avec tv.js, le symbole modifié directement dans l'iframe TradingView
+                n'est pas récupérable de façon fiable à cause des règles de sécurité
+                du navigateur. Le champ SYMBOLE visible devient donc la source fiable.
+            */
+            const symboleChamp = obtenirSymboleDepuisChampVisible();
             const symboleIframe = lireSymboleDepuisIframeTradingView();
             const symbole =
+                symboleChamp ||
                 symboleIframe ||
                 symboleTradingViewLu ||
                 obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
 
             const normalise = normaliserSymboleTradingView(symbole) || "BINANCE:BTCUSDT";
-            const sourceSymbole = symboleIframe ? "iframe TradingView" : "dernier symbole connu du widget";
+            const sourceSymbole = symboleChamp
+                ? "champ SYMBOLE"
+                : (symboleIframe ? "iframe TradingView" : "dernier symbole connu du widget");
 
             symboleTradingViewLu = normalise;
             definirValeurChamp("capture-actif", normalise);
