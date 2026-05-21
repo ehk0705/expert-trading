@@ -509,6 +509,153 @@
             z-index: 0 !important;
         }
 
+
+
+        /* ============================================================
+           CORRECTION AFFICHAGE GRAPHIQUE / PANNEAU SUPÉRIEUR
+           - Le panneau supérieur reste visible sans recouvrir le graphique.
+           - Le graphique garde une hauteur stable.
+           - Le panneau Résultat IA ne flotte plus par-dessus le graphique.
+           - TradingView ne force plus un affichage trop zoomé.
+        ============================================================ */
+        html,
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            min-height: 100% !important;
+            overflow-x: hidden !important;
+            background: #020617 !important;
+        }
+
+        body:not(.auth-locked) {
+            padding-top: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        body:not(.auth-locked) .header-pro {
+            position: sticky !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            z-index: 5000 !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            gap: 10px 12px !important;
+            padding: 10px 14px !important;
+            background: rgba(2, 6, 23, 0.99) !important;
+            border-bottom: 1px solid #334155 !important;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.65) !important;
+        }
+
+        body:not(.auth-locked) .header-pro h1 {
+            margin-left: auto !important;
+            white-space: nowrap !important;
+        }
+
+        body:not(.auth-locked) .header-pro .control-group {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            flex-wrap: nowrap !important;
+            min-width: 0 !important;
+        }
+
+        body:not(.auth-locked) #indicator-selector {
+            width: 300px !important;
+            max-width: 300px !important;
+        }
+
+        body:not(.auth-locked) #configuration-sauvegardee-selector {
+            width: 520px !important;
+            max-width: 520px !important;
+        }
+
+        body:not(.auth-locked) #chart-container {
+            position: relative !important;
+            z-index: 1 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-top: 1px solid #1e293b !important;
+            min-height: calc(100vh - 155px) !important;
+            height: calc(100vh - 155px) !important;
+            background: #020617 !important;
+            overflow: hidden !important;
+            display: block !important;
+        }
+
+        body:not(.auth-locked) #tradingview_chart {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 560px !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            overflow: hidden !important;
+            background: #020617 !important;
+        }
+
+        body:not(.auth-locked) #tradingview_chart iframe {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 560px !important;
+            border: 0 !important;
+            display: block !important;
+        }
+
+        body:not(.auth-locked) #chart-message {
+            top: 12px !important;
+            left: 14px !important;
+            z-index: 20 !important;
+        }
+
+        body:not(.auth-locked) .result-panel,
+        body:not(.auth-locked) #result-panel {
+            position: relative !important;
+            left: auto !important;
+            right: auto !important;
+            top: auto !important;
+            bottom: auto !important;
+            width: calc(100% - 28px) !important;
+            max-width: none !important;
+            margin: 12px 14px 18px 14px !important;
+            box-sizing: border-box !important;
+            z-index: 10 !important;
+            transform: none !important;
+        }
+
+        @media (max-width: 1200px) {
+            body:not(.auth-locked) .header-pro {
+                align-items: stretch !important;
+            }
+
+            body:not(.auth-locked) .header-pro h1 {
+                width: 100% !important;
+                text-align: center !important;
+                margin-left: 0 !important;
+            }
+
+            body:not(.auth-locked) #indicator-selector,
+            body:not(.auth-locked) #configuration-sauvegardee-selector {
+                width: 100% !important;
+                max-width: none !important;
+            }
+
+            body:not(.auth-locked) .header-pro .control-group {
+                flex-wrap: wrap !important;
+            }
+
+            body:not(.auth-locked) #chart-container {
+                min-height: 620px !important;
+                height: 620px !important;
+            }
+        }
+
     </style>
 </head>
 
@@ -533,7 +680,6 @@
     <div class="header-pro">
         <div class="control-group">
             <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché, enregistrer l’image et sauvegarder la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
-			<!--
             <button
                 class="btn-json"
                 id="btn-json-config"
@@ -542,10 +688,8 @@
                 title="Charger depuis PostgreSQL une configuration JSON sauvegardée, sans image Base64, puis l’appliquer au graphique.">
                 Charger JSON
             </button>
-			
             <button class="btn-vision" id="btn-vision" onclick="analyserVisionMarche()" title="Lancer l’analyse IA de l’image du graphique avec les données de marché et les indicateurs techniques.">Vision + Marché</button>
         </div>
-		-->
 
 
 
@@ -2179,6 +2323,19 @@
             return valeur;
         }
 
+
+        function obtenirPlageTradingView(intervalle) {
+            const valeur = String(intervalle || "D").toUpperCase();
+
+            if (["1", "5", "15", "30"].includes(valeur)) return "5D";
+            if (["60", "240"].includes(valeur)) return "1M";
+            if (valeur === "D") return "12M";
+            if (valeur === "W") return "5Y";
+            if (valeur === "M") return "ALL";
+
+            return "12M";
+        }
+
         function creerGraphiqueTradingViewS3() {
             const conteneur = document.getElementById("tradingview_chart");
             if (!conteneur) return;
@@ -2194,6 +2351,7 @@
             const actif = obtenirValeurChamp("capture-actif", document.getElementById("asset-selector")?.value || "BINANCE:BTCUSDT");
             const intervalle = convertirIntervallePourTradingView(normaliserIntervalleCapture(obtenirValeurChamp("capture-intervalle", document.getElementById("interval-selector")?.value || "D")));
             const style = convertirStylePourTradingView(obtenirStyleGraphiqueSelectionne());
+            const plage = obtenirPlageTradingView(intervalle);
 
             conteneur.innerHTML = "";
             chart = null;
@@ -2204,6 +2362,7 @@
                 autosize: true,
                 symbol: actif,
                 interval: intervalle,
+                range: plage,
                 timezone: "Etc/UTC",
                 theme: "dark",
                 style: style,
@@ -2221,6 +2380,9 @@
                 source: "tradingview_tvjs_s3",
                 symbole: actif
             };
+
+            setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
+            setTimeout(() => window.dispatchEvent(new Event("resize")), 900);
 
             afficherMessageGraphique("", "ok");
             afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
