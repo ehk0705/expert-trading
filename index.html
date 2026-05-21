@@ -2328,13 +2328,9 @@
                 const nomCapture = resultatSauvegarde?.reponseServeur?.capture?.nom_capture || resultatSauvegarde?.payloadEnvoye?.nom_capture || "capture";
 
                 alert(
-                    "Capture réussie.
-
-" +
-                    "Image et configuration JSON sauvegardées dans PostgreSQL.
-" +
-                    "Nom : " + nomCapture + "
-" +
+                    "Capture réussie.\n\n" +
+                    "Image et configuration JSON sauvegardées dans PostgreSQL.\n" +
+                    "Nom : " + nomCapture + "\n" +
                     "ID : " + idCapture
                 );
 
@@ -2343,9 +2339,7 @@
             } catch (err) {
                 console.error("Erreur capture :", err);
                 afficherStatus("Erreur capture : " + err.message);
-                alert("Erreur capture.
-
-" + err.message);
+                alert("Erreur capture.\n\n" + err.message);
                 corrigerPanneauSuperieurDefinitif();
                 return null;
             }
