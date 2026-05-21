@@ -1423,13 +1423,70 @@
                 .replace(/\s+/g, " ");
         }
 
+        function convertirActifTradingViewVersSourceMarche(valeur) {
+            /*
+                Correction analyse.html :
+                certains symboles TradingView ne sont pas acceptés directement par Yahoo/Stooq.
+                On envoie donc au serveur un symbole compatible marché quand c'est possible,
+                sans modifier l'affichage de la capture ni les métadonnées d'origine.
+            */
+            const texteOriginal = nettoyerTexteParametre(valeur);
+            const texte = texteOriginal.toUpperCase();
+
+            if (!texte) return "";
+
+            const correspondancesExactes = {
+                "SP:SPX": "^GSPC",
+                "SPX": "^GSPC",
+                "S&P 500": "^GSPC",
+                "S&P500": "^GSPC",
+                "US500": "^GSPC",
+
+                "NASDAQ:NDX": "^NDX",
+                "NDX": "^NDX",
+                "OANDA:NAS100USD": "^NDX",
+                "FOREXCOM:NSXUSD": "^NDX",
+                "CME_MINI:NQ1!": "NQ=F",
+                "NAS100": "^NDX",
+                "NASDAQ 100": "^NDX",
+
+                "TVC:DXY": "DX-Y.NYB",
+                "DXY": "DX-Y.NYB",
+
+                "OANDA:XAUUSD": "XAUUSD=X",
+                "XAUUSD": "XAUUSD=X",
+                "GOLD": "XAUUSD=X",
+                "OR": "XAUUSD=X",
+
+                "OANDA:XAGUSD": "XAGUSD=X",
+                "XAGUSD": "XAGUSD=X",
+                "SILVER": "XAGUSD=X",
+                "ARGENT": "XAGUSD=X"
+            };
+
+            if (correspondancesExactes[texte]) {
+                return correspondancesExactes[texte];
+            }
+
+            if (texte.includes("SP:SPX") || texte.includes("S&P") || texte.includes("SPX")) return "^GSPC";
+            if (texte.includes("NASDAQ:NDX") || texte.includes("NAS100") || texte.includes("NDX")) return "^NDX";
+            if (texte.includes("DXY") || texte.includes("DOLLAR INDEX")) return "DX-Y.NYB";
+            if (texte.includes("XAU") || texte.includes("GOLD") || texte.includes(" OR ")) return "XAUUSD=X";
+            if (texte.includes("XAG") || texte.includes("SILVER") || texte.includes("ARGENT")) return "XAGUSD=X";
+
+            return texteOriginal;
+        }
+
         function extraireActifMarcheDepuisTexte(valeur) {
             const texteOriginal = nettoyerTexteParametre(valeur);
             const texte = texteOriginal.toUpperCase();
 
             if (!valeurParametreMarcheValide(texte)) return "";
 
-            if (/^[A-Z0-9._-]+:[A-Z0-9._-]+$/.test(texte)) return texte;
+            const symboleMarche = convertirActifTradingViewVersSourceMarche(texteOriginal);
+            if (symboleMarche && symboleMarche !== texteOriginal) return symboleMarche;
+
+            if (/^[A-Z0-9._!^-]+:[A-Z0-9._!^-]+$/.test(texte)) return texte;
 
             if (texte.includes("BTC")) return "BINANCE:BTCUSDT";
             if (texte.includes("ETH")) return "BINANCE:ETHUSDT";
@@ -1442,9 +1499,6 @@
             if (texte.includes("MSFT")) return "NASDAQ:MSFT";
             if (texte.includes("AMZN")) return "NASDAQ:AMZN";
             if (texte.includes("GOOGL") || texte.includes("GOOGLE")) return "NASDAQ:GOOGL";
-            if (texte.includes("XAU") || texte.includes("GOLD") || texte.includes("OR")) return "OANDA:XAUUSD";
-            if (texte.includes("DXY")) return "TVC:DXY";
-            if (texte.includes("SPX") || texte.includes("S&P")) return "SP:SPX";
 
             return texteOriginal;
         }
@@ -1602,6 +1656,7 @@
 
             copie.parametres_originaux = {
                 actif: contexte.actif || configuration?.actif || capture?.actif || null,
+                actif_marche_envoye: actifMarche,
                 intervalle: contexte.intervalle || configuration?.intervalle || capture?.intervalle || null,
                 indicateur: contexte.indicateur || configuration?.indicateur || capture?.indicateur || null
             };
