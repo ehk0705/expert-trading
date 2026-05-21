@@ -123,6 +123,24 @@
         }
 
 
+        .header-pro .control-group select {
+            min-height: 34px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #020617;
+            color: #ffffff;
+            padding: 6px 9px;
+        }
+
+        .header-pro .control-group label {
+            color: #facc15;
+            font-weight: 700;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+
+
         .infos-graphique {
             width: 100%;
             box-sizing: border-box;
@@ -490,6 +508,41 @@
         </div>
 
         <h1>EXPERT TRADING PRO</h1>
+
+        <div class="control-group">
+            <label for="asset-selector">ACTIF :</label>
+            <select id="asset-selector" onchange="appliquerParametresCaptureTradingView()" title="Actif appliqué au widget TradingView et sauvegardé dans la configuration.">
+                <option value="BINANCE:BTCUSDT" selected>Bitcoin / USDT</option>
+                <option value="BINANCE:ETHUSDT">Ethereum / USDT</option>
+                <option value="BINANCE:SOLUSDT">Solana / USDT</option>
+                <option value="BINANCE:BNBUSDT">BNB / USDT</option>
+                <option value="BINANCE:XRPUSDT">XRP / USDT</option>
+                <option value="OANDA:XAUUSD">Or / Dollar US</option>
+                <option value="OANDA:XAGUSD">Argent / Dollar US</option>
+                <option value="NASDAQ:NDX">Nasdaq 100</option>
+                <option value="SP:SPX">S&amp;P 500</option>
+                <option value="TVC:DXY">Dollar Index</option>
+                <option value="FX:EURUSD">EUR / USD</option>
+                <option value="FX:GBPUSD">GBP / USD</option>
+                <option value="FX:USDJPY">USD / JPY</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="capture-intervalle">INTERVALLE :</label>
+            <select id="capture-intervalle" onchange="appliquerParametresCaptureTradingView()" title="Intervalle sauvegardé dans la configuration et appliqué au widget TradingView.">
+                <option value="1">1m</option>
+                <option value="5">5m</option>
+                <option value="15">15m</option>
+                <option value="30">30m</option>
+                <option value="60">1h</option>
+                <option value="240">4h</option>
+                <option value="D" selected>1J</option>
+                <option value="W">1S</option>
+                <option value="M">1M</option>
+            </select>
+        </div>
+
 
         <div class="control-group configuration-loader">
             <label for="configuration-sauvegardee-selector">CONFIG. :</label>
@@ -997,6 +1050,7 @@
                 return;
             }
 
+            synchroniserIntervalleCaptureVersAncien();
             afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
@@ -1300,7 +1354,67 @@
             );
         }
 
+
+        function obtenirValeurSelect(id, valeurDefaut = "") {
+            const select = document.getElementById(id);
+            return select ? select.value : valeurDefaut;
+        }
+
+        function obtenirIntervalleSelectionne() {
+            const captureIntervalle = document.getElementById("capture-intervalle");
+            const intervalleAncien = document.getElementById("interval-selector");
+
+            if (captureIntervalle && captureIntervalle.value) {
+                return captureIntervalle.value;
+            }
+
+            if (intervalleAncien && intervalleAncien.value) {
+                return intervalleAncien.value;
+            }
+
+            return "D";
+        }
+
+        function definirIntervalleSelectionne(valeur) {
+            let resultat = false;
+
+            if (valeur === undefined || valeur === null) {
+                return false;
+            }
+
+            const valeurTexte = String(valeur);
+
+            ["capture-intervalle", "interval-selector"].forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+
+                const existe = Array.from(select.options).some(option => option.value === valeurTexte);
+                if (existe) {
+                    select.value = valeurTexte;
+                    resultat = true;
+                }
+            });
+
+            return resultat;
+        }
+
+        function synchroniserIntervalleCaptureVersAncien() {
+            const valeur = obtenirIntervalleSelectionne();
+            definirIntervalleSelectionne(valeur);
+            return valeur;
+        }
+
+        function appliquerParametresCaptureTradingView() {
+            synchroniserIntervalleCaptureVersAncien();
+            afficherInfosGraphique();
+            actualiserGraphique();
+        }
+
         function definirValeurSelect(id, valeur) {
+            if (id === "interval-selector" || id === "capture-intervalle") {
+                return definirIntervalleSelectionne(valeur);
+            }
+
             const select = document.getElementById(id);
             if (!select || valeur === undefined || valeur === null) return false;
 
@@ -1475,7 +1589,7 @@
             const catText = cat.options[cat.selectedIndex].text;
 
             const actif = document.getElementById("asset-selector").value;
-            const intervalle = document.getElementById("interval-selector").value;
+            const intervalle = obtenirIntervalleSelectionne();
             const indicateur = document.getElementById("indicator-selector").value;
             const style = document.getElementById("chart-type-selector").value;
 
@@ -1562,7 +1676,7 @@
             return [
                 "Actif : " + libelleOptionSelectionnee("asset-selector"),
                 "Code : " + configuration.actif,
-                "Intervalle : " + libelleOptionSelectionnee("interval-selector"),
+                "Intervalle : " + libelleOptionSelectionnee("capture-intervalle"),
                 "Indicateur : " + configuration.indicateur,
                 "Type : " + libelleOptionSelectionnee("chart-type-selector"),
                 "Analyse : " + configuration.categorieAnalyseLibelle,
@@ -1617,7 +1731,7 @@
                 '<div class="infos-titre">Informations du graphique</div>' +
                 '<span class="info-item"><strong>Actif :</strong> ' + libelleOptionSelectionnee("asset-selector") + '</span>' +
                 '<span class="info-item"><strong>Code :</strong> ' + configuration.actif + '</span>' +
-                '<span class="info-item"><strong>Intervalle :</strong> ' + libelleOptionSelectionnee("interval-selector") + '</span>' +
+                '<span class="info-item"><strong>Intervalle :</strong> ' + libelleOptionSelectionnee("capture-intervalle") + '</span>' +
                 '<span class="info-item"><strong>Indicateur :</strong> ' + configuration.indicateur + '</span>' +
                 '<span class="info-item"><strong>Type :</strong> ' + libelleOptionSelectionnee("chart-type-selector") + '</span>' +
                 '<span class="info-item"><strong>Analyse :</strong> ' + configuration.categorieAnalyseLibelle + '</span>' +
@@ -1811,7 +1925,7 @@
             }
 
             const actif = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
-            const intervalle = convertirIntervallePourTradingView(document.getElementById("interval-selector").value || "D");
+            const intervalle = convertirIntervallePourTradingView(obtenirIntervalleSelectionne() || "D");
             const style = convertirStylePourTradingView(document.getElementById("chart-type-selector").value || "candles");
 
             conteneur.innerHTML = "";
@@ -1889,7 +2003,7 @@
         async function actualiserGraphique() {
             garderEnteteVisible();
             const actif = document.getElementById("asset-selector").value;
-            const intervalle = document.getElementById("interval-selector").value;
+            const intervalle = obtenirIntervalleSelectionne();
 
             afficherMessageGraphique("Chargement du widget TradingView tv.js...", "attente");
             afficherStatus("Chargement du graphique TradingView tv.js...");
@@ -1919,7 +2033,7 @@
         function ouvrirTradingView() {
             garderEnteteVisible();
             const symbole = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
-            const intervalle = document.getElementById("interval-selector").value || "D";
+            const intervalle = obtenirIntervalleSelectionne() || "D";
             const url = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(symbole) + "&interval=" + encodeURIComponent(intervalle);
             window.open(url, "_blank");
         }
