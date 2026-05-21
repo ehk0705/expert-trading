@@ -16,7 +16,7 @@
             flex: 1 1 auto;
             width: 100%;
             min-height: 620px;
-            background: #020617;
+            background: #ffffff;
             position: relative;
             border-top: 1px solid #263244;
             padding: 12px;
@@ -32,8 +32,8 @@
             min-height: 500px;
             border-radius: 10px;
             overflow: hidden;
-            background: #020617;
-            border: 1px solid #263244;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
         }
 
         #tradingview_chart iframe {
@@ -452,6 +452,25 @@
             body:not(.auth-locked) #chart-container {
                 scroll-margin-top: 260px;
             }
+        }
+
+
+        /* ============================================================
+           Affichage du graphique TradingView sur fond blanc
+           Le reste de l'interface reste inchangé.
+        ============================================================ */
+        body:not(.auth-locked) #chart-container {
+            background: #ffffff !important;
+            border-top-color: #d1d5db !important;
+        }
+
+        body:not(.auth-locked) #tradingview_chart {
+            background: #ffffff !important;
+            border-color: #d1d5db !important;
+        }
+
+        body:not(.auth-locked) #tradingview_chart iframe {
+            background: #ffffff !important;
         }
 
     </style>
@@ -1689,7 +1708,7 @@
                 tradingView: {
                     widgetPresent: true,
                     bibliotheque: "TradingView tv.js",
-                    theme: "dark",
+                    theme: "light",
                     capturable: false
                 },
                 snapshot: {
@@ -2043,7 +2062,7 @@
                 symbol: actif,
                 interval: intervalle,
                 timezone: "Etc/UTC",
-                theme: "dark",
+                theme: "light",
                 style: style,
                 locale: "fr",
                 enable_publishing: false,
