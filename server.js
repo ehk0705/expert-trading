@@ -1221,7 +1221,24 @@ function symboleYahoo(actif) {
         USDCAD: "CAD=X",
         USDCHF: "CHF=X",
         AUDUSD: "AUDUSD=X",
-        NZDUSD: "NZDUSD=X"
+        NZDUSD: "NZDUSD=X",
+
+        /*
+            Correction indices / symboles TradingView :
+            les codes TradingView comme SP:SPX, TVC:DXY ou OANDA:NAS100USD
+            ne sont pas toujours acceptés tels quels par Yahoo Finance.
+        */
+        SPX: "^GSPC",
+        SP500: "^GSPC",
+        US500: "^GSPC",
+        NDX: "^NDX",
+        NAS100: "^NDX",
+        NAS100USD: "^NDX",
+        US100: "^NDX",
+        DJI: "^DJI",
+        DJIA: "^DJI",
+        IXIC: "^IXIC",
+        DXY: "DX-Y.NYB"
     };
 
     if (correspondances[s]) return correspondances[s];
@@ -1253,6 +1270,15 @@ function symboleStooq(actif) {
         AUDUSD: "audusd",
         NZDUSD: "nzdusd",
         SPX: "^spx",
+        SP500: "^spx",
+        US500: "^spx",
+        NDX: "^ndx",
+        NAS100: "^ndx",
+        NAS100USD: "^ndx",
+        US100: "^ndx",
+        DJI: "^dji",
+        DJIA: "^dji",
+        IXIC: "^ixic",
         DXY: "dxy",
         AAPL: "aapl.us",
         TSLA: "tsla.us",
@@ -1277,7 +1303,16 @@ function symboleStooq(actif) {
 }
 
 function intervalleYahoo(i) {
-    const v = String(i || "1d").toLowerCase();
+    const original = String(i || "1d").trim();
+
+    /*
+        Correction importante :
+        TradingView utilise "M" pour mensuel, alors que "1m" signifie 1 minute.
+        Il ne faut donc pas convertir "1M" en "1m" par erreur.
+    */
+    if (original === "M" || original === "1M") return "1mo";
+
+    const v = original.toLowerCase();
 
     if (v.includes("day") || v.includes("days")) return "1d";
 
@@ -1305,7 +1340,10 @@ function intervalleYahoo(i) {
 }
 
 function rangeYahoo(i) {
-    const v = String(i || "").toLowerCase();
+    const original = String(i || "").trim();
+    if (original === "M" || original === "1M") return "5y";
+
+    const v = original.toLowerCase();
 
     const m = v.match(/days\s*=\s*(\d+)/);
     if (m) return Math.max(1, Number(m[1])) + "d";
@@ -1322,7 +1360,10 @@ function rangeYahoo(i) {
 
 
 function intervalleBinance(i) {
-    const v = String(i || "1h").toLowerCase();
+    const original = String(i || "1h").trim();
+    if (original === "M" || original === "1M") return "1M";
+
+    const v = original.toLowerCase();
 
     const t = {
         "1": "1m",

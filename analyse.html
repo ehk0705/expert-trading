@@ -822,6 +822,71 @@
             }
         }
 
+
+        async function imageCaptureSembleVide(imageBase64) {
+            return await new Promise((resolve) => {
+                if (!imageBase64) {
+                    resolve(true);
+                    return;
+                }
+
+                const img = new Image();
+
+                img.onload = function () {
+                    try {
+                        const canvas = document.createElement("canvas");
+                        const largeur = 160;
+                        const hauteur = Math.max(80, Math.round(img.height * largeur / Math.max(1, img.width)));
+
+                        canvas.width = largeur;
+                        canvas.height = hauteur;
+
+                        const ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, largeur, hauteur);
+
+                        const pixels = ctx.getImageData(0, 0, largeur, hauteur).data;
+                        let pixelsTresSombres = 0;
+                        let pixelsUtiles = 0;
+                        let transitions = 0;
+                        let luminositePrecedente = null;
+
+                        for (let i = 0; i < pixels.length; i += 4) {
+                            const r = pixels[i];
+                            const g = pixels[i + 1];
+                            const b = pixels[i + 2];
+                            const luminosite = (r + g + b) / 3;
+                            const amplitude = Math.max(r, g, b) - Math.min(r, g, b);
+
+                            if (luminosite < 20) pixelsTresSombres++;
+                            if (luminosite > 45 || amplitude > 20) pixelsUtiles++;
+
+                            if (luminositePrecedente !== null && Math.abs(luminosite - luminositePrecedente) > 28) {
+                                transitions++;
+                            }
+
+                            luminositePrecedente = luminosite;
+                        }
+
+                        const total = pixels.length / 4;
+                        const ratioTresSombre = pixelsTresSombres / total;
+                        const ratioUtile = pixelsUtiles / total;
+                        const ratioTransitions = transitions / total;
+
+                        resolve(ratioTresSombre > 0.90 && ratioUtile < 0.035 && ratioTransitions < 0.012);
+                    } catch (erreur) {
+                        console.warn("Contrôle image vide impossible :", erreur);
+                        resolve(false);
+                    }
+                };
+
+                img.onerror = function () {
+                    resolve(true);
+                };
+
+                img.src = imageBase64;
+            });
+        }
+
         async function appelerAnalyseVisionProAvecSecours(payload) {
             try {
                 const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
@@ -1671,6 +1736,18 @@
                         indicateur: indicateur,
                         configuration: configurationCorrigee
                     };
+
+                if (currentCapture && await imageCaptureSembleVide(currentCapture.screenshot)) {
+                    afficherErreurAnalyseDansPanneau(
+                        "CAPTURE INEXPLOITABLE",
+                        "La capture semble vide ou trop sombre. Retournez dans index.html, attendez que les bougies soient visibles, fermez les notifications TradingView, puis refaites une capture."
+                    );
+                    alert(
+                        "Capture inexploitable.\n\n" +
+                        "Le graphique semble vide ou trop sombre. Refaites la capture après chargement complet des bougies."
+                    );
+                    return;
+                }
 
                 const data = await appelerAnalyseVisionProAvecSecours(payload);
                 const analyse = data.analysis || data.analyse;

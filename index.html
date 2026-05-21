@@ -1013,6 +1013,8 @@
         let dernierScreenshotBase64 = null;
         let derniereSourceMarche = null;
         let configurationsSauvegardees = [];
+        let graphiqueTradingViewPret = false;
+        let dernierChargementGraphique = 0;
 
         function getApiUrl(route) {
             return API_BASE_URL + route;
@@ -2002,7 +2004,13 @@
                 "NDX": "OANDA:NAS100USD",
                 "NASDAQ 100": "OANDA:NAS100USD",
                 "NAS100": "OANDA:NAS100USD",
-                "US100": "OANDA:NAS100USD"
+                "US100": "OANDA:NAS100USD",
+                "SP:SPX": "SP:SPX",
+                "SPX": "SP:SPX",
+                "S&P 500": "SP:SPX",
+                "US500": "SP:SPX",
+                "TVC:DXY": "TVC:DXY",
+                "DXY": "TVC:DXY"
             };
 
             return correspondances[valeur] || String(symbole || "BINANCE:BTCUSDT").trim();
@@ -2027,6 +2035,8 @@
             chart = null;
             mainSeries = null;
             currentData = [];
+            graphiqueTradingViewPret = false;
+            dernierChargementGraphique = Date.now();
 
             tradingViewWidget = new TradingView.widget({
                 autosize: true,
@@ -2045,12 +2055,32 @@
                 container_id: "tradingview_chart"
             });
 
+            if (tradingViewWidget && typeof tradingViewWidget.onChartReady === "function") {
+                tradingViewWidget.onChartReady(() => {
+                    /*
+                        Correction capture :
+                        on attend un court délai après l'événement de TradingView.
+                        Cela évite de capturer un écran noir ou un graphique encore vide.
+                    */
+                    setTimeout(() => {
+                        graphiqueTradingViewPret = true;
+                        afficherMessageGraphique("", "ok");
+                        afficherStatus("Graphique prêt pour la capture : " + actif + " / intervalle : " + intervalle);
+                    }, 1800);
+                });
+            } else {
+                setTimeout(() => {
+                    graphiqueTradingViewPret = true;
+                    afficherMessageGraphique("", "ok");
+                }, 3000);
+            }
+
             derniereSourceMarche = {
                 source: "tradingview_tvjs_s3",
                 symbole: actif
             };
 
-            afficherMessageGraphique("", "ok");
+            afficherMessageGraphique("Chargement des données TradingView. Attendre l'affichage des bougies avant CAPTURE.", "attente");
             afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
             afficherInfosGraphique();
         }
@@ -2175,6 +2205,106 @@
             return sortie.toDataURL("image/jpeg", qualite);
         }
 
+
+        function obtenirRectangleGraphiquePourControleCapture(canvas) {
+            const zoneGraphique = document.getElementById("tradingview_chart");
+            const rect = zoneGraphique ? zoneGraphique.getBoundingClientRect() : null;
+
+            if (!rect || !canvas || !canvas.width || !canvas.height) {
+                return {
+                    x: 0,
+                    y: 0,
+                    width: canvas ? canvas.width : 0,
+                    height: canvas ? canvas.height : 0
+                };
+            }
+
+            /*
+                Avec preferCurrentTab, la capture correspond généralement à la zone visible de la page.
+                On convertit donc les coordonnées écran HTML en coordonnées canvas.
+            */
+            const ratioX = canvas.width / Math.max(1, window.innerWidth);
+            const ratioY = canvas.height / Math.max(1, window.innerHeight);
+
+            return {
+                x: Math.max(0, Math.floor(rect.left * ratioX)),
+                y: Math.max(0, Math.floor(rect.top * ratioY)),
+                width: Math.max(1, Math.min(canvas.width, Math.floor(rect.width * ratioX))),
+                height: Math.max(1, Math.min(canvas.height, Math.floor(rect.height * ratioY)))
+            };
+        }
+
+        function canvasGraphiqueSembleVide(canvas) {
+            if (!canvas || !canvas.width || !canvas.height) return true;
+
+            const zone = obtenirRectangleGraphiquePourControleCapture(canvas);
+            const largeur = Math.max(1, Math.min(zone.width, canvas.width - zone.x));
+            const hauteur = Math.max(1, Math.min(zone.height, canvas.height - zone.y));
+
+            if (largeur < 40 || hauteur < 40) return true;
+
+            const echantillon = document.createElement("canvas");
+            echantillon.width = 160;
+            echantillon.height = Math.max(80, Math.round(160 * hauteur / largeur));
+
+            const ctxEchantillon = echantillon.getContext("2d");
+            ctxEchantillon.drawImage(
+                canvas,
+                zone.x,
+                zone.y,
+                largeur,
+                hauteur,
+                0,
+                0,
+                echantillon.width,
+                echantillon.height
+            );
+
+            const pixels = ctxEchantillon.getImageData(0, 0, echantillon.width, echantillon.height).data;
+            let pixelsTresSombres = 0;
+            let pixelsUtiles = 0;
+            let transitions = 0;
+            let luminositePrecedente = null;
+
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                const luminosite = (r + g + b) / 3;
+                const amplitude = Math.max(r, g, b) - Math.min(r, g, b);
+
+                if (luminosite < 20) pixelsTresSombres++;
+                if (luminosite > 45 || amplitude > 20) pixelsUtiles++;
+
+                if (luminositePrecedente !== null && Math.abs(luminosite - luminositePrecedente) > 28) {
+                    transitions++;
+                }
+
+                luminositePrecedente = luminosite;
+            }
+
+            const total = pixels.length / 4;
+            const ratioTresSombre = pixelsTresSombres / total;
+            const ratioUtile = pixelsUtiles / total;
+            const ratioTransitions = transitions / total;
+
+            /*
+                Un vrai graphique contient normalement beaucoup de traits, textes, axes ou bougies.
+                Un écran quasi noir avec très peu de variations est rejeté.
+            */
+            return ratioTresSombre > 0.92 && ratioUtile < 0.035 && ratioTransitions < 0.012;
+        }
+
+        function verifierCaptureGraphiqueExploitable(canvas) {
+            if (canvasGraphiqueSembleVide(canvas)) {
+                throw new Error(
+                    "La capture semble vide ou trop sombre. " +
+                    "Attendez que les bougies TradingView soient visibles, fermez les notifications TradingView, " +
+                    "puis relancez CAPTURE."
+                );
+            }
+        }
+
         async function capturerCanvasEnBase64() {
             /*
                 TradingView tv.js affiche le graphique dans une iframe externe.
@@ -2228,6 +2358,8 @@
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(video, 0, 0, largeur, hauteur);
 
+                verifierCaptureGraphiqueExploitable(canvas);
+
                 return compresserCanvasPourIA(canvas, 1280, 0.75);
             } finally {
                 flux.getTracks().forEach(track => track.stop());
@@ -2250,6 +2382,13 @@
             garderEnteteVisible();
             try {
                 afficherStatus("Capture du graphique en cours...");
+
+                if (!graphiqueTradingViewPret && Date.now() - dernierChargementGraphique < 7000) {
+                    throw new Error(
+                        "Le graphique TradingView n'est pas encore prêt. " +
+                        "Attendez l'affichage complet des bougies, puis relancez CAPTURE."
+                    );
+                }
 
                 const inputCapture = document.getElementById("screenshot-file");
 
