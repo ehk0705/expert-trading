@@ -609,9 +609,11 @@
 
         function getAuthToken() {
             return (
+                localStorage.getItem("expert_trading_auth_token") ||
                 localStorage.getItem("expertTradingToken") ||
                 localStorage.getItem("expertTradingJwt") ||
                 localStorage.getItem("authToken") ||
+                sessionStorage.getItem("expert_trading_auth_token") ||
                 sessionStorage.getItem("expertTradingToken") ||
                 sessionStorage.getItem("expertTradingJwt") ||
                 sessionStorage.getItem("authToken") ||
@@ -669,9 +671,11 @@
                 return Boolean(data.ok);
             } catch (erreur) {
                 console.warn("Session invalide ou expirée :", erreur);
+                localStorage.removeItem("expert_trading_auth_token");
                 localStorage.removeItem("expertTradingToken");
                 localStorage.removeItem("expertTradingJwt");
                 localStorage.removeItem("authToken");
+                sessionStorage.removeItem("expert_trading_auth_token");
                 sessionStorage.removeItem("expertTradingToken");
                 sessionStorage.removeItem("expertTradingJwt");
                 sessionStorage.removeItem("authToken");
@@ -761,12 +765,100 @@
             return data;
         }
 
+        function erreurMarcheIndisponible(erreur) {
+            const message = String(erreur && erreur.message ? erreur.message : erreur || "");
+
+            return (
+                message.includes("Aucune source de marché disponible") ||
+                message.includes("Yahoo Finance HTTP 404") ||
+                message.includes("No data found, symbol may be delisted") ||
+                message.includes("Format Stooq inattendu") ||
+                message.includes("Historique Yahoo Finance insuffisant") ||
+                message.includes("Historique Stooq insuffisant")
+            );
+        }
+
+        function creerPayloadVisionSeuleDepuisPayload(payload, erreurInitiale) {
+            const copie = JSON.parse(JSON.stringify(payload || {}));
+
+            copie.actif = "IMAGE_SEULE";
+            copie.intervalle = null;
+            copie.indicateur = copie.indicateur || "IMAGE_SEULE";
+            copie.modeSecoursVisionSeule = true;
+
+            copie.configuration = {
+                ...(copie.configuration || {}),
+                type: "capture_image_seule",
+                actif: "IMAGE_SEULE",
+                intervalle: null,
+                indicateur: copie.indicateur,
+                marche_indisponible: true,
+                source_parametres: "analyse_html_secours_vision_seule",
+                note_parametres: "Les sources de marché ont échoué. Analyse demandée uniquement à partir de l'image de la capture.",
+                erreur_marche_initiale: String(erreurInitiale && erreurInitiale.message ? erreurInitiale.message : erreurInitiale || "")
+            };
+
+            return copie;
+        }
+
+        function afficherErreurAnalyseDansPanneau(titre, erreur) {
+            const aiPanel = document.getElementById('ai-panel');
+            const reasoning = document.getElementById('ai-reasoning');
+            const decision = document.getElementById('ai-decision');
+            const bar = document.getElementById('ai-bar');
+            const percent = document.getElementById('ai-percent');
+
+            if (aiPanel) aiPanel.style.display = "grid";
+            if (decision) {
+                decision.innerText = "ERREUR";
+                decision.style.color = "var(--sell-red)";
+            }
+            if (bar) bar.style.width = "0%";
+            if (percent) percent.innerText = "0%";
+            if (reasoning) {
+                reasoning.innerText =
+                    "> " + titre + "\n\n" +
+                    String(erreur && erreur.message ? erreur.message : erreur || "Erreur inconnue.");
+            }
+        }
+
+        async function appelerAnalyseVisionProAvecSecours(payload) {
+            try {
+                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(payload)
+                });
+
+                return await readResponseAsJson(response);
+            } catch (erreurInitiale) {
+                if (!erreurMarcheIndisponible(erreurInitiale)) {
+                    throw erreurInitiale;
+                }
+
+                const payloadVisionSeule = creerPayloadVisionSeuleDepuisPayload(payload, erreurInitiale);
+
+                const responseSecours = await fetch(getApiUrl('/api/analyze-vision-pro'), {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(payloadVisionSeule)
+                });
+
+                const dataSecours = await readResponseAsJson(responseSecours);
+                dataSecours.mode_secours_client = true;
+                dataSecours.erreur_marche_initiale = erreurInitiale.message;
+                return dataSecours;
+            }
+        }
+
         function setLoadingState(isLoading, message = "ANALYSE EN COURS...") {
             const spinner = document.getElementById('spinner');
 
             const buttons = [
                 document.getElementById('btn-trigger-ai'),
                 document.getElementById('btn-trigger-selected-ai'),
+                document.getElementById('btn-trigger-concrete-ai'),
+                document.getElementById('btn-check-screenshot'),
                 document.getElementById('btn-save-report'),
                 document.getElementById('btn-trigger-ai-bottom'),
                 document.getElementById('btn-trigger-selected-ai-bottom')
@@ -1468,7 +1560,12 @@
             confidence = Math.round(Math.max(0, Math.min(100, confidence)));
 
             const lignes = [];
-            const modeVisionSeule = analyse.mode === "vision_seule" || analyse.source === "ia_vision_seule_image";
+            const modeTexte = String(analyse.mode || "");
+            const modeVisionSeule =
+                modeTexte === "vision_seule" ||
+                modeTexte.startsWith("vision_seule") ||
+                analyse.source === "ia_vision_seule_image" ||
+                analyse.source_marche === "non_utilisee";
             lignes.push(modeVisionSeule ? "ANALYSE VISION SEULE" : "ANALYSE CONCRÈTE VISION + MARCHÉ");
             lignes.push(modeVisionSeule ? "====================" : "================================");
             lignes.push("");
@@ -1476,6 +1573,10 @@
             lignes.push("Confiance : " + confidence + "%");
             lignes.push("Tendance : " + (analyse.tendance || "N/A"));
             lignes.push("Source marché : " + (analyse.source_marche || "N/A"));
+            if (analyse.avertissement) lignes.push("Avertissement : " + analyse.avertissement);
+            if (Array.isArray(analyse.erreurs_sources) && analyse.erreurs_sources.length) {
+                lignes.push("Sources indisponibles : " + analyse.erreurs_sources.map(x => x.source || "source").join(", "));
+            }
             if (analyse.parametres_lus_image) {
                 lignes.push("Symbole lu image : " + (analyse.parametres_lus_image.symbole || "N/A"));
                 lignes.push("Intervalle lu image : " + (analyse.parametres_lus_image.intervalle || "N/A"));
@@ -1571,13 +1672,7 @@
                         configuration: configurationCorrigee
                     };
 
-                const response = await fetch(getApiUrl('/api/analyze-vision-pro'), {
-                    method: 'POST',
-                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await readResponseAsJson(response);
+                const data = await appelerAnalyseVisionProAvecSecours(payload);
                 const analyse = data.analysis || data.analyse;
                 if (!analyse) throw new Error("La réponse du serveur ne contient pas le bloc analysis.");
 
@@ -1591,19 +1686,25 @@
                     "\nActif envoyé : " + actif +
                     "\nIntervalle envoyé : " + (intervalle || "N/A") +
                     "\nSource marché : " + (analyse.source_marche || "N/A") +
+                    (data.mode_secours_client ? "\nSecours client : Vision seule après échec des sources de marché" : "") +
+                    (analyse.avertissement ? "\nAvertissement : " + analyse.avertissement : "") +
                     "\nMode : " + (analyse.mode || "vision_plus_marche") +
                     "\nDécision : " + affichage.decision +
                     "\nConfiance : " + affichage.confidence + "%" +
                     "\n\n" + affichage.reasoning +
                     "\n==================================================\n";
 
-                document.getElementById('dynamic-advice').innerText =
-                    "Analyse Vision + Marché terminée pour : " + (currentCapture ? currentCapture.nom : currentFileName);
+                document.getElementById('dynamic-advice').innerText = data.mode_secours_client
+                    ? "Analyse Vision seule terminée : sources de marché indisponibles pour cette capture."
+                    : "Analyse Vision + Marché terminée pour : " + (currentCapture ? currentCapture.nom : currentFileName);
 
-                alert("Analyse Vision + Marché terminée.");
+                alert(data.mode_secours_client
+                    ? "Analyse Vision seule terminée.\n\nLes sources de marché étaient indisponibles."
+                    : "Analyse Vision + Marché terminée.");
 
             } catch (err) {
                 console.error("ERREUR ANALYSE VISION + MARCHÉ :", err);
+                afficherErreurAnalyseDansPanneau("ERREUR ANALYSE VISION + MARCHÉ", err);
                 alert("Erreur analyse Vision + Marché.\n\n" + err.message);
             } finally {
                 setLoadingState(false);

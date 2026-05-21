@@ -1517,61 +1517,92 @@ async function bougiesCoinGecko(actif, intervalle, limit = 300) {
     }));
 }
 
+function symbolesYahooPossibles(actif) {
+    const principal = symboleYahoo(actif);
+    const s = normaliserActif(actif);
+    const liste = [principal];
+
+    /*
+        Certains symboles TradingView, surtout OANDA:XAUUSD et OANDA:XAGUSD,
+        peuvent être refusés par Yahoo Finance selon la disponibilité du flux.
+        On essaie donc le symbole spot puis le contrat futur Yahoo le plus courant.
+    */
+    if (s === "XAUUSD") liste.push("GC=F");
+    if (s === "XAGUSD") liste.push("SI=F");
+
+    return [...new Set(liste.filter(Boolean))];
+}
+
 async function bougiesYahoo(actif, intervalle, limit = 300) {
-    const symbole = symboleYahoo(actif);
-    const url = new URL(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbole)}`
-    );
+    const symboles = symbolesYahooPossibles(actif);
+    const erreurs = [];
 
-    url.searchParams.set("range", rangeYahoo(intervalle));
-    url.searchParams.set("interval", intervalleYahoo(intervalle));
-    url.searchParams.set("includePrePost", "false");
+    for (const symbole of symboles) {
+        try {
+            const url = new URL(
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbole)}`
+            );
 
-    const r = await fetch(url, {
-        headers: {
-            "Accept": "application/json",
-            "User-Agent": "ExpertTradingPro/2.0"
+            url.searchParams.set("range", rangeYahoo(intervalle));
+            url.searchParams.set("interval", intervalleYahoo(intervalle));
+            url.searchParams.set("includePrePost", "false");
+
+            const r = await fetch(url, {
+                headers: {
+                    "Accept": "application/json",
+                    "User-Agent": "ExpertTradingPro/2.0"
+                }
+            });
+
+            const txt = await r.text();
+
+            if (!r.ok) {
+                throw new Error("Yahoo Finance HTTP " + r.status + " pour " + symbole + " : " + txt);
+            }
+
+            const j = JSON.parse(txt);
+            const result = j?.chart?.result?.[0];
+
+            if (!result || !Array.isArray(result.timestamp)) {
+                const erreurYahoo = j?.chart?.error?.description || txt;
+                throw new Error("Format Yahoo Finance inattendu pour " + symbole + " : " + erreurYahoo);
+            }
+
+            const quote = result.indicators?.quote?.[0] || {};
+            const timestamps = result.timestamp || [];
+
+            const bougies = timestamps.map((ts, index) => ({
+                openTime: Number(ts) * 1000,
+                open: Number(quote.open?.[index]),
+                high: Number(quote.high?.[index]),
+                low: Number(quote.low?.[index]),
+                close: Number(quote.close?.[index]),
+                volume: Number(quote.volume?.[index] || 0),
+                closeTime: Number(ts) * 1000,
+                source: "yahoo"
+            })).filter(x =>
+                Number.isFinite(x.open) &&
+                Number.isFinite(x.high) &&
+                Number.isFinite(x.low) &&
+                Number.isFinite(x.close)
+            );
+
+            if (bougies.length < 30) {
+                throw new Error("Historique Yahoo Finance insuffisant pour " + actif + " (" + symbole + ").");
+            }
+
+            bougies.forEach(b => {
+                b.source = "yahoo";
+                b.symboleSource = symbole;
+            });
+
+            return bougies.slice(-limit);
+        } catch (erreur) {
+            erreurs.push(erreur.message || String(erreur));
         }
-    });
-
-    const txt = await r.text();
-
-    if (!r.ok) {
-        throw new Error("Yahoo Finance HTTP " + r.status + " : " + txt);
     }
 
-    const j = JSON.parse(txt);
-    const result = j?.chart?.result?.[0];
-
-    if (!result || !Array.isArray(result.timestamp)) {
-        const erreurYahoo = j?.chart?.error?.description || txt;
-        throw new Error("Format Yahoo Finance inattendu : " + erreurYahoo);
-    }
-
-    const quote = result.indicators?.quote?.[0] || {};
-    const timestamps = result.timestamp || [];
-
-    const bougies = timestamps.map((ts, index) => ({
-        openTime: Number(ts) * 1000,
-        open: Number(quote.open?.[index]),
-        high: Number(quote.high?.[index]),
-        low: Number(quote.low?.[index]),
-        close: Number(quote.close?.[index]),
-        volume: Number(quote.volume?.[index] || 0),
-        closeTime: Number(ts) * 1000,
-        source: "yahoo"
-    })).filter(x =>
-        Number.isFinite(x.open) &&
-        Number.isFinite(x.high) &&
-        Number.isFinite(x.low) &&
-        Number.isFinite(x.close)
-    );
-
-    if (bougies.length < 30) {
-        throw new Error("Historique Yahoo Finance insuffisant pour " + actif + " (" + symbole + ").");
-    }
-
-    return bougies.slice(-limit);
+    throw new Error("Yahoo Finance indisponible pour " + actif + " : " + erreurs.join(" | "));
 }
 
 async function bougiesStooq(actif, intervalle, limit = 300) {
@@ -1716,7 +1747,7 @@ async function essayerSourceMarche(source, actif, intervalle, erreurs) {
     if (source === "yahoo") {
         return {
             source: "yahoo",
-            symbole: symboleYahoo(actif),
+            symbole: symbolesYahooPossibles(actif).join(" | "),
             intervalle: intervalleYahoo(intervalle) + " / " + rangeYahoo(intervalle),
             bougies: await bougiesYahoo(actif, intervalle),
             erreurs
@@ -2649,6 +2680,35 @@ app.get("/api/ai-diagnostic", (req, res) => {
     });
 });
 
+function extraireErreursSourcesDepuisErreur(erreur) {
+    if (!erreur) return [];
+
+    const message = String(erreur.message || erreur || "");
+    const debut = message.indexOf("[");
+    const fin = message.lastIndexOf("]");
+
+    if (debut >= 0 && fin > debut) {
+        try {
+            const erreurs = JSON.parse(message.slice(debut, fin + 1));
+            if (Array.isArray(erreurs)) return erreurs;
+        } catch (erreurJson) {
+            return [{
+                source: "marche",
+                type: "erreur_source",
+                bloquant: false,
+                message
+            }];
+        }
+    }
+
+    return [{
+        source: "marche",
+        type: "erreur_source",
+        bloquant: false,
+        message
+    }];
+}
+
 app.post("/api/analyze-vision-pro", async (req, res) => {
     try {
         const {
@@ -2734,12 +2794,65 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
             });
         }
 
-        const marche = await recupererBougiesMarche(actifFinal, intervalleFinal || "1h");
-        const tech = analyseTechnique({
-            actif: actifFinal,
-            intervalle: intervalleFinal || "1h",
-            marche
-        });
+        let marche = null;
+        let tech = null;
+        let erreurMarche = null;
+
+        try {
+            marche = await recupererBougiesMarche(actifFinal, intervalleFinal || "1h");
+            tech = analyseTechnique({
+                actif: actifFinal,
+                intervalle: intervalleFinal || "1h",
+                marche
+            });
+        } catch (erreur) {
+            erreurMarche = erreur;
+            console.warn("Marché indisponible pour /api/analyze-vision-pro. Bascule en Vision seule :", erreur.message);
+        }
+
+        /*
+            Correction importante :
+            si Yahoo, Stooq, Binance, OKX ou CoinGecko échouent, l'analyse ne doit pas retourner 500.
+            On continue avec une analyse Vision seule, en conservant l'erreur de marché comme avertissement.
+        */
+        if (!tech) {
+            const iaVisionSeule = await analyseVisionSeule({
+                imageBase64: imageBase64Final || imageUrl,
+                configuration: {
+                    ...configurationFinale,
+                    actif: actifFinal,
+                    intervalle: intervalleFinal,
+                    mode_analyse: "vision_seule_marche_indisponible",
+                    erreur_marche: erreurMarche ? erreurMarche.message : "Marché indisponible."
+                }
+            });
+
+            const finalVisionSeule = normaliserDecisionVisionSeule(iaVisionSeule, {
+                ...configurationFinale,
+                actif: actifFinal,
+                intervalle: intervalleFinal
+            });
+
+            finalVisionSeule.mode = "vision_seule_marche_indisponible";
+            finalVisionSeule.actif = actifFinal;
+            finalVisionSeule.intervalle = intervalleFinal;
+            finalVisionSeule.erreurs_sources = extraireErreursSourcesDepuisErreur(erreurMarche);
+            finalVisionSeule.avertissement =
+                "Les sources de marché externes sont indisponibles. Analyse effectuée uniquement à partir de l'image. " +
+                "Ce n'est pas un conseil financier.";
+
+            return res.json({
+                ok: true,
+                statut: "ok",
+                mode: "vision_seule_marche_indisponible",
+                message: "Analyse Vision seule effectuée parce qu'aucune source de marché externe n'est disponible.",
+                analysis: finalVisionSeule,
+                analyse: finalVisionSeule,
+                erreurs_sources: finalVisionSeule.erreurs_sources,
+                avertissement: finalVisionSeule.avertissement,
+                date: maintenantIso()
+            });
+        }
 
         const ia = await openaiVision({
             imageBase64: imageBase64Final || imageUrl,
