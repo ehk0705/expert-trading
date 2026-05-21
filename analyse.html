@@ -1672,12 +1672,156 @@
             return copie;
         }
 
-        function adapterAnalyseProPourAffichage(analyse) {
+        function nombreAnalyse(valeur) {
+            if (valeur === undefined || valeur === null || valeur === "") return null;
+
+            if (typeof valeur === "number") {
+                return Number.isFinite(valeur) ? valeur : null;
+            }
+
+            const texte = String(valeur)
+                .trim()
+                .replace(/\s/g, "")
+                .replace(",", ".")
+                .replace(/[^0-9.+\-]/g, "");
+
+            if (!texte) return null;
+
+            const nombre = Number(texte);
+            return Number.isFinite(nombre) ? nombre : null;
+        }
+
+        function valeurPrixValide(valeur) {
+            const nombre = nombreAnalyse(valeur);
+            return nombre !== null && nombre > 0 ? nombre : null;
+        }
+
+        function formaterPrix(nombre) {
+            if (nombre === null || nombre === undefined || !Number.isFinite(Number(nombre))) return "N/A";
+            const n = Number(nombre);
+            if (Math.abs(n) >= 1000) return n.toFixed(2);
+            if (Math.abs(n) >= 100) return n.toFixed(3);
+            if (Math.abs(n) >= 1) return n.toFixed(4);
+            return n.toFixed(6);
+        }
+
+        function normaliserDecisionAnalyse(analyse) {
             const decision = String(analyse.decision || analyse.signal || "ATTENDRE").toUpperCase();
+            if (["ACHETER", "ACHAT", "BUY", "LONG"].includes(decision)) return "ACHETER";
+            if (["VENDRE", "VENTE", "SELL", "SHORT"].includes(decision)) return "VENDRE";
+            return "ATTENDRE";
+        }
+
+        function calculerPlanConcret(analyse, decision) {
+            const prix = valeurPrixValide(analyse.prix_actuel ?? analyse.prix ?? analyse.close);
+            const support = valeurPrixValide(analyse.support_principal ?? analyse.support);
+            const resistance = valeurPrixValide(analyse.resistance_principale ?? analyse.resistance);
+            const atr = valeurPrixValide(analyse.atr ?? analyse.ATR ?? analyse.volatilite_atr);
+
+            let stopLoss = valeurPrixValide(analyse.stop_loss ?? analyse.stopLoss);
+            let objectif1 = valeurPrixValide(analyse.take_profit_1 ?? analyse.objectif_1 ?? analyse.objectif1);
+            let objectif2 = valeurPrixValide(analyse.take_profit_2 ?? analyse.objectif_2 ?? analyse.objectif2);
+
+            const amplitude = prix && support && resistance
+                ? Math.max(Math.abs(resistance - support), prix * 0.005)
+                : (prix ? prix * 0.015 : null);
+
+            const tampon = atr || (amplitude ? amplitude * 0.25 : null);
+
+            if (prix && decision === "ACHETER") {
+                if (!stopLoss) stopLoss = support ? support - (tampon || prix * 0.008) : prix * 0.985;
+                if (!objectif1) objectif1 = resistance && resistance > prix ? resistance : prix + Math.abs(prix - stopLoss);
+                if (!objectif2) objectif2 = prix + 2 * Math.abs(prix - stopLoss);
+            }
+
+            if (prix && decision === "VENDRE") {
+                if (!stopLoss) stopLoss = resistance ? resistance + (tampon || prix * 0.008) : prix * 1.015;
+                if (!objectif1) objectif1 = support && support < prix ? support : prix - Math.abs(stopLoss - prix);
+                if (!objectif2) objectif2 = prix - 2 * Math.abs(stopLoss - prix);
+            }
+
+            let scenarioAchat = null;
+            let scenarioVente = null;
+            let invalidation = null;
+            let ratioRisqueGain = null;
+
+            if (prix && stopLoss && objectif1 && decision !== "ATTENDRE") {
+                const risque = Math.abs(prix - stopLoss);
+                const gain = Math.abs(objectif1 - prix);
+                if (risque > 0) ratioRisqueGain = gain / risque;
+            }
+
+            if (prix && resistance) {
+                scenarioAchat = "Achat seulement si clôture confirmée au-dessus de " + formaterPrix(resistance) + ", idéalement avec volume en hausse.";
+            }
+
+            if (prix && support) {
+                scenarioVente = "Vente ou sortie si clôture sous " + formaterPrix(support) + ", ou si le prix casse ce support avec accélération.";
+            }
+
+            if (decision === "ACHETER" && stopLoss) {
+                invalidation = "Le scénario acheteur est invalidé sous " + formaterPrix(stopLoss) + ".";
+            } else if (decision === "VENDRE" && stopLoss) {
+                invalidation = "Le scénario vendeur est invalidé au-dessus de " + formaterPrix(stopLoss) + ".";
+            } else if (support && resistance) {
+                invalidation = "Tant que le prix reste entre " + formaterPrix(support) + " et " + formaterPrix(resistance) + ", il faut éviter une entrée forcée.";
+            }
+
+            return {
+                prix,
+                support,
+                resistance,
+                stopLoss,
+                objectif1,
+                objectif2,
+                scenarioAchat,
+                scenarioVente,
+                invalidation,
+                ratioRisqueGain
+            };
+        }
+
+        function construireRecommandationsConcretes(analyse, decision, plan, confidence) {
+            const recommandations = [];
+
+            if (decision === "ACHETER") {
+                recommandations.push("Biais : achat, mais seulement si le prix confirme la cassure ou tient le support indiqué.");
+                if (plan.stopLoss) recommandations.push("Stop loss proposé : " + formaterPrix(plan.stopLoss) + ". Ne pas conserver la position si ce niveau est cassé.");
+                if (plan.objectif1) recommandations.push("Premier objectif : " + formaterPrix(plan.objectif1) + ". Prendre au moins une partie des gains sur ce niveau.");
+                if (plan.objectif2) recommandations.push("Deuxième objectif : " + formaterPrix(plan.objectif2) + ", uniquement si le momentum reste favorable.");
+            } else if (decision === "VENDRE") {
+                recommandations.push("Biais : vente ou réduction d'exposition, surtout si le support casse.");
+                if (plan.stopLoss) recommandations.push("Stop loss proposé : " + formaterPrix(plan.stopLoss) + ". Le scénario vendeur est invalidé au-dessus de ce niveau.");
+                if (plan.objectif1) recommandations.push("Premier objectif : " + formaterPrix(plan.objectif1) + ".");
+                if (plan.objectif2) recommandations.push("Deuxième objectif : " + formaterPrix(plan.objectif2) + ", seulement si la pression vendeuse continue.");
+            } else {
+                recommandations.push("Décision concrète : ne pas entrer maintenant. Le prix est trop proche d'une zone de décision ou le signal est insuffisant.");
+                if (plan.scenarioAchat) recommandations.push(plan.scenarioAchat);
+                if (plan.scenarioVente) recommandations.push(plan.scenarioVente);
+            }
+
+            if (plan.ratioRisqueGain !== null) {
+                recommandations.push("Ratio gain/risque estimé sur l'objectif 1 : " + plan.ratioRisqueGain.toFixed(2) + ". Éviter l'entrée si ce ratio est inférieur à 1,5.");
+            }
+
+            if (confidence < 60) {
+                recommandations.push("Confiance insuffisante : réduire la taille de position ou attendre une nouvelle bougie de confirmation.");
+            }
+
+            recommandations.push("Gestion du risque : ne jamais engager une taille qui met le compte en danger. Une limite indicative prudente est 1 % du capital risqué par opération.");
+
+            return recommandations;
+        }
+
+        function adapterAnalyseProPourAffichage(analyse) {
+            const decision = normaliserDecisionAnalyse(analyse);
             let confidence = Number(analyse.confidence ?? analyse.confiance ?? 0);
             if (!Number.isFinite(confidence)) confidence = 0;
             if (confidence <= 1) confidence = confidence * 100;
             confidence = Math.round(Math.max(0, Math.min(100, confidence)));
+
+            const plan = calculerPlanConcret(analyse, decision);
+            const recommandationsCalculees = construireRecommandationsConcretes(analyse, decision, plan, confidence);
 
             const lignes = [];
             const modeTexte = String(analyse.mode || "");
@@ -1686,6 +1830,7 @@
                 modeTexte.startsWith("vision_seule") ||
                 analyse.source === "ia_vision_seule_image" ||
                 analyse.source_marche === "non_utilisee";
+
             lignes.push(modeVisionSeule ? "ANALYSE VISION SEULE" : "ANALYSE CONCRÈTE VISION + MARCHÉ");
             lignes.push(modeVisionSeule ? "====================" : "================================");
             lignes.push("");
@@ -1702,12 +1847,26 @@
                 lignes.push("Intervalle lu image : " + (analyse.parametres_lus_image.intervalle || "N/A"));
                 lignes.push("Fiabilité lecture image : " + (analyse.parametres_lus_image.fiabilite || "N/A"));
             }
-            lignes.push("Prix actuel : " + (analyse.prix_actuel ?? "N/A"));
-            lignes.push("Support : " + (analyse.support_principal ?? "N/A"));
-            lignes.push("Résistance : " + (analyse.resistance_principale ?? "N/A"));
-            lignes.push("Stop loss : " + (analyse.stop_loss ?? "N/A"));
-            lignes.push("Objectif 1 : " + (analyse.take_profit_1 ?? "N/A"));
-            lignes.push("Objectif 2 : " + (analyse.take_profit_2 ?? "N/A"));
+
+            lignes.push("Prix actuel : " + formaterPrix(plan.prix ?? valeurPrixValide(analyse.prix_actuel)));
+            lignes.push("Support : " + formaterPrix(plan.support ?? valeurPrixValide(analyse.support_principal)));
+            lignes.push("Résistance : " + formaterPrix(plan.resistance ?? valeurPrixValide(analyse.resistance_principale)));
+            lignes.push("Stop loss : " + formaterPrix(plan.stopLoss));
+            lignes.push("Objectif 1 : " + formaterPrix(plan.objectif1));
+            lignes.push("Objectif 2 : " + formaterPrix(plan.objectif2));
+
+            lignes.push("", "Plan concret :");
+            if (decision === "ACHETER") {
+                lignes.push("- Action : achat possible uniquement après confirmation. Pas d'achat aveugle sur une bougie hésitante.");
+            } else if (decision === "VENDRE") {
+                lignes.push("- Action : vente possible ou réduction d'exposition si la faiblesse se confirme.");
+            } else {
+                lignes.push("- Action : attendre. Le bon conseil concret ici est de ne pas entrer sans déclencheur clair.");
+            }
+            if (plan.scenarioAchat) lignes.push("- Déclencheur achat : " + plan.scenarioAchat);
+            if (plan.scenarioVente) lignes.push("- Déclencheur vente/sortie : " + plan.scenarioVente);
+            if (plan.invalidation) lignes.push("- Invalidation : " + plan.invalidation);
+
             if (analyse.resume) lignes.push("", "Résumé :", analyse.resume);
             if (Array.isArray(analyse.raisons) && analyse.raisons.length) {
                 lignes.push("", "Raisons :");
@@ -1717,15 +1876,22 @@
                 lignes.push("", "Risques :");
                 analyse.risques.forEach(x => lignes.push("- " + x));
             }
+
+            lignes.push("", "Recommandations concrètes :");
+            recommandationsCalculees.forEach(x => lignes.push("- " + x));
+
             if (Array.isArray(analyse.recommandations) && analyse.recommandations.length) {
-                lignes.push("", "Recommandations :");
+                lignes.push("", "Recommandations IA reçues :");
                 analyse.recommandations.forEach(x => lignes.push("- " + x));
             }
+
+            lignes.push("", "Note : cette analyse reste informative. Elle ne garantit aucun résultat et ne remplace pas une décision personnelle de gestion du risque.");
 
             return { decision, confidence, reasoning: lignes.join("\n") };
         }
 
-        async function triggerAIAnalysis() {
+        
+async function triggerAIAnalysis() {
             return triggerConcreteAIAnalysis();
         }
 
@@ -1769,6 +1935,32 @@
                         fileName: currentFileName
                     }
                 );
+
+                configurationCorrigee.exigence_analyse_concrete = {
+                    format: "json_strict",
+                    objectif: "Produire une analyse opérationnelle, claire et exploitable.",
+                    champs_obligatoires: [
+                        "decision",
+                        "confidence",
+                        "tendance",
+                        "prix_actuel",
+                        "support_principal",
+                        "resistance_principale",
+                        "stop_loss",
+                        "take_profit_1",
+                        "take_profit_2",
+                        "resume",
+                        "raisons",
+                        "risques",
+                        "recommandations"
+                    ],
+                    consignes: [
+                        "Ne jamais retourner stop_loss, take_profit_1 ou take_profit_2 à 0 si un prix actuel exploitable existe.",
+                        "Si la décision est ATTENDRE, fournir quand même un scénario d'achat, un scénario de vente/sortie et les niveaux d'invalidation.",
+                        "Donner des recommandations concrètes, mais sans promesse de gain et sans présenter cela comme un conseil financier personnalisé.",
+                        "Mentionner les limites si les données de marché ou l'image sont insuffisantes."
+                    ]
+                };
 
                 const actif = configurationCorrigee.actif;
                 const intervalle = configurationCorrigee.intervalle;
