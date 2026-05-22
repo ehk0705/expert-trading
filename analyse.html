@@ -1345,11 +1345,7 @@
 
                 userNotes.value =
                     currentCapture.configuration?.notes ||
-                    "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :
-
-4. BOUGIES :
-
-5. RECOMMANDATIONS TECHNIQUES :";
+                    "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :\n\n4. BOUGIES :\n\n5. RECOMMANDATIONS TECHNIQUES :";
 
                 resetAIResults();
 
@@ -1385,11 +1381,7 @@
                         <div class="meta-item"><b>Intervalle</b><span>${meta.interval || 'N/A'}</span></div>
                     `;
 
-                    userNotes.value = meta.notes || "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :
-
-4. BOUGIES :
-
-5. RECOMMANDATIONS TECHNIQUES :";
+                    userNotes.value = meta.notes || "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :\n\n4. BOUGIES :\n\n5. RECOMMANDATIONS TECHNIQUES :";
 
                     if (meta.ai_analysis) {
                         renderAIResults(meta.ai_analysis);
@@ -1403,11 +1395,7 @@
                         <div class="meta-item"><b>Statut</b><span>Capture chargée</span></div>
                     `;
 
-                    userNotes.value = "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :
-
-4. BOUGIES :
-
-5. RECOMMANDATIONS TECHNIQUES :";
+                    userNotes.value = "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :\n\n4. BOUGIES :\n\n5. RECOMMANDATIONS TECHNIQUES :";
                     resetAIResults();
                 }
 
