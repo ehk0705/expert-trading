@@ -2462,33 +2462,38 @@
             return valeur;
         }
 
-        function normaliserSymboleTradingViewWidget(symbole) {
-            /*
-                Correction compatibilité TradingView tv.js :
-                certains symboles disponibles sur tradingview.com ne sont pas toujours
-                acceptés dans le widget intégré s3/tv.js.
-                On conserve le libellé utilisateur, mais on envoie un symbole accepté
-                au widget afin d'éviter le message "Ce symbole n'existe pas".
-            */
-            const valeur = String(symbole || "").trim().toUpperCase();
+function normaliserSymboleTradingViewWidget(symbole) {
+    /*
+        Correction compatibilité TradingView tv.js :
+        certains symboles disponibles sur tradingview.com ne sont pas toujours
+        acceptés dans le widget intégré s3/tv.js.
+        On conserve le libellé utilisateur, mais on envoie un symbole accepté
+        au widget afin d'éviter le message "Ce symbole n'existe pas".
+    */
+    const valeurOriginale = String(symbole || "BINANCE:BTCUSDT").trim();
+    const valeur = valeurOriginale.toUpperCase();
 
-            const correspondances = {
-                "NASDAQ:NDX": "OANDA:NAS100USD",
-                "NDX": "OANDA:NAS100USD",
-                "NASDAQ 100": "OANDA:NAS100USD",
-                "NAS100": "OANDA:NAS100USD",
-                "US100": "OANDA:NAS100USD",
-                "SP:SPX": "SP:SPX",
-                "SPX": "SP:SPX",
-                "S&P 500": "SP:SPX",
-                "US500": "SP:SPX",
-                "TVC:DXY": "TVC:DXY",
-                "DXY": "TVC:DXY"
-            };
+    const correspondances = {
+        "NASDAQ:NDX": "OANDA:NAS100USD",
+        "NDX": "OANDA:NAS100USD",
+        "NASDAQ 100": "OANDA:NAS100USD",
+        "NAS100": "OANDA:NAS100USD",
+        "US100": "OANDA:NAS100USD",
+        "CME_MINI:NQ1!": "OANDA:NAS100USD",
+        "FOREXCOM:NSXUSD": "OANDA:NAS100USD",
 
-            return correspondances[valeur] || String(symbole || "BINANCE:BTCUSDT").trim();
-        }
+        "SP:SPX": "OANDA:SPX500USD",
+        "SPX": "OANDA:SPX500USD",
+        "S&P 500": "OANDA:SPX500USD",
+        "US500": "OANDA:SPX500USD",
 
+        "TVC:DXY": "CAPITALCOM:DXY",
+        "DXY": "CAPITALCOM:DXY",
+        "DOLLAR INDEX": "CAPITALCOM:DXY"
+    };
+
+    return correspondances[valeur] || valeurOriginale;
+}
         function creerGraphiqueTradingViewS3() {
             const conteneur = document.getElementById("tradingview_chart");
             if (!conteneur) return;
