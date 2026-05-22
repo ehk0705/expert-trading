@@ -659,41 +659,46 @@
         }
 
 
-        /* ============================================================
-           Mode capture propre
-           Pendant la capture écran, on masque les éléments qui ne servent
-           pas à l'analyse visuelle : panneau Résultat IA, messages et entête.
-           Les paramètres restent sauvegardés dans configuration_json.
-        ============================================================ */
-        body.capture-clean-mode .header-pro,
-        body.capture-clean-mode #result-panel,
-        body.capture-clean-mode #chart-message {
-            display: none !important;
-            visibility: hidden !important;
-        }
-
-        body.capture-clean-mode #chart-container {
-            min-height: 100vh !important;
-            height: 100vh !important;
-            padding: 0 !important;
+        /* Champs CONFIG. et INDICATEUR remontés dans le bloc risque */
+        body:not(.auth-locked) .risk-box .configuration-loader,
+        body:not(.auth-locked) .risk-box .risk-indicator-group {
+            align-self: end !important;
             margin: 0 !important;
-            border: 0 !important;
-            gap: 0 !important;
-            background: #ffffff !important;
         }
 
-        body.capture-clean-mode #tradingview_chart,
-        body.capture-clean-mode #tradingview_chart iframe {
-            width: 100% !important;
-            height: 100vh !important;
-            min-height: 100vh !important;
-            border-radius: 0 !important;
-            border: 0 !important;
+        body:not(.auth-locked) .risk-box .configuration-loader {
+            min-width: 250px !important;
+            max-width: 380px !important;
         }
 
-        body.capture-clean-mode {
-            overflow: hidden !important;
-            background: #ffffff !important;
+        body:not(.auth-locked) .risk-box .configuration-loader label,
+        body:not(.auth-locked) .risk-box .risk-indicator-group label {
+            font-size: 9.5px !important;
+            line-height: 1.05 !important;
+        }
+
+        body:not(.auth-locked) .risk-box .configuration-loader select {
+            min-width: 190px !important;
+            max-width: 285px !important;
+        }
+
+        body:not(.auth-locked) .risk-box .risk-indicator-group select {
+            min-width: 210px !important;
+            max-width: 320px !important;
+        }
+
+        @media (max-width: 900px) {
+            body:not(.auth-locked) .risk-box .configuration-loader,
+            body:not(.auth-locked) .risk-box .risk-indicator-group {
+                width: 100% !important;
+                max-width: none !important;
+            }
+
+            body:not(.auth-locked) .risk-box .configuration-loader select,
+            body:not(.auth-locked) .risk-box .risk-indicator-group select {
+                width: 100% !important;
+                max-width: none !important;
+            }
         }
 </style>
 </head>
@@ -718,7 +723,7 @@
 
     <div class="header-pro">
         <div class="control-group">
-            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique seul en masquant temporairement les panneaux, puis enregistrer l’image et la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
+            <button class="btn-capture" id="btn-capture" onclick="takeScreenshot()" title="Capturer le graphique affiché, enregistrer l’image et sauvegarder la configuration JSON dans PostgreSQL.">📷 CAPTURE</button>
             <button
                 class="btn-json"
                 id="btn-json-config"
@@ -864,8 +869,6 @@
                     <option value="range">Range</option>
                 </select>
             </div>
-        </section>
-
 
         <div class="control-group configuration-loader">
             <label for="configuration-sauvegardee-selector">CONFIG. :</label>
@@ -884,7 +887,7 @@
         </div>
 
 
-        <div class="control-group">
+        <div class="control-group risk-indicator-group">
             <label for="indicator-selector">INDICATEUR :</label>
             <select id="indicator-selector" onchange="changerIndicateur()" title="Choisir l’indicateur technique principal associé à la configuration, à la capture et à l’analyse IA.">
                 <option value="EMA" selected>EMA - Exponential Moving Average</option>
@@ -1001,6 +1004,9 @@
                 <option value="CUSTOM_PINE">Script Pine personnalisé</option>
             </select>
         </div>
+        </section>
+
+
 <!--
         <div class="control-group">
             <label for="chart-type-selector">STYLE :</label>
@@ -2757,67 +2763,12 @@
             }
         }
 
-
-        function preparerInterfacePourCapture() {
-            const resultPanel = document.getElementById("result-panel");
-            const resultatAnalyse = document.getElementById("resultat-analyse");
-            const status = document.getElementById("status");
-
-            const etat = {
-                scrollX: window.scrollX || 0,
-                scrollY: window.scrollY || 0,
-                resultPanelDisplay: resultPanel ? resultPanel.style.display : "",
-                resultatHidden: resultatAnalyse ? resultatAnalyse.classList.contains("hidden") : false,
-                statusHidden: status ? status.classList.contains("hidden") : false,
-                bodyCaptureCleanMode: document.body.classList.contains("capture-clean-mode")
-            };
-
-            if (resultPanel) {
-                resultPanel.style.display = "none";
-            }
-
-            document.body.classList.add("capture-clean-mode");
-            window.scrollTo(0, 0);
-
-            return etat;
-        }
-
-        function restaurerInterfaceApresCapture(etat) {
-            const resultPanel = document.getElementById("result-panel");
-            const resultatAnalyse = document.getElementById("resultat-analyse");
-            const status = document.getElementById("status");
-
-            if (!etat) return;
-
-            if (!etat.bodyCaptureCleanMode) {
-                document.body.classList.remove("capture-clean-mode");
-            }
-
-            if (resultPanel) {
-                resultPanel.style.display = etat.resultPanelDisplay || "";
-            }
-
-            if (resultatAnalyse) {
-                resultatAnalyse.classList.toggle("hidden", Boolean(etat.resultatHidden));
-            }
-
-            if (status) {
-                status.classList.toggle("hidden", Boolean(etat.statusHidden));
-            }
-
-            window.scrollTo(etat.scrollX || 0, etat.scrollY || 0);
-        }
-
         async function capturerCanvasEnBase64() {
             /*
                 TradingView tv.js affiche le graphique dans une iframe externe.
                 Une capture canvas classique ne peut pas lire cette iframe.
                 Solution utilisée : API native de capture d'écran du navigateur.
                 L'utilisateur doit choisir l'onglet ou la fenêtre contenant le graphique.
-
-                Correction : avant la capture, on passe en mode capture propre.
-                Le panneau Résultat IA et le panneau supérieur sont masqués visuellement.
-                Les paramètres utiles restent disponibles dans configuration_json.
             */
             afficherInfosGraphique();
 
@@ -2825,25 +2776,18 @@
                 throw new Error("La capture d'écran du navigateur n'est pas disponible. Utilisez Chrome ou Edge en HTTPS.");
             }
 
-            afficherStatus("Préparation de la capture propre du graphique TradingView...");
+            afficherStatus("Sélectionnez l'onglet ou la fenêtre contenant le graphique TradingView.");
 
-            const etatInterface = preparerInterfacePourCapture();
-            await new Promise(resolve => setTimeout(resolve, 250));
-
-            let flux = null;
+            const flux = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    displaySurface: "browser",
+                    cursor: "always"
+                },
+                audio: false,
+                preferCurrentTab: true
+            });
 
             try {
-                afficherStatus("Sélectionnez l'onglet ou la fenêtre contenant le graphique TradingView.");
-
-                flux = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        displaySurface: "browser",
-                        cursor: "always"
-                    },
-                    audio: false,
-                    preferCurrentTab: true
-                });
-
                 const video = document.createElement("video");
                 video.srcObject = flux;
                 video.muted = true;
@@ -2876,11 +2820,7 @@
 
                 return compresserCanvasPourIA(canvas, 1280, 0.75);
             } finally {
-                if (flux) {
-                    flux.getTracks().forEach(track => track.stop());
-                }
-                restaurerInterfaceApresCapture(etatInterface);
-                afficherStatus("Interface restaurée après capture.");
+                flux.getTracks().forEach(track => track.stop());
             }
         }
 
@@ -2899,7 +2839,7 @@
         async function takeScreenshot() {
             garderEnteteVisible();
             try {
-                afficherStatus("Préparation du JSON de configuration...");
+                afficherStatus("Capture du graphique en cours...");
 
                 if (!graphiqueTradingViewPret && Date.now() - dernierChargementGraphique < 7000) {
                     throw new Error(
@@ -2907,29 +2847,6 @@
                         "Attendez l'affichage complet des bougies, puis relancez CAPTURE."
                     );
                 }
-
-                /*
-                    Correction importante :
-                    le JSON est construit AVANT de masquer les panneaux pour la capture.
-                    Ainsi, même si le panneau supérieur et le panneau Résultat IA sont cachés
-                    pendant l'image, tous les paramètres restent sauvegardés dans PostgreSQL.
-                */
-                calculerParametresRisque(false);
-                afficherInfosGraphique();
-
-                const configuration = obtenirConfiguration();
-                configuration.captureMode = "graphique_seul_json_conserve";
-                configuration.capturePropre = true;
-                configuration.panneauxMasquesPendantCapture = {
-                    panneau_superieur: true,
-                    resultat_ia: true,
-                    messages_flottants: true
-                };
-                configuration.note_capture =
-                    "Image capturée sans panneaux visuels. Les paramètres d'analyse sont conservés dans configuration_json.";
-                configuration.dateConfigurationAvantCapture = new Date().toISOString();
-
-                afficherStatus("Capture du graphique en cours...");
 
                 const inputCapture = document.getElementById("screenshot-file");
 
@@ -2939,17 +2856,11 @@
                     dernierScreenshotBase64 = await capturerCanvasEnBase64();
                 }
 
-                const imageCapture = dernierScreenshotBase64 || null;
+                const configuration = obtenirConfiguration();
 
                 configuration.snapshot = configuration.snapshot || {};
-                configuration.snapshot.screenshotBase64 = imageCapture;
-                configuration.snapshot.captureDate = new Date().toISOString();
-                configuration.screenshot_base64 = imageCapture;
-                configuration.screenshotBase64 = imageCapture;
-
-                if (!imageCapture) {
-                    throw new Error("La capture n'a produit aucune image exploitable.");
-                }
+                configuration.snapshot.screenshotBase64 = dernierScreenshotBase64 || null;
+                configuration.screenshot_base64 = dernierScreenshotBase64 || null;
 
                 const resultatSauvegarde = await enregistrerConfigurationSurServeur(configuration);
 
