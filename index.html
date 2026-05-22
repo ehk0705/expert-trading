@@ -767,26 +767,62 @@
 
         <h1>EXPERT TRADING PRO</h1>
 
-        <div class="control-group">
-            <label for="asset-selector">ACTIF :</label>
-            <select id="asset-selector" onchange="appliquerParametresCaptureTradingView()" title="Actif appliqué au widget TradingView et sauvegardé dans la configuration.">
-                <option value="BINANCE:BTCUSDT" selected>Bitcoin / USDT</option>
-                <option value="BINANCE:ETHUSDT">Ethereum / USDT</option>
-                <option value="BINANCE:SOLUSDT">Solana / USDT</option>
-                <option value="BINANCE:BNBUSDT">BNB / USDT</option>
-                <option value="BINANCE:XRPUSDT">XRP / USDT</option>
-                <option value="OANDA:XAUUSD">Or / Dollar US</option>
-                <option value="OANDA:XAGUSD">Argent / Dollar US</option>
-                <option value="OANDA:NAS100USD" data-symbole-original="NASDAQ:NDX">Nasdaq 100</option>
-                <option value="CME_MINI:NQ1!">Nasdaq 100 Futures</option>
-                <option value="FOREXCOM:NSXUSD">Nasdaq 100 CFD</option>
-                <option value="SP:SPX">S&amp;P 500</option>
-                <option value="TVC:DXY">Dollar Index</option>
-                <option value="FX:EURUSD">EUR / USD</option>
-                <option value="FX:GBPUSD">GBP / USD</option>
-                <option value="FX:USDJPY">USD / JPY</option>
-            </select>
-        </div>
+<div class="control-group">
+    <label for="asset-selector">ACTIF :</label>
+    <select
+        id="asset-selector"
+        onchange="appliquerParametresCaptureTradingView()"
+        title="Actif appliqué au widget TradingView et sauvegardé dans la configuration.">
+
+        <!-- Cryptomonnaies -->
+        <option value="BINANCE:BTCUSDT" selected>Bitcoin / USDT</option>
+        <option value="BINANCE:ETHUSDT">Ethereum / USDT</option>
+        <option value="BINANCE:SOLUSDT">Solana / USDT</option>
+        <option value="BINANCE:BNBUSDT">BNB / USDT</option>
+        <option value="BINANCE:XRPUSDT">XRP / USDT</option>
+        <option value="BINANCE:ADAUSDT">Cardano / USDT</option>
+        <option value="BINANCE:DOGEUSDT">Dogecoin / USDT</option>
+        <option value="BINANCE:AVAXUSDT">Avalanche / USDT</option>
+        <option value="BINANCE:LINKUSDT">Chainlink / USDT</option>
+        <option value="BINANCE:DOTUSDT">Polkadot / USDT</option>
+        <option value="BINANCE:MATICUSDT">Polygon / USDT</option>
+
+        <!-- Métaux -->
+        <option value="OANDA:XAUUSD">Or / Dollar US</option>
+        <option value="OANDA:XAGUSD">Argent / Dollar US</option>
+
+        <!-- Indices -->
+        <option value="OANDA:NAS100USD" data-symbole-original="NASDAQ:NDX">Nasdaq 100</option>
+        <option value="CME_MINI:NQ1!">Nasdaq 100 Futures</option>
+        <option value="FOREXCOM:NSXUSD">Nasdaq 100 CFD</option>
+        <option value="SP:SPX">S&amp;P 500</option>
+        <option value="OANDA:SPX500USD">S&amp;P 500 CFD</option>
+        <option value="OANDA:US30USD">Dow Jones CFD</option>
+        <option value="OANDA:US2000USD">Russell 2000 CFD</option>
+        <option value="OANDA:DE30EUR">DAX Allemagne</option>
+        <option value="OANDA:UK100GBP">FTSE 100</option>
+        <option value="OANDA:JP225USD">Nikkei 225</option>
+        <option value="TVC:DXY">Dollar Index TVC</option>
+        <option value="CAPITALCOM:DXY">Dollar Index Capital.com</option>
+
+        <!-- Forex -->
+        <option value="FX:EURUSD">EUR / USD</option>
+        <option value="FX:GBPUSD">GBP / USD</option>
+        <option value="FX:USDJPY">USD / JPY</option>
+        <option value="FX:USDCHF">USD / CHF</option>
+        <option value="FX:USDCAD">USD / CAD</option>
+        <option value="FX:AUDUSD">AUD / USD</option>
+        <option value="FX:NZDUSD">NZD / USD</option>
+        <option value="FX:EURJPY">EUR / JPY</option>
+        <option value="FX:GBPJPY">GBP / JPY</option>
+
+        <!-- Énergie -->
+        <option value="OANDA:BCOUSD">Brent pétrole</option>
+        <option value="OANDA:WTICOUSD">WTI pétrole</option>
+        <option value="OANDA:NATGASUSD">Gaz naturel</option>
+
+    </select>
+</div>
 
         <div class="control-group">
             <label for="capture-intervalle">INTERVALLE :</label>
