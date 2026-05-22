@@ -731,6 +731,29 @@
 
 
         /* ============================================================
+           Paramètres de risque déplacés vers analyse.html
+           Les anciens champs restent dans le DOM pour compatibilité,
+           mais ils ne prennent plus de place dans index.html.
+        ============================================================ */
+        body:not(.auth-locked) #risk-box {
+            display: contents !important;
+        }
+
+        body:not(.auth-locked) #risk-box > h3,
+        body:not(.auth-locked) #risk-box > .form-block {
+            display: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            height: 0 !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+
+
+        /* ============================================================
            Mode capture propre
            Pendant la capture écran, on masque les éléments qui ne servent
            pas à l'analyse visuelle : panneau Résultat IA, messages et entête.
@@ -1624,7 +1647,6 @@
             synchroniserIntervalleCaptureVersAncien();
             synchroniserIntervalleCaptureVersAncien();
             synchroniserTypeGraphiqueCustomVersAncien();
-            calculerParametresRisque(false);
             afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
@@ -2513,7 +2535,6 @@
             const intervalle = obtenirIntervalleSelectionne();
             const indicateur = document.getElementById("indicator-selector").value;
             const style = obtenirTypeGraphiqueSelectionne();
-            const risque = obtenirParametresRisque();
 
             return {
                 nom: "Expert Trading Pro v2.0",
@@ -2524,8 +2545,6 @@
                 categorieAnalyse: document.getElementById("categorie-analyse-btc").value,
                 categorieAnalyseLibelle: catText,
                 style: style,
-                risque: risque,
-                parametresRisque: risque,
                 graphique: {
                     actif: actif,
                     intervalle: intervalle,
@@ -2609,15 +2628,6 @@
                 "Symbole : " + symbole,
                 "Bougies : " + nombreBougies,
                 "Dernier prix : " + formatterDerniereBougie(derniereBougie),
-                "Capital total : " + configuration.risque.capital_total_dollars + " $",
-                "Risque par position : " + configuration.risque.risque_position_pourcentage + " %",
-                "Risque réel maximal : " + configuration.risque.risque_reel_maximal_dollars.toFixed(2) + " $",
-                "Stop loss technique : " + configuration.risque.stop_loss_technique_pourcentage + " %",
-                "Valeur de position correcte : " + configuration.risque.valeur_position_correcte_dollars.toFixed(2) + " $",
-                "Marge requise : " + configuration.risque.marge_requise_dollars.toFixed(2) + " $",
-                "Ratio risque/rendement : " + configuration.risque.ratio_risque_rendement_libelle,
-                "Sens : " + libelleOptionSelectionnee("sens-selector"),
-                "Stratégie : " + libelleOptionSelectionnee("strategie-selector"),
                 "Bibliothèque : TradingView tv.js"
             ];
         }
@@ -2673,11 +2683,6 @@
                 '<span class="info-item"><strong>Symbole :</strong> ' + symbole + '</span>' +
                 '<span class="info-item"><strong>Bougies :</strong> ' + nombreBougies + '</span>' +
                 '<span class="info-item"><strong>Dernier prix :</strong> ' + formatterDerniereBougie(derniereBougie) + '</span>' +
-                '<span class="info-item"><strong>Capital :</strong> ' + configuration.risque.capital_total_dollars + ' $</span>' +
-                '<span class="info-item"><strong>Risque :</strong> ' + configuration.risque.risque_position_pourcentage + ' %</span>' +
-                '<span class="info-item"><strong>Risque réel :</strong> ' + configuration.risque.risque_reel_maximal_dollars.toFixed(2) + ' $</span>' +
-                '<span class="info-item"><strong>Stop loss :</strong> ' + configuration.risque.stop_loss_technique_pourcentage + ' %</span>' +
-                '<span class="info-item"><strong>Position :</strong> ' + configuration.risque.valeur_position_correcte_dollars.toFixed(2) + ' $</span>' +
                 '<span class="info-note">Ce bandeau est intégré dans la capture sauvegardée et sera donc visible dans analyse.html.</span>';
         }
 
@@ -3337,7 +3342,6 @@ function normaliserSymboleTradingViewWidget(symbole) {
                     Ainsi, même si le panneau supérieur et le panneau Résultat IA sont cachés
                     pendant l'image, tous les paramètres restent sauvegardés dans PostgreSQL.
                 */
-                calculerParametresRisque(false);
                 afficherInfosGraphique();
 
                 const configuration = obtenirConfiguration();
