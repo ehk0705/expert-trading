@@ -115,6 +115,22 @@
             background: #059669;
         }
 
+
+        .btn-analyser {
+            background: #2563eb;
+            color: #ffffff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .btn-analyser:hover {
+            background: #1d4ed8;
+        }
+
         .result-header-actions {
             display: flex;
             align-items: center;
@@ -572,7 +588,8 @@
         body:not(.auth-locked) .header-pro button,
         body:not(.auth-locked) .header-pro a button,
         body:not(.auth-locked) .btn-json,
-        body:not(.auth-locked) .btn-json-local {
+        body:not(.auth-locked) .btn-json-local,
+        body:not(.auth-locked) .btn-analyser {
             min-height: 28px !important;
             padding: 5px 8px !important;
             font-size: 11px !important;
@@ -1091,7 +1108,7 @@
             <!--<button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">TradingView</button>-->
 
             <a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
-                <button type="button" title="Ouvrir la page analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
+                <button class="btn-analyser" type="button" title="Ouvrir la page analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
             </a>
 
            <button class="btn-effacer" type="button" onclick="viderCaptures()" title="Supprimer toutes les captures sauvegardées dans PostgreSQL après confirmation et mot de passe administrateur.">
