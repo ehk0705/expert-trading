@@ -542,7 +542,122 @@
             }
         }
 
-    </style>
+    
+
+        /* ============================================================
+           Entête compact : réduction du panneau supérieur
+           Objectif : garder tous les paramètres visibles sans occuper trop d'espace.
+        ============================================================ */
+        body:not(.auth-locked) .header-pro {
+            padding: 5px 8px !important;
+            gap: 5px 7px !important;
+            align-items: center !important;
+            min-height: auto !important;
+        }
+
+        body:not(.auth-locked) .header-pro h1 {
+            font-size: 17px !important;
+            line-height: 1.1 !important;
+            margin: 0 8px !important;
+            letter-spacing: 0.02em !important;
+        }
+
+        body:not(.auth-locked) .header-pro .control-group {
+            gap: 5px !important;
+            margin: 0 !important;
+            min-height: 30px !important;
+        }
+
+        body:not(.auth-locked) .header-pro button,
+        body:not(.auth-locked) .header-pro a button,
+        body:not(.auth-locked) .btn-json,
+        body:not(.auth-locked) .btn-json-local {
+            min-height: 28px !important;
+            padding: 5px 8px !important;
+            font-size: 11px !important;
+            border-radius: 7px !important;
+            line-height: 1.15 !important;
+        }
+
+        body:not(.auth-locked) .header-pro label,
+        body:not(.auth-locked) .header-pro .control-group label {
+            font-size: 10px !important;
+            line-height: 1.1 !important;
+        }
+
+        body:not(.auth-locked) .header-pro select,
+        body:not(.auth-locked) .header-pro input,
+        body:not(.auth-locked) .header-pro .control-group select {
+            min-height: 28px !important;
+            height: 28px !important;
+            padding: 4px 7px !important;
+            font-size: 11px !important;
+            border-radius: 7px !important;
+        }
+
+        body:not(.auth-locked) .configuration-loader {
+            padding: 4px 6px !important;
+            gap: 5px !important;
+            border-radius: 8px !important;
+        }
+
+        body:not(.auth-locked) .configuration-loader select {
+            min-width: 210px !important;
+            max-width: 320px !important;
+        }
+
+        body:not(.auth-locked) .risk-box {
+            padding: 5px 7px !important;
+            gap: 5px 6px !important;
+            border-radius: 9px !important;
+            align-items: end !important;
+        }
+
+        body:not(.auth-locked) .risk-box h3 {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            margin: 0 4px 0 0 !important;
+            font-size: 10px !important;
+            line-height: 1.1 !important;
+        }
+
+        body:not(.auth-locked) .risk-box .form-block {
+            min-width: 92px !important;
+            max-width: 140px !important;
+            gap: 2px !important;
+        }
+
+        body:not(.auth-locked) .risk-box label {
+            font-size: 9.5px !important;
+            line-height: 1.05 !important;
+        }
+
+        body:not(.auth-locked) .risk-box input,
+        body:not(.auth-locked) .risk-box select {
+            min-height: 26px !important;
+            height: 26px !important;
+            padding: 3px 6px !important;
+            font-size: 11px !important;
+        }
+
+        body:not(.auth-locked) .risk-box input[readonly] {
+            color: #bbf7d0 !important;
+            background: #052e16 !important;
+            border-color: #166534 !important;
+            font-weight: 800 !important;
+        }
+
+        @media (max-width: 900px) {
+            body:not(.auth-locked) .header-pro {
+                max-height: 38vh !important;
+            }
+
+            body:not(.auth-locked) .risk-box .form-block {
+                width: calc(50% - 4px) !important;
+                max-width: none !important;
+            }
+        }
+</style>
 </head>
 
 <body class="auth-locked">
@@ -649,28 +764,53 @@
             <h3>Paramètres de risque</h3>
 
             <div class="form-block">
-                <label for="risk-input">Risque par position (%)</label>
-                <input id="risk-input" type="number" value="1" min="0" step="0.1" onchange="afficherInfosGraphique()">
+                <label for="capital-total-input">Capital total ($)</label>
+                <input id="capital-total-input" type="number" value="10000" min="0" step="100" oninput="calculerParametresRisque(true)">
             </div>
 
             <div class="form-block">
-                <label for="stoploss-input">Stop loss (%)</label>
-                <input id="stoploss-input" type="number" value="2" min="0" step="0.1" onchange="afficherInfosGraphique()">
+                <label for="risk-input">Risque par position (%)</label>
+                <input id="risk-input" type="number" value="1" min="0" step="0.1" oninput="calculerParametresRisque(true)">
+            </div>
+
+            <div class="form-block">
+                <label for="risk-real-input">Risque réel maximal ($)</label>
+                <input id="risk-real-input" type="number" value="100" readonly>
+            </div>
+
+            <div class="form-block">
+                <label for="stoploss-input">Stop loss technique (%)</label>
+                <input id="stoploss-input" type="number" value="2" min="0" step="0.1" oninput="calculerParametresRisque(true)">
+            </div>
+
+            <div class="form-block">
+                <label for="position-value-input">Valeur de position correcte ($)</label>
+                <input id="position-value-input" type="number" value="5000" readonly>
             </div>
 
             <div class="form-block">
                 <label for="takeprofit-input">Take profit (%)</label>
-                <input id="takeprofit-input" type="number" value="4" min="0" step="0.1" onchange="afficherInfosGraphique()">
+                <input id="takeprofit-input" type="number" value="4" min="0" step="0.1" oninput="calculerParametresRisque(true)">
             </div>
 
             <div class="form-block">
                 <label for="levier-input">Levier</label>
-                <input id="levier-input" type="number" value="1" min="1" step="1" onchange="afficherInfosGraphique()">
+                <input id="levier-input" type="number" value="1" min="1" step="1" oninput="calculerParametresRisque(true)">
+            </div>
+
+            <div class="form-block">
+                <label for="marge-input">Marge requise ($)</label>
+                <input id="marge-input" type="number" value="5000" readonly>
+            </div>
+
+            <div class="form-block">
+                <label for="ratio-rr-input">Ratio risque/rendement</label>
+                <input id="ratio-rr-input" type="text" value="1:2" readonly>
             </div>
 
             <div class="form-block">
                 <label for="sens-selector">Sens</label>
-                <select id="sens-selector" onchange="afficherInfosGraphique()">
+                <select id="sens-selector" onchange="calculerParametresRisque(true)">
                     <option value="achat_vente" selected>Achat ou vente</option>
                     <option value="achat">Achat seulement</option>
                     <option value="vente">Vente seulement</option>
@@ -679,7 +819,7 @@
 
             <div class="form-block">
                 <label for="strategie-selector">Stratégie</label>
-                <select id="strategie-selector" onchange="afficherInfosGraphique()">
+                <select id="strategie-selector" onchange="calculerParametresRisque(true)">
                     <option value="suivi_tendance" selected>Suivi de tendance</option>
                     <option value="retournement">Retournement</option>
                     <option value="cassure">Cassure</option>
@@ -1200,6 +1340,7 @@
             synchroniserIntervalleCaptureVersAncien();
             synchroniserIntervalleCaptureVersAncien();
             synchroniserTypeGraphiqueCustomVersAncien();
+            calculerParametresRisque(false);
             afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
@@ -1799,29 +1940,96 @@
             return Math.max(minimum, valeur);
         }
 
-        function obtenirParametresRisque() {
+        function ecrireNombreParametreRisque(id, valeur, decimales = 2) {
+            const element = document.getElementById(id);
+            if (!element) return;
+
+            if (!Number.isFinite(Number(valeur))) {
+                element.value = "";
+                return;
+            }
+
+            const nombre = Number(valeur);
+            element.value = Number.isInteger(nombre) ? String(nombre) : nombre.toFixed(decimales);
+        }
+
+        function calculerParametresRisque(mettreAJourInfos = false) {
+            const capitalTotal = lireNombreParametreRisque("capital-total-input", 10000, 0);
+            const risquePourcentage = lireNombreParametreRisque("risk-input", 1, 0);
+            const stopLossPourcentage = lireNombreParametreRisque("stoploss-input", 2, 0);
+            const takeProfitPourcentage = lireNombreParametreRisque("takeprofit-input", 4, 0);
+            const levier = lireNombreParametreRisque("levier-input", 1, 1);
+
+            const risqueReelMaximal = capitalTotal * (risquePourcentage / 100);
+            const valeurPositionCorrecte = stopLossPourcentage > 0
+                ? risqueReelMaximal / (stopLossPourcentage / 100)
+                : 0;
+            const margeRequise = levier > 0 ? valeurPositionCorrecte / levier : valeurPositionCorrecte;
+            const ratioRisqueRendement = stopLossPourcentage > 0
+                ? takeProfitPourcentage / stopLossPourcentage
+                : 0;
+
+            ecrireNombreParametreRisque("risk-real-input", risqueReelMaximal, 2);
+            ecrireNombreParametreRisque("position-value-input", valeurPositionCorrecte, 2);
+            ecrireNombreParametreRisque("marge-input", margeRequise, 2);
+
+            const ratioInput = document.getElementById("ratio-rr-input");
+            if (ratioInput) {
+                ratioInput.value = ratioRisqueRendement > 0
+                    ? "1:" + ratioRisqueRendement.toFixed(2).replace(/\.00$/, "")
+                    : "N/A";
+            }
+
+            if (mettreAJourInfos) {
+                afficherInfosGraphique();
+            }
+
             return {
-                risque_position_pourcentage: lireNombreParametreRisque("risk-input", 1, 0),
-                stop_loss_pourcentage: lireNombreParametreRisque("stoploss-input", 2, 0),
-                take_profit_pourcentage: lireNombreParametreRisque("takeprofit-input", 4, 0),
-                levier: lireNombreParametreRisque("levier-input", 1, 1),
+                capital_total: capitalTotal,
+                capital_total_dollars: capitalTotal,
+                risque_position_pourcentage: risquePourcentage,
+                risque_reel_maximal: risqueReelMaximal,
+                risque_reel_maximal_dollars: risqueReelMaximal,
+                stop_loss_pourcentage: stopLossPourcentage,
+                stop_loss_technique_pourcentage: stopLossPourcentage,
+                valeur_position_correcte: valeurPositionCorrecte,
+                valeur_position_correcte_dollars: valeurPositionCorrecte,
+                take_profit_pourcentage: takeProfitPourcentage,
+                levier: levier,
+                marge_requise: margeRequise,
+                marge_requise_dollars: margeRequise,
+                ratio_risque_rendement: ratioRisqueRendement,
+                ratio_risque_rendement_libelle: ratioRisqueRendement > 0
+                    ? "1:" + ratioRisqueRendement.toFixed(2).replace(/\.00$/, "")
+                    : "N/A",
                 sens: document.getElementById("sens-selector")?.value || "achat_vente",
                 strategie: document.getElementById("strategie-selector")?.value || "suivi_tendance",
                 source: "index_html_parametres_risque"
             };
         }
 
+        function obtenirParametresRisque() {
+            return calculerParametresRisque(false);
+        }
+
         function appliquerParametresRisqueDepuisConfiguration(configuration = {}) {
             const risque = configuration.risque || configuration.parametresRisque || configuration.risk || {};
+
+            const capitalTotal = risque.capital_total ?? risque.capital_total_dollars;
+            if (capitalTotal !== undefined) {
+                const input = document.getElementById("capital-total-input");
+                if (input) input.value = capitalTotal;
+            }
 
             if (risque.risque_position_pourcentage !== undefined) {
                 const input = document.getElementById("risk-input");
                 if (input) input.value = risque.risque_position_pourcentage;
             }
 
-            if (risque.stop_loss_pourcentage !== undefined) {
+            const stopLoss = risque.stop_loss_pourcentage ?? risque.stop_loss_technique_pourcentage;
+            if (stopLoss !== undefined) {
                 const input = document.getElementById("stoploss-input");
-                if (input) input.value = risque.stop_loss_pourcentage;
+                if (input) input.value = stopLoss;
             }
 
             if (risque.take_profit_pourcentage !== undefined) {
@@ -1841,6 +2049,8 @@
             if (risque.strategie !== undefined) {
                 definirValeurSelect("strategie-selector", risque.strategie);
             }
+
+            calculerParametresRisque(false);
         }
 
         function obtenirConfiguration() {
@@ -1947,6 +2157,15 @@
                 "Symbole : " + symbole,
                 "Bougies : " + nombreBougies,
                 "Dernier prix : " + formatterDerniereBougie(derniereBougie),
+                "Capital total : " + configuration.risque.capital_total_dollars + " $",
+                "Risque par position : " + configuration.risque.risque_position_pourcentage + " %",
+                "Risque réel maximal : " + configuration.risque.risque_reel_maximal_dollars.toFixed(2) + " $",
+                "Stop loss technique : " + configuration.risque.stop_loss_technique_pourcentage + " %",
+                "Valeur de position correcte : " + configuration.risque.valeur_position_correcte_dollars.toFixed(2) + " $",
+                "Marge requise : " + configuration.risque.marge_requise_dollars.toFixed(2) + " $",
+                "Ratio risque/rendement : " + configuration.risque.ratio_risque_rendement_libelle,
+                "Sens : " + libelleOptionSelectionnee("sens-selector"),
+                "Stratégie : " + libelleOptionSelectionnee("strategie-selector"),
                 "Bibliothèque : TradingView tv.js"
             ];
         }
@@ -2002,6 +2221,11 @@
                 '<span class="info-item"><strong>Symbole :</strong> ' + symbole + '</span>' +
                 '<span class="info-item"><strong>Bougies :</strong> ' + nombreBougies + '</span>' +
                 '<span class="info-item"><strong>Dernier prix :</strong> ' + formatterDerniereBougie(derniereBougie) + '</span>' +
+                '<span class="info-item"><strong>Capital :</strong> ' + configuration.risque.capital_total_dollars + ' $</span>' +
+                '<span class="info-item"><strong>Risque :</strong> ' + configuration.risque.risque_position_pourcentage + ' %</span>' +
+                '<span class="info-item"><strong>Risque réel :</strong> ' + configuration.risque.risque_reel_maximal_dollars.toFixed(2) + ' $</span>' +
+                '<span class="info-item"><strong>Stop loss :</strong> ' + configuration.risque.stop_loss_technique_pourcentage + ' %</span>' +
+                '<span class="info-item"><strong>Position :</strong> ' + configuration.risque.valeur_position_correcte_dollars.toFixed(2) + ' $</span>' +
                 '<span class="info-note">Ce bandeau est intégré dans la capture sauvegardée et sera donc visible dans analyse.html.</span>';
         }
 
