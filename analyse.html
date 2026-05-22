@@ -389,6 +389,48 @@
             font-weight: 600; 
         }
 
+        .risk-summary {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-left: 5px solid #f97316;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            color: #1e2329;
+        }
+
+        .risk-summary h3 {
+            margin: 0 0 10px 0;
+            color: #9a3412;
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .risk-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .risk-item b {
+            display: block;
+            color: #9a3412;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .risk-item span {
+            font-weight: 800;
+            color: #111827;
+        }
+
+        @media (max-width: 900px) {
+            .risk-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 900px) {
             body {
                 flex-direction: column;
@@ -503,6 +545,11 @@
 
             <div class="meta-grid" id="meta-content">
                 <p id="placeholder-text" style="color: #787b86;">En attente de sélection...</p>
+            </div>
+
+            <div class="risk-summary" id="risk-summary" style="display:none;">
+                <h3>Paramètres de risque pris en compte</h3>
+                <div class="risk-grid" id="risk-summary-content"></div>
             </div>
 
             <div class="ai-dashboard" id="ai-panel">
@@ -1019,6 +1066,11 @@
                 userNotes.value = "";
             }
 
+            const riskSummary = document.getElementById("risk-summary");
+            if (riskSummary) {
+                riskSummary.style.display = "none";
+            }
+
             const dynamicAdvice = document.getElementById("dynamic-advice");
             if (dynamicAdvice) {
                 dynamicAdvice.innerText = "Sélectionnez une capture pour générer les conseils d'ingénierie.";
@@ -1288,6 +1340,8 @@
                     <div class="meta-item"><b>Catégorie</b><span>${texteCourt(currentCapture.categorie)}</span></div>
                     <div class="meta-item"><b>Source</b><span>/api/captures</span></div>
                 `;
+
+                afficherParametresRisque(currentCapture.configuration || {});
 
                 userNotes.value =
                     currentCapture.configuration?.notes ||
@@ -1712,15 +1766,100 @@
             return "ATTENDRE";
         }
 
+
+        function extraireParametresRisqueDepuisConfiguration(configuration = {}) {
+            const risque = configuration.risque || configuration.parametresRisque || configuration.risk || {};
+
+            const nombre = (valeur, defaut, minimum = 0) => {
+                const n = Number(valeur);
+                if (!Number.isFinite(n)) return defaut;
+                return Math.max(minimum, n);
+            };
+
+            return {
+                risque_position_pourcentage: nombre(risque.risque_position_pourcentage, 1, 0),
+                stop_loss_pourcentage: nombre(risque.stop_loss_pourcentage, 2, 0),
+                take_profit_pourcentage: nombre(risque.take_profit_pourcentage, 4, 0),
+                levier: nombre(risque.levier, 1, 1),
+                sens: risque.sens || "achat_vente",
+                strategie: risque.strategie || "suivi_tendance"
+            };
+        }
+
+        function libelleSensRisque(sens) {
+            const map = {
+                achat_vente: "Achat ou vente",
+                achat: "Achat seulement",
+                vente: "Vente seulement"
+            };
+            return map[sens] || sens || "Achat ou vente";
+        }
+
+        function libelleStrategieRisque(strategie) {
+            const map = {
+                suivi_tendance: "Suivi de tendance",
+                retournement: "Retournement",
+                cassure: "Cassure",
+                range: "Range"
+            };
+            return map[strategie] || strategie || "Suivi de tendance";
+        }
+
+        function afficherParametresRisque(configuration = {}) {
+            const bloc = document.getElementById("risk-summary");
+            const contenu = document.getElementById("risk-summary-content");
+            if (!bloc || !contenu) return;
+
+            const risque = extraireParametresRisqueDepuisConfiguration(configuration);
+
+            contenu.innerHTML = `
+                <div class="risk-item"><b>Risque par position</b><span>${risque.risque_position_pourcentage}%</span></div>
+                <div class="risk-item"><b>Stop loss</b><span>${risque.stop_loss_pourcentage}%</span></div>
+                <div class="risk-item"><b>Take profit</b><span>${risque.take_profit_pourcentage}%</span></div>
+                <div class="risk-item"><b>Levier</b><span>x${risque.levier}</span></div>
+                <div class="risk-item"><b>Sens autorisé</b><span>${libelleSensRisque(risque.sens)}</span></div>
+                <div class="risk-item"><b>Stratégie</b><span>${libelleStrategieRisque(risque.strategie)}</span></div>
+            `;
+
+            bloc.style.display = "block";
+        }
+
+        function enrichirAnalyseAvecRisque(analyse, configuration = {}) {
+            const copie = {
+                ...(analyse || {})
+            };
+
+            copie.parametres_risque = extraireParametresRisqueDepuisConfiguration(configuration);
+
+            if (copie.risque_position_pourcentage === undefined) {
+                copie.risque_position_pourcentage = copie.parametres_risque.risque_position_pourcentage;
+            }
+
+            return copie;
+        }
+
         function calculerPlanConcret(analyse, decision) {
             const prix = valeurPrixValide(analyse.prix_actuel ?? analyse.prix ?? analyse.close);
             const support = valeurPrixValide(analyse.support_principal ?? analyse.support);
             const resistance = valeurPrixValide(analyse.resistance_principale ?? analyse.resistance);
             const atr = valeurPrixValide(analyse.atr ?? analyse.ATR ?? analyse.volatilite_atr);
+            const risque = analyse.parametres_risque || extraireParametresRisqueDepuisConfiguration(analyse.configuration || {});
 
             let stopLoss = valeurPrixValide(analyse.stop_loss ?? analyse.stopLoss);
             let objectif1 = valeurPrixValide(analyse.take_profit_1 ?? analyse.objectif_1 ?? analyse.objectif1);
             let objectif2 = valeurPrixValide(analyse.take_profit_2 ?? analyse.objectif_2 ?? analyse.objectif2);
+
+            if (prix && decision === "ACHETER") {
+                if (!stopLoss && risque.stop_loss_pourcentage > 0) stopLoss = prix * (1 - risque.stop_loss_pourcentage / 100);
+                if (!objectif1 && risque.take_profit_pourcentage > 0) objectif1 = prix * (1 + risque.take_profit_pourcentage / 100);
+                if (!objectif2 && risque.take_profit_pourcentage > 0) objectif2 = prix * (1 + (risque.take_profit_pourcentage * 1.5) / 100);
+            }
+
+            if (prix && decision === "VENDRE") {
+                if (!stopLoss && risque.stop_loss_pourcentage > 0) stopLoss = prix * (1 + risque.stop_loss_pourcentage / 100);
+                if (!objectif1 && risque.take_profit_pourcentage > 0) objectif1 = prix * (1 - risque.take_profit_pourcentage / 100);
+                if (!objectif2 && risque.take_profit_pourcentage > 0) objectif2 = prix * (1 - (risque.take_profit_pourcentage * 1.5) / 100);
+            }
 
             const amplitude = prix && support && resistance
                 ? Math.max(Math.abs(resistance - support), prix * 0.005)
@@ -1808,7 +1947,18 @@
                 recommandations.push("Confiance insuffisante : réduire la taille de position ou attendre une nouvelle bougie de confirmation.");
             }
 
-            recommandations.push("Gestion du risque : ne jamais engager une taille qui met le compte en danger. Une limite indicative prudente est 1 % du capital risqué par opération.");
+            const risque = analyse.parametres_risque || extraireParametresRisqueDepuisConfiguration(analyse.configuration || {});
+            recommandations.push("Gestion du risque : respecter le risque indiqué de " + risque.risque_position_pourcentage + "% par position, avec un levier maximal de x" + risque.levier + ".");
+            if (risque.levier > 3) {
+                recommandations.push("Levier élevé : réduire la taille de position ou élargir la marge de sécurité. Un faux signal peut coûter beaucoup plus cher.");
+            }
+            if (risque.sens === "achat" && decision === "VENDRE") {
+                recommandations.push("Contrainte utilisateur : le mode choisi interdit la vente. Le signal vendeur doit donc être traité comme une sortie ou une absence d'entrée.");
+            }
+            if (risque.sens === "vente" && decision === "ACHETER") {
+                recommandations.push("Contrainte utilisateur : le mode choisi interdit l'achat. Le signal acheteur doit donc être traité comme une attente.");
+            }
+            recommandations.push("Gestion du risque : ne jamais engager une taille qui met le compte en danger.");
 
             return recommandations;
         }
@@ -1854,6 +2004,12 @@
             lignes.push("Stop loss : " + formaterPrix(plan.stopLoss));
             lignes.push("Objectif 1 : " + formaterPrix(plan.objectif1));
             lignes.push("Objectif 2 : " + formaterPrix(plan.objectif2));
+
+            const risque = analyse.parametres_risque || extraireParametresRisqueDepuisConfiguration(analyse.configuration || {});
+            lignes.push("Risque par position : " + risque.risque_position_pourcentage + "%");
+            lignes.push("Risque avec levier : " + (risque.risque_position_pourcentage * risque.levier).toFixed(2) + "% indicatif");
+            lignes.push("Sens autorisé : " + libelleSensRisque(risque.sens));
+            lignes.push("Stratégie : " + libelleStrategieRisque(risque.strategie));
 
             lignes.push("", "Plan concret :");
             if (decision === "ACHETER") {
@@ -1936,6 +2092,10 @@ async function triggerAIAnalysis() {
                     }
                 );
 
+                configurationCorrigee.risque = extraireParametresRisqueDepuisConfiguration(configurationCorrigee);
+                configurationCorrigee.parametresRisque = configurationCorrigee.risque;
+                afficherParametresRisque(configurationCorrigee);
+
                 configurationCorrigee.exigence_analyse_concrete = {
                     format: "json_strict",
                     objectif: "Produire une analyse opérationnelle, claire et exploitable.",
@@ -1956,6 +2116,7 @@ async function triggerAIAnalysis() {
                     ],
                     consignes: [
                         "Ne jamais retourner stop_loss, take_profit_1 ou take_profit_2 à 0 si un prix actuel exploitable existe.",
+                        "Respecter les paramètres de risque fournis dans configuration.risque : risque par position, stop loss, take profit, levier, sens et stratégie.",
                         "Si la décision est ATTENDRE, fournir quand même un scénario d'achat, un scénario de vente/sortie et les niveaux d'invalidation.",
                         "Donner des recommandations concrètes, mais sans promesse de gain et sans présenter cela comme un conseil financier personnalisé.",
                         "Mentionner les limites si les données de marché ou l'image sont insuffisantes."
@@ -1997,8 +2158,10 @@ async function triggerAIAnalysis() {
                 }
 
                 const data = await appelerAnalyseVisionProAvecSecours(payload);
-                const analyse = data.analysis || data.analyse;
+                let analyse = data.analysis || data.analyse;
                 if (!analyse) throw new Error("La réponse du serveur ne contient pas le bloc analysis.");
+
+                analyse = enrichirAnalyseAvecRisque(analyse, configurationCorrigee);
 
                 const affichage = adapterAnalyseProPourAffichage(analyse);
                 renderAIResults(affichage);

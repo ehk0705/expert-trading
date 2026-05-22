@@ -2053,17 +2053,170 @@ function extraireJson(txt) {
     }
 }
 
-function construirePromptAnalyseVision({ analyseTechnique, configuration }) {
-    return `Tu es un analyste technique prudent. Analyse l'image et les données techniques. Réponds uniquement en JSON valide avec cette structure:
-{"signal":"acheter | vendre | attendre","confiance":0,"tendance":"haussiere | baissiere | neutre","resume":"","raisons":[],"risques":[],"recommandations":[],"stop_loss":null,"take_profit_1":null,"take_profit_2":null,"analyse_visuelle":{"commentaire":""}}
 
-Données techniques:
+function extraireParametresRisque(configuration = {}) {
+    const risque = configuration.risque || configuration.parametresRisque || configuration.risk || {};
+
+    function nombre(valeur, defaut, minimum = 0) {
+        const n = Number(valeur);
+        if (!Number.isFinite(n)) return defaut;
+        return Math.max(minimum, n);
+    }
+
+    return {
+        risque_position_pourcentage: nombre(risque.risque_position_pourcentage, 1, 0),
+        stop_loss_pourcentage: nombre(risque.stop_loss_pourcentage, 2, 0),
+        take_profit_pourcentage: nombre(risque.take_profit_pourcentage, 4, 0),
+        levier: nombre(risque.levier, 1, 1),
+        sens: String(risque.sens || "achat_vente"),
+        strategie: String(risque.strategie || "suivi_tendance")
+    };
+}
+
+function valeurPrixNombre(valeur) {
+    const n = Number(valeur);
+    return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function arrondirPrixSelonActif(prix) {
+    const n = Number(prix);
+    if (!Number.isFinite(n)) return null;
+    if (Math.abs(n) >= 1000) return arrondir(n, 2);
+    if (Math.abs(n) >= 1) return arrondir(n, 4);
+    return arrondir(n, 6);
+}
+
+function appliquerParametresRisqueAnalyse(analyse, configuration = {}, technique = {}) {
+    const risque = extraireParametresRisque(configuration);
+    const final = {
+        ...(analyse || {})
+    };
+
+    const prix = valeurPrixNombre(final.prix_actuel ?? technique.prix_actuel);
+    const signal = String(final.signal || final.decision || "attendre").toLowerCase();
+
+    if (risque.sens === "achat" && signal === "vendre") {
+        final.signal = "attendre";
+        final.decision = "ATTENDRE";
+        final.resume = (final.resume || "") + " Signal vendeur neutralisé, car le paramètre de risque autorise seulement l'achat.";
+    }
+
+    if (risque.sens === "vente" && signal === "acheter") {
+        final.signal = "attendre";
+        final.decision = "ATTENDRE";
+        final.resume = (final.resume || "") + " Signal acheteur neutralisé, car le paramètre de risque autorise seulement la vente.";
+    }
+
+    const signalFinal = String(final.signal || final.decision || "attendre").toLowerCase();
+
+    let stopLoss = valeurPrixNombre(final.stop_loss);
+    let takeProfit1 = valeurPrixNombre(final.take_profit_1);
+    let takeProfit2 = valeurPrixNombre(final.take_profit_2);
+
+    if (prix && signalFinal === "acheter") {
+        if (!stopLoss && risque.stop_loss_pourcentage > 0) {
+            stopLoss = prix * (1 - risque.stop_loss_pourcentage / 100);
+        }
+        if (!takeProfit1 && risque.take_profit_pourcentage > 0) {
+            takeProfit1 = prix * (1 + risque.take_profit_pourcentage / 100);
+        }
+        if (!takeProfit2 && risque.take_profit_pourcentage > 0) {
+            takeProfit2 = prix * (1 + (risque.take_profit_pourcentage * 1.5) / 100);
+        }
+    }
+
+    if (prix && signalFinal === "vendre") {
+        if (!stopLoss && risque.stop_loss_pourcentage > 0) {
+            stopLoss = prix * (1 + risque.stop_loss_pourcentage / 100);
+        }
+        if (!takeProfit1 && risque.take_profit_pourcentage > 0) {
+            takeProfit1 = prix * (1 - risque.take_profit_pourcentage / 100);
+        }
+        if (!takeProfit2 && risque.take_profit_pourcentage > 0) {
+            takeProfit2 = prix * (1 - (risque.take_profit_pourcentage * 1.5) / 100);
+        }
+    }
+
+    final.stop_loss = arrondirPrixSelonActif(stopLoss);
+    final.take_profit_1 = arrondirPrixSelonActif(takeProfit1);
+    final.take_profit_2 = arrondirPrixSelonActif(takeProfit2);
+    final.parametres_risque = risque;
+    final.risque_position_pourcentage = risque.risque_position_pourcentage;
+    final.levier = risque.levier;
+    final.risque_effectif_indicatif = arrondir(risque.risque_position_pourcentage * risque.levier, 2);
+
+    if (prix && final.stop_loss && final.take_profit_1) {
+        const risquePrix = Math.abs(prix - final.stop_loss);
+        const gainPrix = Math.abs(final.take_profit_1 - prix);
+        final.ratio_gain_risque = risquePrix > 0 ? arrondir(gainPrix / risquePrix, 2) : null;
+    }
+
+    if (!Array.isArray(final.risques)) final.risques = [];
+    final.risques.push(
+        "Risque utilisateur : " + risque.risque_position_pourcentage + "% par position, levier x" + risque.levier +
+        ", risque effectif indicatif " + final.risque_effectif_indicatif + "%."
+    );
+
+    if (!Array.isArray(final.recommandations)) final.recommandations = [];
+    final.recommandations.push(
+        "Respecter le stop loss de " + risque.stop_loss_pourcentage +
+        "% et l'objectif de " + risque.take_profit_pourcentage +
+        "% définis dans les paramètres de risque."
+    );
+
+    if (risque.levier > 3) {
+        final.risques.push("Levier supérieur à x3 : le risque de liquidation ou de perte rapide augmente fortement.");
+    }
+
+    return final;
+}
+
+
+function construirePromptAnalyseVision({ analyseTechnique, configuration }) {
+    const risque = extraireParametresRisque(configuration || {});
+
+    return `Tu es un analyste technique prudent. Analyse l'image, les données techniques et les paramètres de risque fournis.
+
+Réponds uniquement en JSON valide avec cette structure exacte :
+{
+  "signal": "acheter | vendre | attendre",
+  "confiance": 0,
+  "tendance": "haussiere | baissiere | neutre",
+  "resume": "",
+  "raisons": [],
+  "risques": [],
+  "recommandations": [],
+  "stop_loss": null,
+  "take_profit_1": null,
+  "take_profit_2": null,
+  "prix_entree": null,
+  "ratio_gain_risque": null,
+  "invalidation": "",
+  "taille_position_indicative": "",
+  "analyse_visuelle": {
+    "commentaire": ""
+  }
+}
+
+Données techniques :
 ${JSON.stringify(analyseTechnique, null, 2)}
 
-Configuration:
+Paramètres de risque à respecter :
+${JSON.stringify(risque, null, 2)}
+
+Configuration complète :
 ${JSON.stringify(configuration || {}, null, 2)}
 
-N'invente jamais de prix. Si incertain, choisis attendre.`;
+Règles obligatoires :
+- Ne retourne jamais stop_loss, take_profit_1 ou take_profit_2 à 0 si prix_actuel est exploitable.
+- Si le signal est acheter, le stop loss doit être sous le prix actuel et l'objectif au-dessus.
+- Si le signal est vendre, le stop loss doit être au-dessus du prix actuel et l'objectif sous le prix actuel.
+- Respecte le sens autorisé : achat seulement, vente seulement, ou achat/vente.
+- Respecte la stratégie choisie : suivi de tendance, retournement, cassure ou range.
+- Tiens compte du levier dans les risques.
+- Si le ratio gain/risque est faible ou si le signal est incertain, choisis attendre.
+- N'invente jamais de prix sans base technique. Si incertain, choisis attendre.
+- Cette analyse est informative et ne doit pas être présentée comme un conseil financier personnalisé.`;
 }
 
 function estActifImageSeule(valeur) {
@@ -2126,6 +2279,9 @@ Réponds uniquement en JSON valide avec cette structure exacte :
     "fiabilite": "faible | moyenne | forte"
   }
 }
+
+Paramètres de risque :
+${JSON.stringify(extraireParametresRisque(configuration || {}), null, 2)}
 
 Configuration reçue :
 ${JSON.stringify(configuration || {}, null, 2)}
@@ -2559,7 +2715,7 @@ async function openaiVision({ imageBase64, analyseTechnique, configuration }) {
     throw erreurFinale;
 }
 
-function normaliserDecision(j, t) {
+function normaliserDecision(j, t, configuration = {}) {
     const sig = ["acheter", "vendre", "attendre"].includes(
         String(j.signal || j.decision || "attendre").toLowerCase()
     )
@@ -2571,7 +2727,7 @@ function normaliserDecision(j, t) {
     if (!Number.isFinite(conf)) conf = 0;
     if (conf <= 1) conf *= 100;
 
-    return {
+    const analyseNormalisee = {
         ok: true,
         statut: "ok",
         source: "ia_vision_plus_marche_multi_sources",
@@ -2602,6 +2758,8 @@ function normaliserDecision(j, t) {
         avertissement: "Analyse technique informative. Ce n'est pas un conseil financier.",
         date: maintenantIso()
     };
+
+    return appliquerParametresRisqueAnalyse(analyseNormalisee, configuration, t);
 }
 
 function estErreurQuotaOpenAI(error) {
@@ -2820,7 +2978,11 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
                 }
             });
 
-            const finalVisionSeule = normaliserDecisionVisionSeule(iaVisionSeule, configurationFinale);
+            const finalVisionSeule = appliquerParametresRisqueAnalyse(
+                normaliserDecisionVisionSeule(iaVisionSeule, configurationFinale),
+                configurationFinale,
+                {}
+            );
 
             return res.json({
                 ok: true,
@@ -2868,11 +3030,15 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
                 }
             });
 
-            const finalVisionSeule = normaliserDecisionVisionSeule(iaVisionSeule, {
-                ...configurationFinale,
-                actif: actifFinal,
-                intervalle: intervalleFinal
-            });
+            const finalVisionSeule = appliquerParametresRisqueAnalyse(
+                normaliserDecisionVisionSeule(iaVisionSeule, {
+                    ...configurationFinale,
+                    actif: actifFinal,
+                    intervalle: intervalleFinal
+                }),
+                configurationFinale,
+                {}
+            );
 
             finalVisionSeule.mode = "vision_seule_marche_indisponible";
             finalVisionSeule.actif = actifFinal;
@@ -2901,7 +3067,7 @@ app.post("/api/analyze-vision-pro", async (req, res) => {
             configuration: configurationFinale
         });
 
-        const final = normaliserDecision(ia, tech);
+        const final = normaliserDecision(ia, tech, configurationFinale);
 
         res.json({
             ok: true,
@@ -2953,7 +3119,7 @@ app.post("/api/analyze-vision", async (req, res) => {
             }
         });
 
-        const final = normaliserDecision(ia, tech);
+        const final = normaliserDecision(ia, tech, { fileName: safe });
 
         res.json({
             ok: true,

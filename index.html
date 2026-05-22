@@ -473,6 +473,75 @@
             background: #ffffff !important;
         }
 
+        /* ============================================================
+           Paramètres de risque
+           Ces champs sont sauvegardés dans configuration_json.risque
+           et transmis à l'analyse IA.
+        ============================================================ */
+        .risk-box {
+            display: flex;
+            align-items: end;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            border: 1px solid #475569;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.94);
+            box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.08);
+        }
+
+        .risk-box h3 {
+            width: 100%;
+            margin: 0 0 2px 0;
+            color: #facc15;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .risk-box .form-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 120px;
+        }
+
+        .risk-box label {
+            color: #facc15;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .risk-box input,
+        .risk-box select {
+            min-height: 34px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #020617;
+            color: #ffffff;
+            padding: 6px 9px;
+            box-sizing: border-box;
+        }
+
+        .risk-box input:focus,
+        .risk-box select:focus {
+            outline: none;
+            border-color: #facc15;
+        }
+
+        @media (max-width: 900px) {
+            .risk-box {
+                width: 100%;
+                align-items: stretch;
+            }
+
+            .risk-box .form-block {
+                width: 100%;
+            }
+        }
+
     </style>
 </head>
 
@@ -573,6 +642,51 @@
                 <option value="area">Aire</option>
             </select>
         </div>
+
+
+
+        <section class="risk-box" id="risk-box">
+            <h3>Paramètres de risque</h3>
+
+            <div class="form-block">
+                <label for="risk-input">Risque par position (%)</label>
+                <input id="risk-input" type="number" value="1" min="0" step="0.1" onchange="afficherInfosGraphique()">
+            </div>
+
+            <div class="form-block">
+                <label for="stoploss-input">Stop loss (%)</label>
+                <input id="stoploss-input" type="number" value="2" min="0" step="0.1" onchange="afficherInfosGraphique()">
+            </div>
+
+            <div class="form-block">
+                <label for="takeprofit-input">Take profit (%)</label>
+                <input id="takeprofit-input" type="number" value="4" min="0" step="0.1" onchange="afficherInfosGraphique()">
+            </div>
+
+            <div class="form-block">
+                <label for="levier-input">Levier</label>
+                <input id="levier-input" type="number" value="1" min="1" step="1" onchange="afficherInfosGraphique()">
+            </div>
+
+            <div class="form-block">
+                <label for="sens-selector">Sens</label>
+                <select id="sens-selector" onchange="afficherInfosGraphique()">
+                    <option value="achat_vente" selected>Achat ou vente</option>
+                    <option value="achat">Achat seulement</option>
+                    <option value="vente">Vente seulement</option>
+                </select>
+            </div>
+
+            <div class="form-block">
+                <label for="strategie-selector">Stratégie</label>
+                <select id="strategie-selector" onchange="afficherInfosGraphique()">
+                    <option value="suivi_tendance" selected>Suivi de tendance</option>
+                    <option value="retournement">Retournement</option>
+                    <option value="cassure">Cassure</option>
+                    <option value="range">Range</option>
+                </select>
+            </div>
+        </section>
 
 
         <div class="control-group configuration-loader">
@@ -1585,10 +1699,11 @@
             const categorie = configuration.categorieAnalyse || configuration.categorie_analyse || capture.categorie_analyse;
 
             const actifOk = definirValeurSelect("asset-selector", actif);
-            const intervalleOk = definirValeurSelect("interval-selector", intervalle);
+            const intervalleOk = definirValeurSelect("capture-intervalle", intervalle);
             definirValeurSelect("indicator-selector", indicateur);
-            const styleOk = definirValeurSelect("chart-type-selector", style);
+            const styleOk = definirValeurSelect("capture-type-graphique", style);
             definirValeurSelect("categorie-analyse-btc", categorie);
+            appliquerParametresRisqueDepuisConfiguration(configuration);
 
             if (!actifOk) {
                 throw new Error("Actif absent de la liste : " + actif);
@@ -1675,6 +1790,59 @@
             }
         }
 
+
+        function lireNombreParametreRisque(id, defaut, minimum = 0) {
+            const element = document.getElementById(id);
+            const valeur = Number(element ? element.value : defaut);
+
+            if (!Number.isFinite(valeur)) return defaut;
+            return Math.max(minimum, valeur);
+        }
+
+        function obtenirParametresRisque() {
+            return {
+                risque_position_pourcentage: lireNombreParametreRisque("risk-input", 1, 0),
+                stop_loss_pourcentage: lireNombreParametreRisque("stoploss-input", 2, 0),
+                take_profit_pourcentage: lireNombreParametreRisque("takeprofit-input", 4, 0),
+                levier: lireNombreParametreRisque("levier-input", 1, 1),
+                sens: document.getElementById("sens-selector")?.value || "achat_vente",
+                strategie: document.getElementById("strategie-selector")?.value || "suivi_tendance",
+                source: "index_html_parametres_risque"
+            };
+        }
+
+        function appliquerParametresRisqueDepuisConfiguration(configuration = {}) {
+            const risque = configuration.risque || configuration.parametresRisque || configuration.risk || {};
+
+            if (risque.risque_position_pourcentage !== undefined) {
+                const input = document.getElementById("risk-input");
+                if (input) input.value = risque.risque_position_pourcentage;
+            }
+
+            if (risque.stop_loss_pourcentage !== undefined) {
+                const input = document.getElementById("stoploss-input");
+                if (input) input.value = risque.stop_loss_pourcentage;
+            }
+
+            if (risque.take_profit_pourcentage !== undefined) {
+                const input = document.getElementById("takeprofit-input");
+                if (input) input.value = risque.take_profit_pourcentage;
+            }
+
+            if (risque.levier !== undefined) {
+                const input = document.getElementById("levier-input");
+                if (input) input.value = risque.levier;
+            }
+
+            if (risque.sens !== undefined) {
+                definirValeurSelect("sens-selector", risque.sens);
+            }
+
+            if (risque.strategie !== undefined) {
+                definirValeurSelect("strategie-selector", risque.strategie);
+            }
+        }
+
         function obtenirConfiguration() {
             const cat = document.getElementById("categorie-analyse-btc");
             const catText = cat.options[cat.selectedIndex].text;
@@ -1683,6 +1851,7 @@
             const intervalle = obtenirIntervalleSelectionne();
             const indicateur = document.getElementById("indicator-selector").value;
             const style = obtenirTypeGraphiqueSelectionne();
+            const risque = obtenirParametresRisque();
 
             return {
                 nom: "Expert Trading Pro v2.0",
@@ -1693,6 +1862,8 @@
                 categorieAnalyse: document.getElementById("categorie-analyse-btc").value,
                 categorieAnalyseLibelle: catText,
                 style: style,
+                risque: risque,
+                parametresRisque: risque,
                 graphique: {
                     actif: actif,
                     intervalle: intervalle,
