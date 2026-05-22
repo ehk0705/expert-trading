@@ -1345,7 +1345,11 @@
 
                 userNotes.value =
                     currentCapture.configuration?.notes ||
-                    "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+                    "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :
+
+4. BOUGIES :
+
+5. RECOMMANDATIONS TECHNIQUES :";
 
                 resetAIResults();
 
@@ -1381,7 +1385,11 @@
                         <div class="meta-item"><b>Intervalle</b><span>${meta.interval || 'N/A'}</span></div>
                     `;
 
-                    userNotes.value = meta.notes || "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+                    userNotes.value = meta.notes || "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :
+
+4. BOUGIES :
+
+5. RECOMMANDATIONS TECHNIQUES :";
 
                     if (meta.ai_analysis) {
                         renderAIResults(meta.ai_analysis);
@@ -1395,7 +1403,11 @@
                         <div class="meta-item"><b>Statut</b><span>Capture chargée</span></div>
                     `;
 
-                    userNotes.value = "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. RECOMMANDATIONS TECHNIQUES :";
+                    userNotes.value = "// --- RAPPORT D'INGÉNIEUR ---\n1. ANALYSE STRUCTURELLE :\n\n2. ÉVALUATION DES RISQUES :\n\n3. FIBONACCI :
+
+4. BOUGIES :
+
+5. RECOMMANDATIONS TECHNIQUES :";
                     resetAIResults();
                 }
 
@@ -2005,6 +2017,151 @@
             };
         }
 
+
+        function normaliserListeAnalyseTechnique(valeur) {
+            if (!valeur) return [];
+            if (Array.isArray(valeur)) {
+                return valeur
+                    .map(x => typeof x === "string" ? x : JSON.stringify(x))
+                    .filter(Boolean);
+            }
+            if (typeof valeur === "object") {
+                return Object.entries(valeur).map(([cle, v]) => cle + " : " + (typeof v === "object" ? JSON.stringify(v) : v));
+            }
+            return [String(valeur)];
+        }
+
+        function extraireAnalyseFibonacciBougies(analyse = {}, decision = "ATTENDRE") {
+            const fibo = analyse.fibonacci || analyse.fibo || analyse.niveaux_fibonacci || analyse.analyse_fibonacci || {};
+            const bougies = analyse.bougies || analyse.chandeliers || analyse.candlesticks || analyse.analyse_bougies || {};
+            const interpretationFibo = normaliserListeAnalyseTechnique(
+                fibo.interpretation ||
+                fibo.commentaire ||
+                fibo.resume ||
+                analyse.interpretation_fibonacci
+            );
+            const interpretationBougies = normaliserListeAnalyseTechnique(
+                bougies.interpretation ||
+                bougies.commentaire ||
+                bougies.resume ||
+                analyse.interpretation_bougies
+            );
+            const figuresBougies = normaliserListeAnalyseTechnique(
+                bougies.figures ||
+                bougies.patterns ||
+                bougies.signaux ||
+                analyse.figures_bougies
+            );
+
+            const niveaux = [];
+            const clesFibo = ["0", "0.236", "0.382", "0.5", "0.500", "0.618", "0.786", "1", "1.272", "1.618", "2.618"];
+
+            if (fibo && typeof fibo === "object") {
+                clesFibo.forEach(cle => {
+                    const valeur = fibo[cle] ?? fibo[cle.replace("0.", "")] ?? fibo["niveau_" + cle.replace(".", "_")];
+                    const prix = valeurPrixValide(valeur);
+                    if (prix) niveaux.push(cle + " : " + formaterPrix(prix));
+                });
+
+                if (Array.isArray(fibo.niveaux)) {
+                    fibo.niveaux.forEach(niveau => {
+                        if (typeof niveau === "object") {
+                            const ratio = niveau.ratio || niveau.niveau || niveau.level || "niveau";
+                            const prix = valeurPrixValide(niveau.prix || niveau.price || niveau.valeur);
+                            if (prix) niveaux.push(ratio + " : " + formaterPrix(prix));
+                        } else {
+                            niveaux.push(String(niveau));
+                        }
+                    });
+                }
+            }
+
+            const zoneCle =
+                fibo.zone_cle ||
+                fibo.zone_importante ||
+                fibo.zone_de_reaction ||
+                analyse.zone_fibonacci_cle ||
+                "À confirmer visuellement sur les retracements 38,2 %, 50 % et 61,8 %.";
+
+            const tendanceFibo = fibo.tendance || analyse.tendance_fibonacci || "N/A";
+            const tendanceBougies = bougies.tendance || analyse.tendance_bougies || "N/A";
+            const signalBougies = bougies.signal || bougies.signal_principal || analyse.signal_bougies || "N/A";
+            const confirmation =
+                bougies.confirmation ||
+                analyse.confirmation_bougies ||
+                "Attendre une clôture claire au-dessus d'une résistance ou sous un support avant d'agir.";
+
+            const conseilFibo =
+                fibo.conseil ||
+                analyse.conseil_fibonacci ||
+                (decision === "ACHETER"
+                    ? "Privilégier l'achat seulement si le prix rebondit sur une zone Fibonacci majeure et confirme par une clôture haussière."
+                    : decision === "VENDRE"
+                        ? "Privilégier la vente seulement si le prix rejette une zone Fibonacci majeure et confirme par une clôture baissière."
+                        : "Ne pas entrer uniquement parce que le prix touche un niveau Fibonacci. Exiger une confirmation par les bougies.");
+
+            const conseilBougies =
+                bougies.conseil ||
+                analyse.conseil_bougies ||
+                "Une seule bougie ne suffit pas : vérifier le contexte, le volume, la mèche, le corps et la clôture.";
+
+            return {
+                niveaux,
+                zoneCle,
+                tendanceFibo,
+                tendanceBougies,
+                signalBougies,
+                interpretationFibo,
+                interpretationBougies,
+                figuresBougies,
+                confirmation,
+                conseilFibo,
+                conseilBougies
+            };
+        }
+
+        function ajouterLignesFibonacciBougies(lignes, analyse, decision) {
+            const detail = extraireAnalyseFibonacciBougies(analyse, decision);
+
+            lignes.push("", "Analyse Fibonacci :");
+            lignes.push("- Tendance lue par Fibonacci : " + detail.tendanceFibo);
+            lignes.push("- Zone clé : " + detail.zoneCle);
+            if (detail.niveaux.length) {
+                lignes.push("- Niveaux détectés : " + detail.niveaux.join(" | "));
+            } else {
+                lignes.push("- Niveaux détectés : non fournis par le serveur. Lire visuellement 38,2 %, 50 %, 61,8 % et 78,6 % sur la capture.");
+            }
+            if (detail.interpretationFibo.length) {
+                lignes.push("- Interprétation : " + detail.interpretationFibo.join(" ; "));
+            }
+            lignes.push("- Conseil Fibonacci : " + detail.conseilFibo);
+
+            lignes.push("", "Analyse des bougies :");
+            lignes.push("- Tendance lue par les bougies : " + detail.tendanceBougies);
+            lignes.push("- Signal principal : " + detail.signalBougies);
+            if (detail.figuresBougies.length) {
+                lignes.push("- Figures observées : " + detail.figuresBougies.join(" ; "));
+            } else {
+                lignes.push("- Figures observées : vérifier marteau, étoile filante, avalement, doji, harami, pin bar et bougie de cassure.");
+            }
+            if (detail.interpretationBougies.length) {
+                lignes.push("- Interprétation : " + detail.interpretationBougies.join(" ; "));
+            }
+            lignes.push("- Confirmation exigée : " + detail.confirmation);
+            lignes.push("- Conseil bougies : " + detail.conseilBougies);
+
+            lignes.push("", "Synthèse Fibonacci + bougies :");
+            if (decision === "ACHETER") {
+                lignes.push("- Achat seulement si une zone Fibonacci importante agit comme support et si les bougies montrent un rejet baissier suivi d'une clôture haussière.");
+            } else if (decision === "VENDRE") {
+                lignes.push("- Vente seulement si une zone Fibonacci importante agit comme résistance et si les bougies montrent un rejet haussier suivi d'une clôture baissière.");
+            } else {
+                lignes.push("- Attente recommandée si Fibonacci et les bougies ne donnent pas le même message.");
+            }
+            lignes.push("- Mauvais signal : niveau Fibonacci touché sans réaction nette des bougies.");
+            lignes.push("- Bon signal : confluence entre niveau Fibonacci, support/résistance, volume et bougie de confirmation.");
+        }
+
         function construireRecommandationsConcretes(analyse, decision, plan, confidence) {
             const recommandations = [];
 
@@ -2030,6 +2187,14 @@
 
             if (confidence < 60) {
                 recommandations.push("Confiance insuffisante : réduire la taille de position ou attendre une nouvelle bougie de confirmation.");
+            }
+
+            const detailFiboBougies = extraireAnalyseFibonacciBougies(analyse, decision);
+            recommandations.push("Fibonacci : ne valider l'entrée que si le prix réagit clairement sur une zone clé, idéalement 38,2 %, 50 %, 61,8 % ou 78,6 %.");
+            recommandations.push("Bougies : attendre une clôture de confirmation. Une mèche seule ou un doji isolé ne suffit pas.");
+            recommandations.push("Confluence : privilégier les signaux où Fibonacci, support/résistance et structure des bougies pointent dans le même sens.");
+            if (detailFiboBougies.signalBougies && detailFiboBougies.signalBougies !== "N/A") {
+                recommandations.push("Signal bougies retenu : " + detailFiboBougies.signalBougies + ".");
             }
 
             const risque = analyse.parametres_risque || extraireParametresRisqueDepuisConfiguration(analyse.configuration || {});
@@ -2101,6 +2266,8 @@
             lignes.push("Risque avec levier : " + (risque.risque_position_pourcentage * risque.levier).toFixed(2) + "% indicatif");
             lignes.push("Sens autorisé : " + libelleSensRisque(risque.sens));
             lignes.push("Stratégie : " + libelleStrategieRisque(risque.strategie));
+
+            ajouterLignesFibonacciBougies(lignes, analyse, decision);
 
             lignes.push("", "Plan concret :");
             if (decision === "ACHETER") {
@@ -2207,6 +2374,12 @@ async function triggerAIAnalysis() {
                         "capital_total",
                         "risque_reel_maximal",
                         "valeur_position_correcte",
+                        "fibonacci",
+                        "bougies",
+                        "interpretation_fibonacci",
+                        "interpretation_bougies",
+                        "conseil_fibonacci",
+                        "conseil_bougies",
                         "resume",
                         "raisons",
                         "risques",
@@ -2215,10 +2388,32 @@ async function triggerAIAnalysis() {
                     consignes: [
                         "Ne jamais retourner stop_loss, take_profit_1 ou take_profit_2 à 0 si un prix actuel exploitable existe.",
                         "Respecter les paramètres de risque fournis dans configuration.risque : capital total, risque par position, risque réel maximal, stop loss technique, valeur de position correcte, marge requise, take profit, levier, sens et stratégie.",
+                        "Analyser explicitement Fibonacci : tendance du mouvement, niveaux 38,2 %, 50 %, 61,8 %, 78,6 %, zone de réaction, support/résistance et invalidation.",
+                        "Analyser explicitement les bougies : corps, mèches, clôture, force acheteuse/vendeuse, doji, marteau, étoile filante, avalement, pin bar, bougie de cassure et bougie de rejet.",
+                        "Donner une interprétation séparée Fibonacci, une interprétation séparée des bougies, puis une synthèse de confluence.",
+                        "Le conseil doit dépendre de la confluence Fibonacci + bougies : achat, vente, sortie partielle ou attente.",
                         "Si la décision est ATTENDRE, fournir quand même un scénario d'achat, un scénario de vente/sortie et les niveaux d'invalidation.",
                         "Donner des recommandations concrètes, mais sans promesse de gain et sans présenter cela comme un conseil financier personnalisé.",
                         "Mentionner les limites si les données de marché ou l'image sont insuffisantes."
                     ]
+                };
+
+                configurationCorrigee.focus_analyse = {
+                    priorite: "fibonacci_et_bougies",
+                    fibonacci: {
+                        niveaux_a_lire: ["23,6 %", "38,2 %", "50 %", "61,8 %", "78,6 %", "100 %", "127,2 %", "161,8 %"],
+                        attentes: [
+                            "identifier le dernier mouvement impulsif",
+                            "dire si le prix est en retracement ou en extension",
+                            "repérer la zone de confluence avec support ou résistance",
+                            "indiquer le niveau d'invalidation"
+                        ]
+                    },
+                    bougies: {
+                        elements_a_lire: ["corps", "mèches", "clôture", "taille relative", "succession des bougies", "bougie de rejet", "bougie de cassure"],
+                        figures_a_verifier: ["doji", "marteau", "étoile filante", "avalement haussier", "avalement baissier", "pin bar", "inside bar"]
+                    },
+                    conseil: "Le conseil doit être conditionnel : agir seulement si Fibonacci et les bougies confirment le même sens."
                 };
 
                 const actif = configurationCorrigee.actif;
