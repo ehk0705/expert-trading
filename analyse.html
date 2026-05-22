@@ -1,16 +1,4 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expert Trading Pro v2.0 - Analyse & Journal</title>
-    <style>
-        :root { 
-            --bg-color: #252930; 
-            --sidebar-bg: #1e2329; 
-            --text-main: #eaecef; 
-            --text-dim: #848e9c;
-            --accent: #2962ff; 
+
             --yellow-pro: #f0b90b;
             --border: #363c4e; 
             --engineer-green: #00ff41;
@@ -425,6 +413,56 @@
             color: #111827;
         }
 
+        .risk-editor-note {
+            margin: 0 0 12px 0;
+            color: #7c2d12;
+            font-size: 12px;
+            line-height: 1.45;
+            font-weight: 700;
+        }
+
+        .risk-edit-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .risk-field label {
+            display: block;
+            color: #9a3412;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .risk-field input,
+        .risk-field select {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #fed7aa;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #111827;
+            padding: 8px 9px;
+            font-size: 13px;
+            font-weight: 800;
+            outline: none;
+        }
+
+        .risk-field input:focus,
+        .risk-field select:focus {
+            border-color: #f97316;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.18);
+        }
+
+        .risk-divider {
+            height: 1px;
+            background: #fed7aa;
+            margin: 12px 0;
+        }
+
         @media (max-width: 900px) {
             .risk-grid {
                 grid-template-columns: 1fr;
@@ -548,7 +586,7 @@
             </div>
 
             <div class="risk-summary" id="risk-summary" style="display:none;">
-                <h3>Paramètres de risque pris en compte</h3>
+                <h3>Paramètres de risque avant analyse</h3>
                 <div class="risk-grid" id="risk-summary-content"></div>
             </div>
 
@@ -1871,14 +1909,108 @@
             return map[strategie] || strategie || "Suivi de tendance";
         }
 
-        function afficherParametresRisque(configuration = {}) {
-            const bloc = document.getElementById("risk-summary");
-            const contenu = document.getElementById("risk-summary-content");
-            if (!bloc || !contenu) return;
+        function calculerParametresRisqueNormalisesDepuisSaisie(valeurs = {}) {
+            const nombre = (valeur, defaut, minimum = 0) => {
+                const n = Number(String(valeur ?? "").replace(/\s/g, "").replace(",", "."));
+                if (!Number.isFinite(n)) return defaut;
+                return Math.max(minimum, n);
+            };
 
-            const risque = extraireParametresRisqueDepuisConfiguration(configuration);
+            const capitalTotal = nombre(valeurs.capital_total, 10000, 0);
+            const risquePourcentage = nombre(valeurs.risque_position_pourcentage, 1, 0);
+            const stopLossPourcentage = nombre(valeurs.stop_loss_technique_pourcentage, 2, 0);
+            const takeProfitPourcentage = nombre(valeurs.take_profit_pourcentage, 4, 0);
+            const levier = nombre(valeurs.levier, 1, 1);
 
-            contenu.innerHTML = `
+            const risqueReelCalcule = capitalTotal * (risquePourcentage / 100);
+            const risqueReelMaximal = nombre(valeurs.risque_reel_maximal, risqueReelCalcule, 0);
+
+            const valeurPositionCalculee = stopLossPourcentage > 0
+                ? risqueReelMaximal / (stopLossPourcentage / 100)
+                : 0;
+            const valeurPositionCorrecte = nombre(valeurs.valeur_position_correcte, valeurPositionCalculee, 0);
+
+            const margeCalculee = levier > 0 ? valeurPositionCorrecte / levier : valeurPositionCorrecte;
+            const margeRequise = nombre(valeurs.marge_requise, margeCalculee, 0);
+
+            const ratioCalcule = stopLossPourcentage > 0 ? takeProfitPourcentage / stopLossPourcentage : 0;
+            const ratioRisqueRendement = nombre(valeurs.ratio_risque_rendement, ratioCalcule, 0);
+            const ratioLibelle = ratioRisqueRendement > 0
+                ? "1:" + ratioRisqueRendement.toFixed(2).replace(/\.00$/, "")
+                : "N/A";
+
+            return {
+                capital_total: capitalTotal,
+                capital_total_dollars: capitalTotal,
+                risque_position_pourcentage: risquePourcentage,
+                risque_reel_maximal: risqueReelMaximal,
+                risque_reel_maximal_dollars: risqueReelMaximal,
+                stop_loss_pourcentage: stopLossPourcentage,
+                stop_loss_technique_pourcentage: stopLossPourcentage,
+                take_profit_pourcentage: takeProfitPourcentage,
+                levier: levier,
+                valeur_position_correcte: valeurPositionCorrecte,
+                valeur_position_correcte_dollars: valeurPositionCorrecte,
+                marge_requise: margeRequise,
+                marge_requise_dollars: margeRequise,
+                ratio_risque_rendement: ratioRisqueRendement,
+                ratio_risque_rendement_libelle: ratioLibelle,
+                sens: valeurs.sens || "achat_vente",
+                strategie: valeurs.strategie || "suivi_tendance",
+                source: "analyse_html_saisie_avant_analyse"
+            };
+        }
+
+        function lireValeurChampRisque(id, defaut = "") {
+            const champ = document.getElementById(id);
+            if (!champ) return defaut;
+            return champ.value;
+        }
+
+        function lireParametresRisqueDepuisFormulaire() {
+            const risqueDepuisFormulaire = calculerParametresRisqueNormalisesDepuisSaisie({
+                capital_total: lireValeurChampRisque("risk-capital-total", "10000"),
+                risque_position_pourcentage: lireValeurChampRisque("risk-risque-position", "1"),
+                risque_reel_maximal: lireValeurChampRisque("risk-risque-reel", "100"),
+                stop_loss_technique_pourcentage: lireValeurChampRisque("risk-stop-loss", "2"),
+                take_profit_pourcentage: lireValeurChampRisque("risk-take-profit", "4"),
+                levier: lireValeurChampRisque("risk-levier", "1"),
+                valeur_position_correcte: lireValeurChampRisque("risk-valeur-position", "5000"),
+                marge_requise: lireValeurChampRisque("risk-marge-requise", "5000"),
+                sens: lireValeurChampRisque("risk-sens", "achat_vente"),
+                strategie: lireValeurChampRisque("risk-strategie", "suivi_tendance")
+            });
+
+            return risqueDepuisFormulaire;
+        }
+
+        function injecterParametresRisqueDansFormulaire(risque) {
+            const valeurs = {
+                "risk-capital-total": risque.capital_total_dollars,
+                "risk-risque-position": risque.risque_position_pourcentage,
+                "risk-risque-reel": risque.risque_reel_maximal_dollars,
+                "risk-stop-loss": risque.stop_loss_technique_pourcentage,
+                "risk-take-profit": risque.take_profit_pourcentage,
+                "risk-levier": risque.levier,
+                "risk-valeur-position": risque.valeur_position_correcte_dollars,
+                "risk-marge-requise": risque.marge_requise_dollars,
+                "risk-sens": risque.sens,
+                "risk-strategie": risque.strategie
+            };
+
+            Object.entries(valeurs).forEach(([id, valeur]) => {
+                const champ = document.getElementById(id);
+                if (champ) champ.value = valeur;
+            });
+        }
+
+        function actualiserResumeRisqueDepuisFormulaire() {
+            const contenuResume = document.getElementById("risk-summary-resume");
+            if (!contenuResume) return;
+
+            const risque = lireParametresRisqueDepuisFormulaire();
+
+            contenuResume.innerHTML = `
                 <div class="risk-item"><b>Capital total</b><span>${formaterMontantRisque(risque.capital_total_dollars)}</span></div>
                 <div class="risk-item"><b>Risque par position</b><span>${risque.risque_position_pourcentage}%</span></div>
                 <div class="risk-item"><b>Risque réel maximal</b><span>${formaterMontantRisque(risque.risque_reel_maximal_dollars)}</span></div>
@@ -1891,11 +2023,106 @@
                 <div class="risk-item"><b>Sens autorisé</b><span>${libelleSensRisque(risque.sens)}</span></div>
                 <div class="risk-item"><b>Stratégie</b><span>${libelleStrategieRisque(risque.strategie)}</span></div>
             `;
+        }
 
+        function appliquerParametresRisqueAConfiguration(configuration = {}) {
+            const risque = lireParametresRisqueDepuisFormulaire();
+
+            configuration.risque = risque;
+            configuration.parametresRisque = risque;
+            configuration.risk = risque;
+            configuration.capital_total = risque.capital_total_dollars;
+            configuration.risque_position_pourcentage = risque.risque_position_pourcentage;
+            configuration.risque_reel_maximal = risque.risque_reel_maximal_dollars;
+            configuration.stop_loss_pourcentage = risque.stop_loss_technique_pourcentage;
+            configuration.stop_loss_technique_pourcentage = risque.stop_loss_technique_pourcentage;
+            configuration.take_profit_pourcentage = risque.take_profit_pourcentage;
+            configuration.valeur_position_correcte = risque.valeur_position_correcte_dollars;
+            configuration.marge_requise = risque.marge_requise_dollars;
+            configuration.levier = risque.levier;
+            configuration.sens = risque.sens;
+            configuration.strategie = risque.strategie;
+
+            actualiserResumeRisqueDepuisFormulaire();
+            return configuration;
+        }
+
+        function afficherParametresRisque(configuration = {}) {
+            const bloc = document.getElementById("risk-summary");
+            const contenu = document.getElementById("risk-summary-content");
+            if (!bloc || !contenu) return;
+
+            const risque = extraireParametresRisqueDepuisConfiguration(configuration);
+
+            contenu.innerHTML = `
+                <p class="risk-editor-note">
+                    Ces valeurs sont modifiables ici seulement, juste avant l'analyse. Elles seront envoyées à l'IA avec la capture sélectionnée.
+                </p>
+
+                <div class="risk-edit-grid">
+                    <div class="risk-field">
+                        <label for="risk-capital-total">Capital total ($)</label>
+                        <input id="risk-capital-total" type="number" min="0" step="100" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-risque-position">Risque par position (%)</label>
+                        <input id="risk-risque-position" type="number" min="0" step="0.1" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-risque-reel">Risque réel maximal ($)</label>
+                        <input id="risk-risque-reel" type="number" min="0" step="10" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-stop-loss">Stop loss technique (%)</label>
+                        <input id="risk-stop-loss" type="number" min="0" step="0.1" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-take-profit">Take profit (%)</label>
+                        <input id="risk-take-profit" type="number" min="0" step="0.1" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-valeur-position">Valeur de position correcte ($)</label>
+                        <input id="risk-valeur-position" type="number" min="0" step="100" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-marge-requise">Marge requise ($)</label>
+                        <input id="risk-marge-requise" type="number" min="0" step="100" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-levier">Levier</label>
+                        <input id="risk-levier" type="number" min="1" step="1" oninput="actualiserResumeRisqueDepuisFormulaire()">
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-sens">Sens autorisé</label>
+                        <select id="risk-sens" onchange="actualiserResumeRisqueDepuisFormulaire()">
+                            <option value="achat_vente">Achat ou vente</option>
+                            <option value="achat">Achat seulement</option>
+                            <option value="vente">Vente seulement</option>
+                        </select>
+                    </div>
+                    <div class="risk-field">
+                        <label for="risk-strategie">Stratégie</label>
+                        <select id="risk-strategie" onchange="actualiserResumeRisqueDepuisFormulaire()">
+                            <option value="suivi_tendance">Suivi de tendance</option>
+                            <option value="retournement">Retournement</option>
+                            <option value="cassure">Cassure</option>
+                            <option value="range">Range</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="risk-divider"></div>
+                <div class="risk-grid" id="risk-summary-resume"></div>
+            `;
+
+            injecterParametresRisqueDansFormulaire(risque);
+            actualiserResumeRisqueDepuisFormulaire();
             bloc.style.display = "block";
         }
 
         function enrichirAnalyseAvecRisque(analyse, configuration = {}) {
+            appliquerParametresRisqueAConfiguration(configuration);
+
             const copie = {
                 ...(analyse || {})
             };
@@ -2338,12 +2565,7 @@ async function triggerAIAnalysis() {
                     }
                 );
 
-                configurationCorrigee.risque = extraireParametresRisqueDepuisConfiguration(configurationCorrigee);
-                configurationCorrigee.parametresRisque = configurationCorrigee.risque;
-                configurationCorrigee.capital_total = configurationCorrigee.risque.capital_total_dollars;
-                configurationCorrigee.risque_reel_maximal = configurationCorrigee.risque.risque_reel_maximal_dollars;
-                configurationCorrigee.valeur_position_correcte = configurationCorrigee.risque.valeur_position_correcte_dollars;
-                configurationCorrigee.marge_requise = configurationCorrigee.risque.marge_requise_dollars;
+                appliquerParametresRisqueAConfiguration(configurationCorrigee);
                 afficherParametresRisque(configurationCorrigee);
 
                 configurationCorrigee.exigence_analyse_concrete = {
