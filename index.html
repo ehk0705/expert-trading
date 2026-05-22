@@ -766,6 +766,120 @@
             overflow: hidden !important;
             background: #ffffff !important;
         }
+
+
+        /* ============================================================
+           Mode 4 graphiques
+           Ajout sans suppression : affiche 15m, 1h, 4h et 1J
+           pour le même actif sélectionné.
+        ============================================================ */
+        .btn-multichart {
+            background: #0f766e;
+            color: #ffffff;
+            border: 1px solid #14b8a6;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .btn-multichart:hover {
+            background: #0d9488;
+        }
+
+        #multi-chart-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+            min-height: 620px;
+            grid-template-columns: repeat(2, minmax(320px, 1fr));
+            gap: 10px;
+            background: #ffffff;
+        }
+
+        .multi-chart-box {
+            display: flex;
+            flex-direction: column;
+            min-height: 300px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        .multi-chart-title {
+            flex: 0 0 auto;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #111827;
+            background: #f3f4f6;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .multi-chart-view {
+            flex: 1 1 auto;
+            width: 100%;
+            min-height: 280px;
+            background: #ffffff;
+        }
+
+        body.mode-quatre-graphiques #tradingview_chart {
+            display: none !important;
+        }
+
+        body.mode-quatre-graphiques #multi-chart-container {
+            display: grid !important;
+        }
+
+        body.mode-quatre-graphiques #chart-container {
+            min-height: 760px;
+        }
+
+        body.graphique-plein-ecran.mode-quatre-graphiques #multi-chart-container {
+            height: 100vh !important;
+            min-height: 100vh !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+        }
+
+        body.graphique-plein-ecran.mode-quatre-graphiques .multi-chart-box {
+            min-height: calc(50vh - 5px);
+            border-radius: 0;
+        }
+
+        body.graphique-plein-ecran.mode-quatre-graphiques .multi-chart-view {
+            min-height: calc(50vh - 38px);
+        }
+
+        @media (max-width: 900px) {
+            #multi-chart-container {
+                grid-template-columns: 1fr;
+                min-height: 1200px;
+            }
+
+            .multi-chart-box {
+                min-height: 300px;
+            }
+
+            body.mode-quatre-graphiques #chart-container {
+                min-height: 1200px;
+            }
+
+            body.graphique-plein-ecran.mode-quatre-graphiques #multi-chart-container {
+                overflow-y: auto;
+            }
+
+            body.graphique-plein-ecran.mode-quatre-graphiques .multi-chart-box {
+                min-height: 420px;
+            }
+
+            body.graphique-plein-ecran.mode-quatre-graphiques .multi-chart-view {
+                min-height: 382px;
+            }
+        }
+
 </style>
 </head>
 
@@ -1112,6 +1226,7 @@
 
             <button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">TradingView</button>
             <button class="btn-fullscreen-chart" id="btn-fullscreen-chart" type="button" onclick="basculerGraphiquePleinEcran()" title="Afficher ou quitter le graphique en plein écran. La touche Échap remet aussi le graphique à sa place.">Plein écran</button>
+            <button class="btn-multichart" id="btn-multichart" type="button" onclick="basculerModeQuatreGraphiques()" title="Afficher ou masquer 4 graphiques pour le même actif : 15m, 1h, 4h et 1J.">4 graphiques</button>
 
 
             <a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
@@ -1215,6 +1330,24 @@
         </div>
         <div id="chart-message" class="chart-message">Chargement du graphique local...</div>
         <div id="tradingview_chart"></div>
+        <div id="multi-chart-container" aria-label="Mode 4 graphiques TradingView">
+            <div class="multi-chart-box">
+                <div class="multi-chart-title">15 minutes</div>
+                <div id="tradingview_chart_15m" class="multi-chart-view"></div>
+            </div>
+            <div class="multi-chart-box">
+                <div class="multi-chart-title">1 heure</div>
+                <div id="tradingview_chart_1h" class="multi-chart-view"></div>
+            </div>
+            <div class="multi-chart-box">
+                <div class="multi-chart-title">4 heures</div>
+                <div id="tradingview_chart_4h" class="multi-chart-view"></div>
+            </div>
+            <div class="multi-chart-box">
+                <div class="multi-chart-title">1 jour</div>
+                <div id="tradingview_chart_1d" class="multi-chart-view"></div>
+            </div>
+        </div>
     </div>
 
     <div class="result-panel" id="result-panel">
@@ -1577,6 +1710,105 @@
                 }, 120);
             }
         });
+
+
+        let modeQuatreGraphiquesActif = false;
+        let widgetsQuatreGraphiques = [];
+
+        function appliquerEtatBoutonQuatreGraphiques(actif) {
+            const bouton = document.getElementById("btn-multichart");
+            if (!bouton) return;
+
+            bouton.textContent = actif ? "Graphique unique" : "4 graphiques";
+            bouton.title = actif
+                ? "Revenir au graphique unique."
+                : "Afficher 4 graphiques pour le même actif : 15m, 1h, 4h et 1J.";
+        }
+
+        function viderQuatreGraphiques() {
+            ["tradingview_chart_15m", "tradingview_chart_1h", "tradingview_chart_4h", "tradingview_chart_1d"].forEach(id => {
+                const zone = document.getElementById(id);
+                if (zone) zone.innerHTML = "";
+            });
+
+            widgetsQuatreGraphiques = [];
+        }
+
+        function creerWidgetQuatreGraphiques(containerId, intervalle, libelle) {
+            const actifBrut = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
+            const actif = normaliserSymboleTradingViewWidget(actifBrut);
+            const style = convertirStylePourTradingView(obtenirTypeGraphiqueSelectionne() || "candles");
+
+            const zone = document.getElementById(containerId);
+            if (zone) zone.innerHTML = "";
+
+            const widget = new TradingView.widget({
+                autosize: true,
+                symbol: actif,
+                interval: intervalle,
+                timezone: "Etc/UTC",
+                theme: "light",
+                style: style,
+                locale: "fr",
+                enable_publishing: false,
+                allow_symbol_change: false,
+                hide_top_toolbar: false,
+                hide_side_toolbar: false,
+                save_image: false,
+                studies: [],
+                container_id: containerId
+            });
+
+            widgetsQuatreGraphiques.push(widget);
+            return widget;
+        }
+
+        function afficherQuatreGraphiques() {
+            if (typeof TradingView === "undefined" || typeof TradingView.widget !== "function") {
+                afficherMessageGraphique("TradingView tv.js n'est pas encore disponible.", "erreur");
+                afficherStatus("Erreur : TradingView tv.js non disponible pour le mode 4 graphiques.");
+                return;
+            }
+
+            modeQuatreGraphiquesActif = true;
+            document.body.classList.add("mode-quatre-graphiques");
+            appliquerEtatBoutonQuatreGraphiques(true);
+            viderQuatreGraphiques();
+
+            creerWidgetQuatreGraphiques("tradingview_chart_15m", "15", "15m");
+            creerWidgetQuatreGraphiques("tradingview_chart_1h", "60", "1h");
+            creerWidgetQuatreGraphiques("tradingview_chart_4h", "240", "4h");
+            creerWidgetQuatreGraphiques("tradingview_chart_1d", "D", "1J");
+
+            setTimeout(() => {
+                window.dispatchEvent(new Event("resize"));
+            }, 150);
+
+            afficherMessageGraphique("", "ok");
+            afficherStatus("Mode 4 graphiques actif : 15m, 1h, 4h et 1J.");
+        }
+
+        function quitterQuatreGraphiques() {
+            modeQuatreGraphiquesActif = false;
+            document.body.classList.remove("mode-quatre-graphiques");
+            appliquerEtatBoutonQuatreGraphiques(false);
+            viderQuatreGraphiques();
+
+            setTimeout(() => {
+                window.dispatchEvent(new Event("resize"));
+            }, 150);
+
+            afficherStatus("Mode graphique unique actif.");
+        }
+
+        function basculerModeQuatreGraphiques() {
+            if (modeQuatreGraphiquesActif || document.body.classList.contains("mode-quatre-graphiques")) {
+                quitterQuatreGraphiques();
+            } else {
+                afficherQuatreGraphiques();
+            }
+        }
+
 
         function togglePanel() {
             const zone = document.getElementById("resultat-analyse");
@@ -2787,6 +3019,10 @@ function normaliserSymboleTradingViewWidget(symbole) {
                 };
 
                 currentData = [];
+
+                if (modeQuatreGraphiquesActif || document.body.classList.contains("mode-quatre-graphiques")) {
+                    afficherQuatreGraphiques();
+                }
 
                 afficherMessageGraphique("", "ok");
                 afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
