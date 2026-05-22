@@ -778,10 +778,10 @@
                 <option value="OANDA:XAUUSD">Or / Dollar US</option>
                 <option value="OANDA:XAGUSD">Argent / Dollar US</option>
                 <option value="OANDA:NAS100USD" data-symbole-original="NASDAQ:NDX">Nasdaq 100</option>
-                <option value="CME_MINI:NQ1!" data-widget-symbol="OANDA:NAS100USD">Nasdaq 100 Futures</option>
-                <option value="FOREXCOM:NSXUSD" data-widget-symbol="OANDA:NAS100USD">Nasdaq 100 CFD</option>
-                <option value="SP:SPX" data-widget-symbol="OANDA:SPX500USD">S&amp;P 500</option>
-                <option value="TVC:DXY" data-widget-symbol="TVC:DXY">Dollar Index</option>
+                <option value="CME_MINI:NQ1!">Nasdaq 100 Futures</option>
+                <option value="FOREXCOM:NSXUSD">Nasdaq 100 CFD</option>
+                <option value="SP:SPX">S&amp;P 500</option>
+                <option value="TVC:DXY">Dollar Index</option>
                 <option value="FX:EURUSD">EUR / USD</option>
                 <option value="FX:GBPUSD">GBP / USD</option>
                 <option value="FX:USDJPY">USD / JPY</option>
@@ -1818,33 +1818,13 @@
             const select = document.getElementById(id);
             if (!select || valeur === undefined || valeur === null) return false;
 
-            const valeurTexte = String(valeur);
-            const options = Array.from(select.options);
+            let valeurTexte = String(valeur);
 
-            /*
-                Important :
-                pour ACTIF, on garde dans la liste le symbole choisi par l'utilisateur
-                s'il existe déjà. La normalisation est réservée au widget TradingView.
-                Cela évite de casser le chargement des anciennes configurations JSON.
-            */
             if (id === "asset-selector") {
-                const existeValeurOriginale = options.some(option => option.value === valeurTexte);
-                if (existeValeurOriginale) {
-                    select.value = valeurTexte;
-                    return true;
-                }
-
-                const valeurNormalisee = normaliserSymboleTradingViewWidget(valeurTexte);
-                const existeValeurNormalisee = options.some(option => option.value === valeurNormalisee);
-                if (existeValeurNormalisee) {
-                    select.value = valeurNormalisee;
-                    return true;
-                }
-
-                return false;
+                valeurTexte = normaliserSymboleTradingViewWidget(valeurTexte);
             }
 
-            const existe = options.some(option => option.value === valeurTexte);
+            const existe = Array.from(select.options).some(option => option.value === valeurTexte);
 
             if (!existe) return false;
 
@@ -2487,9 +2467,8 @@
                 Correction compatibilité TradingView tv.js :
                 certains symboles disponibles sur tradingview.com ne sont pas toujours
                 acceptés dans le widget intégré s3/tv.js.
-                On conserve le libellé utilisateur dans la liste ACTIF, mais on envoie
-                au widget un symbole plus compatible pour éviter le message :
-                "Ce symbole n'existe pas".
+                On conserve le libellé utilisateur, mais on envoie un symbole accepté
+                au widget afin d'éviter le message "Ce symbole n'existe pas".
             */
             const valeur = String(symbole || "").trim().toUpperCase();
 
@@ -2499,28 +2478,10 @@
                 "NASDAQ 100": "OANDA:NAS100USD",
                 "NAS100": "OANDA:NAS100USD",
                 "US100": "OANDA:NAS100USD",
-
-                /*
-                    Nasdaq 100 Futures et certains CFD Nasdaq peuvent être refusés
-                    par le widget tv.js. On les affiche comme choix utilisateur,
-                    mais on charge un équivalent Nasdaq 100 compatible.
-                */
-                "CME_MINI:NQ1!": "OANDA:NAS100USD",
-                "FOREXCOM:NSXUSD": "OANDA:NAS100USD",
-
-                /*
-                    SP:SPX peut afficher "Ce symbole n'existe pas" dans le widget.
-                    OANDA:SPX500USD est généralement accepté dans tv.js.
-                */
-                "SP:SPX": "OANDA:SPX500USD",
-                "SPX": "OANDA:SPX500USD",
-                "S&P 500": "OANDA:SPX500USD",
-                "US500": "OANDA:SPX500USD",
-
-                /*
-                    Dollar Index : on conserve TVC:DXY, qui est le symbole public
-                    le plus standard dans TradingView.
-                */
+                "SP:SPX": "SP:SPX",
+                "SPX": "SP:SPX",
+                "S&P 500": "SP:SPX",
+                "US500": "SP:SPX",
                 "TVC:DXY": "TVC:DXY",
                 "DXY": "TVC:DXY"
             };
