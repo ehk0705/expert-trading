@@ -1020,6 +1020,20 @@
                 <option value="CUSTOM_PINE">Script Pine personnalisé</option>
             </select>
         </div>
+
+        <div class="control-group">
+            <button class="btn-technique" onclick="testerAnalyseTechnique()" title="Générer et afficher le JSON technique calculé côté serveur pour l’actif, l’intervalle et l’indicateur sélectionnés.">Générer JSON</button>
+
+            <!--<button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">TradingView</button>-->
+
+            <a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
+                <button class="btn-analyser" type="button" title="Ouvrir la page analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
+            </a>
+
+           <button class="btn-effacer" type="button" onclick="viderCaptures()" title="Supprimer toutes les captures sauvegardées dans PostgreSQL après confirmation et mot de passe administrateur.">
+				Vider les captures
+		   </button>
+        </div>
         </section>
 
 
@@ -1102,19 +1116,6 @@
             </select>
         </div>
 
-        <div class="control-group">
-            <button class="btn-technique" onclick="testerAnalyseTechnique()" title="Générer et afficher le JSON technique calculé côté serveur pour l’actif, l’intervalle et l’indicateur sélectionnés.">Générer JSON</button>
-
-            <!--<button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">TradingView</button>-->
-
-            <a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
-                <button class="btn-analyser" type="button" title="Ouvrir la page analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
-            </a>
-
-           <button class="btn-effacer" type="button" onclick="viderCaptures()" title="Supprimer toutes les captures sauvegardées dans PostgreSQL après confirmation et mot de passe administrateur.">
-				Vider les captures
-		   </button>
-        </div>
     </div>
 
     <div id="chart-container">
