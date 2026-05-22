@@ -409,7 +409,7 @@
 
         .risk-grid {
             display: grid;
-            grid-template-columns: repeat(3, minmax(140px, 1fr));
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
             gap: 10px;
         }
 
@@ -1768,22 +1768,88 @@
 
 
         function extraireParametresRisqueDepuisConfiguration(configuration = {}) {
-            const risque = configuration.risque || configuration.parametresRisque || configuration.risk || {};
+            const sources = [
+                configuration.risque,
+                configuration.parametresRisque,
+                configuration.risk,
+                configuration.configurationCapture?.risque,
+                configuration.configurationCapture?.parametresRisque,
+                configuration.capture?.configuration_json?.risque,
+                configuration.capture?.configuration?.risque,
+                configuration
+            ].filter(Boolean);
+
+            const premier = (...cles) => {
+                for (const source of sources) {
+                    for (const cle of cles) {
+                        if (source && source[cle] !== undefined && source[cle] !== null && source[cle] !== "") {
+                            return source[cle];
+                        }
+                    }
+                }
+                return undefined;
+            };
 
             const nombre = (valeur, defaut, minimum = 0) => {
-                const n = Number(valeur);
+                const n = Number(String(valeur ?? "").replace(/\s/g, "").replace(",", "."));
                 if (!Number.isFinite(n)) return defaut;
                 return Math.max(minimum, n);
             };
 
+            const capitalTotal = nombre(premier("capital_total", "capital_total_dollars", "capital", "capitalTotal"), 10000, 0);
+            const risquePourcentage = nombre(premier("risque_position_pourcentage", "risk_percent", "riskPercentage"), 1, 0);
+            const stopLossPourcentage = nombre(premier("stop_loss_pourcentage", "stop_loss_technique_pourcentage", "stoploss_pourcentage", "stopLossPercentage"), 2, 0);
+            const takeProfitPourcentage = nombre(premier("take_profit_pourcentage", "takeprofit_pourcentage", "takeProfitPercentage"), 4, 0);
+            const levier = nombre(premier("levier", "leverage"), 1, 1);
+
+            const risqueReelCalcule = capitalTotal * (risquePourcentage / 100);
+            const risqueReelMaximal = nombre(premier("risque_reel_maximal", "risque_reel_maximal_dollars", "risque_reel", "riskReal"), risqueReelCalcule, 0);
+
+            const valeurPositionCalculee = stopLossPourcentage > 0
+                ? risqueReelMaximal / (stopLossPourcentage / 100)
+                : 0;
+            const valeurPositionCorrecte = nombre(premier("valeur_position_correcte", "valeur_position_correcte_dollars", "valeur_position", "positionValue"), valeurPositionCalculee, 0);
+
+            const margeCalculee = levier > 0 ? valeurPositionCorrecte / levier : valeurPositionCorrecte;
+            const margeRequise = nombre(premier("marge_requise", "marge_requise_dollars", "marge", "marginRequired"), margeCalculee, 0);
+
+            const ratioCalcule = stopLossPourcentage > 0 ? takeProfitPourcentage / stopLossPourcentage : 0;
+            const ratioRisqueRendement = nombre(premier("ratio_risque_rendement", "ratio_rr", "riskRewardRatio"), ratioCalcule, 0);
+            const ratioLibelle = premier("ratio_risque_rendement_libelle", "ratio_rr_libelle") ||
+                (ratioRisqueRendement > 0 ? "1:" + ratioRisqueRendement.toFixed(2).replace(/\.00$/, "") : "N/A");
+
+            const sens = premier("sens", "direction") || "achat_vente";
+            const strategie = premier("strategie", "strategy") || "suivi_tendance";
+
             return {
-                risque_position_pourcentage: nombre(risque.risque_position_pourcentage, 1, 0),
-                stop_loss_pourcentage: nombre(risque.stop_loss_pourcentage, 2, 0),
-                take_profit_pourcentage: nombre(risque.take_profit_pourcentage, 4, 0),
-                levier: nombre(risque.levier, 1, 1),
-                sens: risque.sens || "achat_vente",
-                strategie: risque.strategie || "suivi_tendance"
+                capital_total: capitalTotal,
+                capital_total_dollars: capitalTotal,
+                risque_position_pourcentage: risquePourcentage,
+                risque_reel_maximal: risqueReelMaximal,
+                risque_reel_maximal_dollars: risqueReelMaximal,
+                stop_loss_pourcentage: stopLossPourcentage,
+                stop_loss_technique_pourcentage: stopLossPourcentage,
+                take_profit_pourcentage: takeProfitPourcentage,
+                levier: levier,
+                valeur_position_correcte: valeurPositionCorrecte,
+                valeur_position_correcte_dollars: valeurPositionCorrecte,
+                marge_requise: margeRequise,
+                marge_requise_dollars: margeRequise,
+                ratio_risque_rendement: ratioRisqueRendement,
+                ratio_risque_rendement_libelle: ratioLibelle,
+                sens: sens,
+                strategie: strategie,
+                source: premier("source") || "analyse_html_parametres_risque"
             };
+        }
+
+        function formaterMontantRisque(valeur) {
+            const n = Number(valeur);
+            if (!Number.isFinite(n)) return "N/A";
+            return n.toLocaleString("fr-CA", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + " $";
         }
 
         function libelleSensRisque(sens) {
@@ -1813,9 +1879,14 @@
             const risque = extraireParametresRisqueDepuisConfiguration(configuration);
 
             contenu.innerHTML = `
+                <div class="risk-item"><b>Capital total</b><span>${formaterMontantRisque(risque.capital_total_dollars)}</span></div>
                 <div class="risk-item"><b>Risque par position</b><span>${risque.risque_position_pourcentage}%</span></div>
-                <div class="risk-item"><b>Stop loss</b><span>${risque.stop_loss_pourcentage}%</span></div>
+                <div class="risk-item"><b>Risque réel maximal</b><span>${formaterMontantRisque(risque.risque_reel_maximal_dollars)}</span></div>
+                <div class="risk-item"><b>Stop loss technique</b><span>${risque.stop_loss_technique_pourcentage}%</span></div>
                 <div class="risk-item"><b>Take profit</b><span>${risque.take_profit_pourcentage}%</span></div>
+                <div class="risk-item"><b>Valeur de position correcte</b><span>${formaterMontantRisque(risque.valeur_position_correcte_dollars)}</span></div>
+                <div class="risk-item"><b>Marge requise</b><span>${formaterMontantRisque(risque.marge_requise_dollars)}</span></div>
+                <div class="risk-item"><b>Ratio risque/rendement</b><span>${risque.ratio_risque_rendement_libelle}</span></div>
                 <div class="risk-item"><b>Levier</b><span>x${risque.levier}</span></div>
                 <div class="risk-item"><b>Sens autorisé</b><span>${libelleSensRisque(risque.sens)}</span></div>
                 <div class="risk-item"><b>Stratégie</b><span>${libelleStrategieRisque(risque.strategie)}</span></div>
@@ -1830,9 +1901,23 @@
             };
 
             copie.parametres_risque = extraireParametresRisqueDepuisConfiguration(configuration);
+            copie.configuration = {
+                ...(copie.configuration || {}),
+                risque: copie.parametres_risque,
+                parametresRisque: copie.parametres_risque
+            };
 
             if (copie.risque_position_pourcentage === undefined) {
                 copie.risque_position_pourcentage = copie.parametres_risque.risque_position_pourcentage;
+            }
+            if (copie.capital_total === undefined) {
+                copie.capital_total = copie.parametres_risque.capital_total_dollars;
+            }
+            if (copie.risque_reel_maximal === undefined) {
+                copie.risque_reel_maximal = copie.parametres_risque.risque_reel_maximal_dollars;
+            }
+            if (copie.valeur_position_correcte === undefined) {
+                copie.valeur_position_correcte = copie.parametres_risque.valeur_position_correcte_dollars;
             }
 
             return copie;
@@ -1948,7 +2033,7 @@
             }
 
             const risque = analyse.parametres_risque || extraireParametresRisqueDepuisConfiguration(analyse.configuration || {});
-            recommandations.push("Gestion du risque : respecter le risque indiqué de " + risque.risque_position_pourcentage + "% par position, avec un levier maximal de x" + risque.levier + ".");
+            recommandations.push("Gestion du risque : capital de " + formaterMontantRisque(risque.capital_total_dollars) + ", risque réel maximal de " + formaterMontantRisque(risque.risque_reel_maximal_dollars) + ", valeur de position correcte de " + formaterMontantRisque(risque.valeur_position_correcte_dollars) + ", avec un levier maximal de x" + risque.levier + ".");
             if (risque.levier > 3) {
                 recommandations.push("Levier élevé : réduire la taille de position ou élargir la marge de sécurité. Un faux signal peut coûter beaucoup plus cher.");
             }
@@ -2006,7 +2091,13 @@
             lignes.push("Objectif 2 : " + formaterPrix(plan.objectif2));
 
             const risque = analyse.parametres_risque || extraireParametresRisqueDepuisConfiguration(analyse.configuration || {});
+            lignes.push("Capital total : " + formaterMontantRisque(risque.capital_total_dollars));
             lignes.push("Risque par position : " + risque.risque_position_pourcentage + "%");
+            lignes.push("Risque réel maximal : " + formaterMontantRisque(risque.risque_reel_maximal_dollars));
+            lignes.push("Stop loss technique : " + risque.stop_loss_technique_pourcentage + "%");
+            lignes.push("Valeur de position correcte : " + formaterMontantRisque(risque.valeur_position_correcte_dollars));
+            lignes.push("Marge requise : " + formaterMontantRisque(risque.marge_requise_dollars));
+            lignes.push("Ratio risque/rendement : " + risque.ratio_risque_rendement_libelle);
             lignes.push("Risque avec levier : " + (risque.risque_position_pourcentage * risque.levier).toFixed(2) + "% indicatif");
             lignes.push("Sens autorisé : " + libelleSensRisque(risque.sens));
             lignes.push("Stratégie : " + libelleStrategieRisque(risque.strategie));
@@ -2094,6 +2185,10 @@ async function triggerAIAnalysis() {
 
                 configurationCorrigee.risque = extraireParametresRisqueDepuisConfiguration(configurationCorrigee);
                 configurationCorrigee.parametresRisque = configurationCorrigee.risque;
+                configurationCorrigee.capital_total = configurationCorrigee.risque.capital_total_dollars;
+                configurationCorrigee.risque_reel_maximal = configurationCorrigee.risque.risque_reel_maximal_dollars;
+                configurationCorrigee.valeur_position_correcte = configurationCorrigee.risque.valeur_position_correcte_dollars;
+                configurationCorrigee.marge_requise = configurationCorrigee.risque.marge_requise_dollars;
                 afficherParametresRisque(configurationCorrigee);
 
                 configurationCorrigee.exigence_analyse_concrete = {
@@ -2109,6 +2204,9 @@ async function triggerAIAnalysis() {
                         "stop_loss",
                         "take_profit_1",
                         "take_profit_2",
+                        "capital_total",
+                        "risque_reel_maximal",
+                        "valeur_position_correcte",
                         "resume",
                         "raisons",
                         "risques",
@@ -2116,7 +2214,7 @@ async function triggerAIAnalysis() {
                     ],
                     consignes: [
                         "Ne jamais retourner stop_loss, take_profit_1 ou take_profit_2 à 0 si un prix actuel exploitable existe.",
-                        "Respecter les paramètres de risque fournis dans configuration.risque : risque par position, stop loss, take profit, levier, sens et stratégie.",
+                        "Respecter les paramètres de risque fournis dans configuration.risque : capital total, risque par position, risque réel maximal, stop loss technique, valeur de position correcte, marge requise, take profit, levier, sens et stratégie.",
                         "Si la décision est ATTENDRE, fournir quand même un scénario d'achat, un scénario de vente/sortie et les niveaux d'invalidation.",
                         "Donner des recommandations concrètes, mais sans promesse de gain et sans présenter cela comme un conseil financier personnalisé.",
                         "Mentionner les limites si les données de marché ou l'image sont insuffisantes."
