@@ -407,6 +407,18 @@
             text-transform: uppercase;
         }
 
+
+        .risk-editor-content {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #risk-summary-content {
+            display: block !important;
+            width: 100%;
+        }
+
         .risk-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(140px, 1fr));
@@ -435,9 +447,11 @@
 
         .risk-edit-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(150px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(4, minmax(170px, 1fr));
+            gap: 12px;
             margin-bottom: 12px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .risk-field label {
@@ -447,6 +461,8 @@
             font-weight: 900;
             text-transform: uppercase;
             margin-bottom: 4px;
+            white-space: normal;
+            line-height: 1.2;
         }
 
         .risk-field input,
@@ -474,6 +490,19 @@
             background: #fed7aa;
             margin: 12px 0;
         }
+
+        @media (max-width: 1200px) {
+            .risk-edit-grid {
+                grid-template-columns: repeat(2, minmax(180px, 1fr));
+            }
+        }
+
+        @media (max-width: 700px) {
+            .risk-edit-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
 
         @media (max-width: 900px) {
             .risk-grid {
@@ -599,7 +628,7 @@
 
             <div class="risk-summary" id="risk-summary" style="display:none;">
                 <h3>Paramètres de risque avant analyse</h3>
-                <div class="risk-grid" id="risk-summary-content"></div>
+                <div class="risk-editor-content" id="risk-summary-content"></div>
             </div>
 
             <div class="ai-dashboard" id="ai-panel">
@@ -1996,6 +2025,59 @@
             return risqueDepuisFormulaire;
         }
 
+
+
+        function normaliserParametresRisqueAvecDefauts(risque = {}) {
+            const valeurPositive = (valeur, defaut) => {
+                const n = Number(valeur);
+                return Number.isFinite(n) && n > 0 ? n : defaut;
+            };
+
+            const capital = valeurPositive(risque.capital_total_dollars ?? risque.capital_total, 10000);
+            const risquePct = valeurPositive(risque.risque_position_pourcentage, 1);
+            const stopPct = valeurPositive(risque.stop_loss_technique_pourcentage ?? risque.stop_loss_pourcentage, 2);
+            const takePct = valeurPositive(risque.take_profit_pourcentage, 4);
+            const levier = valeurPositive(risque.levier, 1);
+
+            const risqueReel = valeurPositive(
+                risque.risque_reel_maximal_dollars ?? risque.risque_reel_maximal,
+                capital * risquePct / 100
+            );
+
+            const valeurPosition = valeurPositive(
+                risque.valeur_position_correcte_dollars ?? risque.valeur_position_correcte,
+                stopPct > 0 ? risqueReel / (stopPct / 100) : 5000
+            );
+
+            const marge = valeurPositive(
+                risque.marge_requise_dollars ?? risque.marge_requise,
+                levier > 0 ? valeurPosition / levier : valeurPosition
+            );
+
+            const ratio = stopPct > 0 ? takePct / stopPct : 2;
+
+            return {
+                ...risque,
+                capital_total: capital,
+                capital_total_dollars: capital,
+                risque_position_pourcentage: risquePct,
+                risque_reel_maximal: risqueReel,
+                risque_reel_maximal_dollars: risqueReel,
+                stop_loss_pourcentage: stopPct,
+                stop_loss_technique_pourcentage: stopPct,
+                take_profit_pourcentage: takePct,
+                levier: levier,
+                valeur_position_correcte: valeurPosition,
+                valeur_position_correcte_dollars: valeurPosition,
+                marge_requise: marge,
+                marge_requise_dollars: marge,
+                ratio_risque_rendement: ratio,
+                ratio_risque_rendement_libelle: '1:' + ratio.toFixed(2).replace(/\.00$/, ''),
+                sens: risque.sens || 'achat_vente',
+                strategie: risque.strategie || 'suivi_tendance'
+            };
+        }
+
         function injecterParametresRisqueDansFormulaire(risque) {
             const valeurs = {
                 "risk-capital-total": risque.capital_total_dollars,
@@ -2064,7 +2146,9 @@
             const contenu = document.getElementById("risk-summary-content");
             if (!bloc || !contenu) return;
 
-            const risque = extraireParametresRisqueDepuisConfiguration(configuration);
+            const risque = normaliserParametresRisqueAvecDefauts(
+                extraireParametresRisqueDepuisConfiguration(configuration)
+            );
 
             contenu.innerHTML = `
                 <p class="risk-editor-note">
