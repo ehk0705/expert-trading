@@ -1861,7 +1861,8 @@
                 hide_top_toolbar: false,
                 hide_side_toolbar: false,
                 save_image: false,
-                studies: [],
+                studies: obtenirEtudesTradingViewPourIndicateur(),
+                studies_overrides: obtenirOverridesEtudesTradingView(),
                 container_id: containerId
             });
 
@@ -2976,6 +2977,131 @@ function normaliserSymboleTradingViewWidget(symbole) {
 
     return correspondances[valeur] || valeurOriginale;
 }
+
+        function obtenirIndicateurSelectionne() {
+            /*
+                Lecture centralisée de l'indicateur sélectionné.
+                Le premier select #indicator-selector est celui du panneau supérieur.
+            */
+            const select = document.getElementById("indicator-selector");
+            if (!select || !select.value) return "EMA";
+            return String(select.value).trim().toUpperCase();
+        }
+
+        function obtenirEtudesTradingViewPourIndicateur(indicateur = obtenirIndicateurSelectionne()) {
+            /*
+                TradingView tv.js accepte surtout les études intégrées de base.
+                Les outils de dessin comme Fibonacci Retracement, Fibonacci Extension,
+                Gann Fan ou Elliott Wave ne peuvent pas être injectés automatiquement
+                dans le widget public tv.js. Ils restent cependant sauvegardés dans le JSON.
+            */
+            const valeur = String(indicateur || "EMA").trim().toUpperCase();
+
+            const correspondances = {
+                EMA: ["MAExp@tv-basicstudies"],
+                EMA20: ["MAExp@tv-basicstudies"],
+                EMA50: ["MAExp@tv-basicstudies"],
+                EMA100: ["MAExp@tv-basicstudies"],
+                EMA200: ["MAExp@tv-basicstudies"],
+
+                SMA: ["MASimple@tv-basicstudies"],
+                SMA20: ["MASimple@tv-basicstudies"],
+                SMA50: ["MASimple@tv-basicstudies"],
+                SMA100: ["MASimple@tv-basicstudies"],
+                SMA200: ["MASimple@tv-basicstudies"],
+
+                WMA: ["MAWeighted@tv-basicstudies"],
+                VWMA: ["VWMAMovingAverage@tv-basicstudies"],
+
+                RSI: ["RSI@tv-basicstudies"],
+                STOCH: ["Stochastic@tv-basicstudies"],
+                STOCH_RSI: ["StochasticRSI@tv-basicstudies"],
+                MACD: ["MACD@tv-basicstudies"],
+                CCI: ["CCI@tv-basicstudies"],
+                ROC: ["ROC@tv-basicstudies"],
+                MOMENTUM: ["Momentum@tv-basicstudies"],
+                WILLIAMS_R: ["WilliamsR@tv-basicstudies"],
+                ULTIMATE_OSC: ["UltimateOscillator@tv-basicstudies"],
+                AWESOME_OSC: ["AwesomeOscillator@tv-basicstudies"],
+
+                BOLLINGER: ["BB@tv-basicstudies"],
+                BB_WIDTH: ["BollingerBandsWidth@tv-basicstudies"],
+                ATR: ["ATR@tv-basicstudies"],
+                STDDEV: ["STDDev@tv-basicstudies"],
+
+                VOLUME: ["Volume@tv-basicstudies"],
+                VOLUME_MA: ["Volume@tv-basicstudies"],
+                OBV: ["OBV@tv-basicstudies"],
+                ADL: ["AccumulationDistribution@tv-basicstudies"],
+                CMF: ["ChaikinMoneyFlow@tv-basicstudies"],
+                MFI: ["MoneyFlow@tv-basicstudies"],
+                VWAP: ["VWAP@tv-basicstudies"],
+                PVT: ["PriceVolumeTrend@tv-basicstudies"],
+                FORCE_INDEX: ["ForceIndex@tv-basicstudies"],
+                EOM: ["EaseOfMovement@tv-basicstudies"],
+
+                ICHIMOKU: ["IchimokuCloud@tv-basicstudies"],
+                PSAR: ["ParabolicSAR@tv-basicstudies"],
+                ADX: ["ADX@tv-basicstudies"],
+                DMI: ["DM@tv-basicstudies"],
+                AROON: ["Aroon@tv-basicstudies"],
+                AROON_OSC: ["AroonOscillator@tv-basicstudies"],
+                TRIX: ["TRIX@tv-basicstudies"],
+                PRICE_CHANNEL: ["PriceChannel@tv-basicstudies"],
+                DONCHIAN: ["DonchianChannels@tv-basicstudies"],
+
+                PIVOT_STANDARD: ["PivotPointsStandard@tv-basicstudies"],
+                PIVOT_FIB: ["PivotPointsStandard@tv-basicstudies"],
+                SUPPORT_RESISTANCE: ["PivotPointsStandard@tv-basicstudies"],
+                CANDLE_PATTERNS: ["CandlestickPatterns@tv-basicstudies"]
+            };
+
+            return correspondances[valeur] || [];
+        }
+
+        function obtenirOverridesEtudesTradingView(indicateur = obtenirIndicateurSelectionne()) {
+            /*
+                Les noms d'overrides peuvent varier selon TradingView.
+                S'ils ne sont pas reconnus, le widget les ignore sans bloquer le graphique.
+            */
+            const valeur = String(indicateur || "").trim().toUpperCase();
+            const overrides = {};
+
+            const periodes = {
+                EMA20: 20,
+                EMA50: 50,
+                EMA100: 100,
+                EMA200: 200,
+                SMA20: 20,
+                SMA50: 50,
+                SMA100: 100,
+                SMA200: 200
+            };
+
+            if (periodes[valeur]) {
+                overrides["moving average exponential.length"] = periodes[valeur];
+                overrides["moving average.length"] = periodes[valeur];
+                overrides["exponential moving average.length"] = periodes[valeur];
+                overrides["simple moving average.length"] = periodes[valeur];
+            }
+
+            return overrides;
+        }
+
+        function afficherEtatIndicateurTradingView(indicateur = obtenirIndicateurSelectionne()) {
+            const etudes = obtenirEtudesTradingViewPourIndicateur(indicateur);
+
+            if (etudes.length > 0) {
+                afficherStatus("Indicateur appliqué au graphique : " + indicateur);
+                return;
+            }
+
+            afficherStatus(
+                "Indicateur sélectionné : " + indicateur +
+                ". Cet élément est sauvegardé dans le JSON, mais le widget public TradingView tv.js ne permet pas de l'ajouter automatiquement au graphique."
+            );
+        }
+
         function creerGraphiqueTradingViewS3() {
             const conteneur = document.getElementById("tradingview_chart");
             if (!conteneur) return;
@@ -3011,7 +3137,8 @@ function normaliserSymboleTradingViewWidget(symbole) {
                 hide_top_toolbar: false,
                 hide_side_toolbar: false,
                 save_image: false,
-                studies: [],
+                studies: obtenirEtudesTradingViewPourIndicateur(),
+                studies_overrides: obtenirOverridesEtudesTradingView(),
                 container_id: "tradingview_chart"
             });
 
@@ -3025,7 +3152,7 @@ function normaliserSymboleTradingViewWidget(symbole) {
                     setTimeout(() => {
                         graphiqueTradingViewPret = true;
                         afficherMessageGraphique("", "ok");
-                        afficherStatus("Graphique prêt pour la capture : " + actif + " / intervalle : " + intervalle);
+                        afficherStatus("Graphique prêt pour la capture : " + actif + " / intervalle : " + intervalle + " / indicateur : " + obtenirIndicateurSelectionne());
                     }, 1800);
                 });
             } else {
@@ -3041,7 +3168,7 @@ function normaliserSymboleTradingViewWidget(symbole) {
             };
 
             afficherMessageGraphique("Chargement des données TradingView. Attendre l'affichage des bougies avant CAPTURE.", "attente");
-            afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
+            afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle + " / indicateur : " + obtenirIndicateurSelectionne());
             afficherInfosGraphique();
         }
 
@@ -3063,7 +3190,12 @@ function normaliserSymboleTradingViewWidget(symbole) {
         }
 
         function changerIndicateur() {
+            /*
+                Quand l'utilisateur change l'indicateur dans la liste déroulante,
+                on reconstruit le widget TradingView avec l'étude correspondante.
+            */
             afficherInfosGraphique();
+            afficherEtatIndicateurTradingView();
             actualiserGraphique();
         }
 
@@ -3114,7 +3246,7 @@ function normaliserSymboleTradingViewWidget(symbole) {
                 }
 
                 afficherMessageGraphique("", "ok");
-                afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle);
+                afficherStatus("Graphique TradingView tv.js chargé : " + actif + " / intervalle : " + intervalle + " / indicateur : " + obtenirIndicateurSelectionne());
                 afficherInfosGraphique();
 
             } catch (erreur) {
