@@ -790,10 +790,12 @@
             background: #ffffff !important;
         }
 
-        body.capture-clean-mode.mode-quatre-graphiques #chart-container {
-            height: 100vh !important;
-            min-height: 100vh !important;
-            overflow: hidden !important;
+        /* Correction capture en mode 4 graphiques :
+           le graphique principal est masqué dans ce mode, donc il ne doit
+           pas être utilisé comme zone de contrôle ni réapparaître pendant la capture. */
+        body.capture-clean-mode.mode-quatre-graphiques #tradingview_chart {
+            display: none !important;
+            visibility: hidden !important;
         }
 
         body.capture-clean-mode.mode-quatre-graphiques #multi-chart-container {
@@ -802,16 +804,16 @@
             min-height: 100vh !important;
             overflow: hidden !important;
             grid-template-columns: repeat(2, minmax(320px, 1fr)) !important;
+            gap: 6px !important;
         }
 
         body.capture-clean-mode.mode-quatre-graphiques .multi-chart-box {
-            min-height: calc(50vh - 5px) !important;
+            min-height: calc(50vh - 6px) !important;
         }
 
         body.capture-clean-mode.mode-quatre-graphiques .multi-chart-view {
-            min-height: calc(50vh - 38px) !important;
+            min-height: calc(50vh - 40px) !important;
         }
-
 
 
         /* ============================================================
@@ -3357,30 +3359,49 @@ function normaliserSymboleTradingViewWidget(symbole) {
         }
 
 
-        function obtenirRectangleGraphiquePourControleCapture(canvas) {
+        function obtenirElementGraphiqueVisiblePourControleCapture() {
             /*
-                Correction mode 4 graphiques :
-                quand le mode quatre graphiques est actif, #tradingview_chart est masqué.
-                L'ancien contrôle analysait donc une zone de taille nulle et concluait à tort
-                que la capture était vide. On contrôle maintenant #multi-chart-container.
+                Correction importante :
+                - en mode 4 graphiques, #tradingview_chart est volontairement masqué ;
+                - le contrôle doit donc porter sur #multi-chart-container ;
+                - en mode graphique unique, on garde #tradingview_chart.
             */
-            let zoneGraphique = null;
+            const modeQuatre = document.body.classList.contains("mode-quatre-graphiques") || Boolean(modeQuatreGraphiquesActif);
 
-            if (document.body.classList.contains("mode-quatre-graphiques")) {
-                zoneGraphique = document.getElementById("multi-chart-container");
+            const candidats = modeQuatre
+                ? [
+                    document.getElementById("multi-chart-container"),
+                    document.getElementById("chart-container")
+                ]
+                : [
+                    document.getElementById("tradingview_chart"),
+                    document.getElementById("chart-container")
+                ];
+
+            for (const element of candidats) {
+                if (!element) continue;
+                const rect = element.getBoundingClientRect();
+                const style = window.getComputedStyle(element);
+
+                if (
+                    rect &&
+                    rect.width >= 40 &&
+                    rect.height >= 40 &&
+                    style.display !== "none" &&
+                    style.visibility !== "hidden"
+                ) {
+                    return element;
+                }
             }
 
-            if (!zoneGraphique) {
-                zoneGraphique = document.getElementById("tradingview_chart");
-            }
+            return null;
+        }
 
-            if (!zoneGraphique) {
-                zoneGraphique = document.getElementById("chart-container");
-            }
-
+        function obtenirRectangleGraphiquePourControleCapture(canvas) {
+            const zoneGraphique = obtenirElementGraphiqueVisiblePourControleCapture();
             const rect = zoneGraphique ? zoneGraphique.getBoundingClientRect() : null;
 
-            if (!rect || !canvas || !canvas.width || !canvas.height || rect.width < 40 || rect.height < 40) {
+            if (!rect || !canvas || !canvas.width || !canvas.height) {
                 return {
                     x: 0,
                     y: 0,
@@ -3399,12 +3420,10 @@ function normaliserSymboleTradingViewWidget(symbole) {
             return {
                 x: Math.max(0, Math.floor(rect.left * ratioX)),
                 y: Math.max(0, Math.floor(rect.top * ratioY)),
-                width: Math.max(1, Math.min(canvas.width - Math.max(0, Math.floor(rect.left * ratioX)), Math.floor(rect.width * ratioX))),
-                height: Math.max(1, Math.min(canvas.height - Math.max(0, Math.floor(rect.top * ratioY)), Math.floor(rect.height * ratioY)))
+                width: Math.max(1, Math.min(canvas.width, Math.floor(rect.width * ratioX))),
+                height: Math.max(1, Math.min(canvas.height, Math.floor(rect.height * ratioY)))
             };
         }
-
-        
 
         function canvasGraphiqueSembleVide(canvas) {
             if (!canvas || !canvas.width || !canvas.height) return true;
@@ -3416,8 +3435,8 @@ function normaliserSymboleTradingViewWidget(symbole) {
             if (largeur < 40 || hauteur < 40) return true;
 
             const echantillon = document.createElement("canvas");
-            echantillon.width = 220;
-            echantillon.height = Math.max(100, Math.round(220 * hauteur / largeur));
+            echantillon.width = 160;
+            echantillon.height = Math.max(80, Math.round(160 * hauteur / largeur));
 
             const ctxEchantillon = echantillon.getContext("2d");
             ctxEchantillon.drawImage(
@@ -3435,7 +3454,6 @@ function normaliserSymboleTradingViewWidget(symbole) {
             const pixels = ctxEchantillon.getImageData(0, 0, echantillon.width, echantillon.height).data;
             let pixelsTresSombres = 0;
             let pixelsUtiles = 0;
-            let pixelsClairs = 0;
             let transitions = 0;
             let luminositePrecedente = null;
 
@@ -3448,7 +3466,6 @@ function normaliserSymboleTradingViewWidget(symbole) {
 
                 if (luminosite < 20) pixelsTresSombres++;
                 if (luminosite > 45 || amplitude > 20) pixelsUtiles++;
-                if (luminosite > 170) pixelsClairs++;
 
                 if (luminositePrecedente !== null && Math.abs(luminosite - luminositePrecedente) > 28) {
                     transitions++;
@@ -3460,22 +3477,14 @@ function normaliserSymboleTradingViewWidget(symbole) {
             const total = pixels.length / 4;
             const ratioTresSombre = pixelsTresSombres / total;
             const ratioUtile = pixelsUtiles / total;
-            const ratioClair = pixelsClairs / total;
             const ratioTransitions = transitions / total;
 
             /*
-                Correction mode 4 graphiques :
-                un graphique TradingView sur fond blanc peut être clair et contenir peu de gros contrastes.
-                On ne rejette donc l'image que si elle est presque totalement noire ET presque sans détails.
+                Un vrai graphique contient normalement beaucoup de traits, textes, axes ou bougies.
+                Un écran quasi noir avec très peu de variations est rejeté.
             */
-            if (document.body.classList.contains("mode-quatre-graphiques")) {
-                return ratioTresSombre > 0.96 && ratioUtile < 0.02 && ratioTransitions < 0.006 && ratioClair < 0.02;
-            }
-
             return ratioTresSombre > 0.92 && ratioUtile < 0.035 && ratioTransitions < 0.012;
         }
-
-        
 
         function verifierCaptureGraphiqueExploitable(canvas) {
             if (canvasGraphiqueSembleVide(canvas)) {
@@ -3508,6 +3517,7 @@ function normaliserSymboleTradingViewWidget(symbole) {
 
             document.body.classList.add("capture-clean-mode");
             window.scrollTo(0, 0);
+            window.dispatchEvent(new Event("resize"));
 
             return etat;
         }
@@ -3558,7 +3568,7 @@ function normaliserSymboleTradingViewWidget(symbole) {
             afficherStatus("Préparation de la capture propre du graphique TradingView...");
 
             const etatInterface = preparerInterfacePourCapture();
-            await new Promise(resolve => setTimeout(resolve, 250));
+            await new Promise(resolve => setTimeout(resolve, 700));
 
             let flux = null;
 
