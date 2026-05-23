@@ -485,6 +485,15 @@
             box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.18);
         }
 
+        .risk-field input,
+        .risk-field select {
+            pointer-events: auto;
+        }
+
+        #risk-summary-resume {
+            display: none !important;
+        }
+
         .risk-divider {
             height: 1px;
             background: #fed7aa;
@@ -2099,24 +2108,20 @@
         }
 
         function actualiserResumeRisqueDepuisFormulaire() {
-            const contenuResume = document.getElementById("risk-summary-resume");
-            if (!contenuResume) return;
-
+            /*
+                Correction : on ne réaffiche plus les valeurs une seconde fois.
+                Les champs du formulaire restent modifiables et la configuration
+                courante est mise à jour silencieusement avant l'analyse.
+            */
             const risque = lireParametresRisqueDepuisFormulaire();
 
-            contenuResume.innerHTML = `
-                <div class="risk-item"><b>Capital total</b><span>${formaterMontantRisque(risque.capital_total_dollars)}</span></div>
-                <div class="risk-item"><b>Risque par position</b><span>${risque.risque_position_pourcentage}%</span></div>
-                <div class="risk-item"><b>Risque réel maximal</b><span>${formaterMontantRisque(risque.risque_reel_maximal_dollars)}</span></div>
-                <div class="risk-item"><b>Stop loss technique</b><span>${risque.stop_loss_technique_pourcentage}%</span></div>
-                <div class="risk-item"><b>Take profit</b><span>${risque.take_profit_pourcentage}%</span></div>
-                <div class="risk-item"><b>Valeur de position correcte</b><span>${formaterMontantRisque(risque.valeur_position_correcte_dollars)}</span></div>
-                <div class="risk-item"><b>Marge requise</b><span>${formaterMontantRisque(risque.marge_requise_dollars)}</span></div>
-                <div class="risk-item"><b>Ratio risque/rendement</b><span>${risque.ratio_risque_rendement_libelle}</span></div>
-                <div class="risk-item"><b>Levier</b><span>x${risque.levier}</span></div>
-                <div class="risk-item"><b>Sens autorisé</b><span>${libelleSensRisque(risque.sens)}</span></div>
-                <div class="risk-item"><b>Stratégie</b><span>${libelleStrategieRisque(risque.strategie)}</span></div>
-            `;
+            if (currentCapture && currentCapture.configuration) {
+                currentCapture.configuration.risque = risque;
+                currentCapture.configuration.parametresRisque = risque;
+                currentCapture.configuration.risk = risque;
+            }
+
+            return risque;
         }
 
         function appliquerParametresRisqueAConfiguration(configuration = {}) {
@@ -2206,9 +2211,6 @@
                         </select>
                     </div>
                 </div>
-
-                <div class="risk-divider"></div>
-                <div class="risk-grid" id="risk-summary-resume"></div>
             `;
 
             injecterParametresRisqueDansFormulaire(risque);
