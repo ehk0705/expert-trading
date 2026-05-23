@@ -1464,7 +1464,11 @@
         const AUTH_TOKEN_KEYS_COMPATIBLES = [
             "expert_trading_auth_token",
             "expertTradingToken",
-            "expertTradingAuthToken"
+            "expertTradingAuthToken",
+            "expertTradingJwt",
+            "authToken",
+            "token",
+            "jwt"
         ];
 
         let applicationDejaInitialisee = false;
@@ -1520,20 +1524,32 @@
 
         async function fetchAuth(url, options = {}) {
             const token = obtenirTokenAuth();
-            const headers = new Headers(options.headers || {});
 
-            if (token) {
-                headers.set("Authorization", "Bearer " + token);
+            if (!token) {
+                supprimerTokenAuth();
+                afficherEcranConnexion("Authentification requise. Veuillez vous reconnecter.");
+                throw new Error("Authentification requise. Reconnectez-vous, puis relancez l'action.");
+            }
+
+            const headers = new Headers(options.headers || {});
+            headers.set("Authorization", "Bearer " + token);
+
+            if (!headers.has("Accept")) {
+                headers.set("Accept", "application/json");
             }
 
             const response = await fetch(url, {
                 ...options,
+                mode: options.mode || "cors",
+                credentials: options.credentials || "omit",
+                cache: options.cache || "no-store",
                 headers
             });
 
             if (response.status === 401) {
                 supprimerTokenAuth();
-                afficherEcranConnexion("Session absente ou expirée. Veuillez vous reconnecter.");
+                afficherEcranConnexion("Session expirée ou jeton invalide. Veuillez vous reconnecter.");
+                throw new Error("Session expirée ou jeton invalide. Reconnectez-vous, puis relancez l'action.");
             }
 
             return response;
@@ -1629,21 +1645,23 @@
 
         async function demarrerApplication() {
             /*
-                Correction index-s3 :
-                on conserve le jeton déjà reçu pendant sa durée de validité.
-                La session est vérifiée côté serveur avec /api/auth/me.
-                Si le jeton est encore valide, l'application démarre sans redemander le mot de passe.
-                Si le jeton est absent ou expiré, l'écran de connexion reste affiché.
+                Correction :
+                on évite d'appeler /api/auth/me au démarrage pour ne pas bloquer
+                l'affichage avec une erreur 401 quand un ancien jeton est expiré.
+                Les appels protégés restent sécurisés par fetchAuth().
             */
             document.body.classList.add("auth-locked");
 
-            const sessionOk = await verifierSessionUtilisateur();
+            const token = obtenirTokenAuth();
 
-            if (sessionOk) {
-                initialiserApplicationUneSeuleFois();
-            } else {
+            if (!token) {
+                supprimerTokenAuth();
                 afficherEcranConnexion("");
+                return;
             }
+
+            masquerEcranConnexion();
+            initialiserApplicationUneSeuleFois();
         }
 
         const API_BASE_URL = window.location.hostname.includes("github.io")
