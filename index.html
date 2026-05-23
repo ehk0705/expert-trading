@@ -903,6 +903,72 @@
             }
         }
 
+
+        /* ============================================================
+           Correction ascenseur navigateur en mode 4 graphiques
+           Le fichier style.css peut bloquer la hauteur de la page.
+           On force ici le défilement vertical sans supprimer le mode plein écran.
+        ============================================================ */
+        html,
+        body:not(.auth-locked):not(.graphique-plein-ecran):not(.capture-clean-mode) {
+            height: auto !important;
+            min-height: 100vh !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+        }
+
+        body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran):not(.capture-clean-mode) {
+            height: auto !important;
+            min-height: 100vh !important;
+            overflow-y: auto !important;
+            padding-bottom: 32px !important;
+        }
+
+        body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #chart-container {
+            height: auto !important;
+            min-height: 900px !important;
+            overflow: visible !important;
+            padding-bottom: 24px !important;
+        }
+
+        body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #multi-chart-container {
+            height: auto !important;
+            min-height: 860px !important;
+            overflow: visible !important;
+        }
+
+        body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) .multi-chart-box {
+            min-height: 420px !important;
+        }
+
+        body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) .multi-chart-view {
+            min-height: 382px !important;
+        }
+
+        body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #result-panel {
+            position: static !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            width: auto !important;
+            margin: 0 14px 24px 14px !important;
+            z-index: 10 !important;
+        }
+
+        @media (max-width: 900px) {
+            body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #chart-container {
+                min-height: 1780px !important;
+            }
+
+            body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #multi-chart-container {
+                min-height: 1760px !important;
+            }
+
+            body.mode-quatre-graphiques:not(.auth-locked):not(.graphique-plein-ecran) .multi-chart-box {
+                min-height: 430px !important;
+            }
+        }
+
 </style>
 </head>
 
