@@ -731,7 +731,7 @@
 
 
         /* ============================================================
-           Paramètres de risque déplacés vers trading-analyse.html
+           Paramètres de risque déplacés vers analyse.html
            Les anciens champs restent dans le DOM pour compatibilité,
            mais ils ne prennent plus de place dans index.html.
         ============================================================ */
@@ -1332,8 +1332,8 @@
             <button class="btn-multichart" id="btn-multichart" type="button" onclick="basculerModeQuatreGraphiques()" title="Afficher ou masquer 4 graphiques pour le même actif : 15m, 1h, 4h et 1J.">4 graphiques</button>
 
 
-            <a href="trading-trading-analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
-                <button class="btn-analyser" type="button" title="Ouvrir la page trading-analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
+            <a href="./trading-analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
+                <button class="btn-analyser" type="button" title="Ouvrir trading-analyse.html pour consulter et analyser les captures sauvegardées.">Analyser</button>
             </a>
 
            <button class="btn-effacer" type="button" disabled aria-disabled="true" onclick="return false" title="Fonction désactivée.">
@@ -1423,7 +1423,7 @@
     </div>
 
     <div id="chart-container">
-        <div id="infos-graphique" class="infos-graphique" title="Résumé visible des paramètres actuellement appliqués au graphique. Ce bandeau est aussi intégré dans l'image sauvegardée pour trading-analyse.html.">
+        <div id="infos-graphique" class="infos-graphique" title="Résumé visible des paramètres actuellement appliqués au graphique. Ce bandeau est aussi intégré dans l'image sauvegardée pour analyse.html.">
             <div class="infos-titre">Informations du graphique</div>
             <span class="info-item"><strong>Actif :</strong> chargement...</span>
             <span class="info-item"><strong>Intervalle :</strong> chargement...</span>
@@ -1713,6 +1713,7 @@
         }
 
         function init() {
+            appliquerDesactivationFonctionsDemandees();
             if (typeof TradingView === "undefined" || typeof TradingView.widget !== "function") {
                 afficherMessageGraphique("La bibliothèque TradingView tv.js n'est pas chargée.", "erreur");
                 afficherStatus("Erreur : bibliothèque TradingView tv.js absente.");
@@ -1727,6 +1728,18 @@
             chargerListeConfigurationsSauvegardees();
         }
 
+
+        function appliquerDesactivationFonctionsDemandees() {
+            ["btn-json-config", "btn-vision"].forEach(id => {
+                const bouton = document.getElementById(id);
+                if (bouton) {
+                    bouton.disabled = true;
+                    bouton.setAttribute("aria-disabled", "true");
+                    bouton.onclick = function() { return false; };
+                    bouton.title = "Fonction désactivée.";
+                }
+            });
+        }
         function afficherStatus(message) {
             const status = document.getElementById("status");
             if (status) status.textContent = message;
@@ -1925,10 +1938,17 @@
         }
 
         function setBoutonsActifs(actif) {
-            ["btn-capture", "btn-vision"].forEach(id => {
+            ["btn-capture"].forEach(id => {
                 const bouton = document.getElementById(id);
                 if (bouton) bouton.disabled = !actif;
             });
+
+            /* Bouton désactivé volontairement. */
+            const boutonVision = document.getElementById("btn-vision");
+            if (boutonVision) {
+                boutonVision.disabled = true;
+                boutonVision.setAttribute("aria-disabled", "true");
+            }
         }
 
         async function lireReponseJson(response) {
@@ -2760,7 +2780,7 @@
                 '<span class="info-item"><strong>Symbole :</strong> ' + symbole + '</span>' +
                 '<span class="info-item"><strong>Bougies :</strong> ' + nombreBougies + '</span>' +
                 '<span class="info-item"><strong>Dernier prix :</strong> ' + formatterDerniereBougie(derniereBougie) + '</span>' +
-                '<span class="info-note">Ce bandeau est intégré dans la capture sauvegardée et sera donc visible dans trading-analyse.html.</span>';
+                '<span class="info-note">Ce bandeau est intégré dans la capture sauvegardée et sera donc visible dans analyse.html.</span>';
         }
 
         function dessinerTexteMultiligne(ctx, texte, x, y, largeurMax, hauteurLigne) {

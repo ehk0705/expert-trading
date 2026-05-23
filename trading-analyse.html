@@ -355,7 +355,14 @@
         .btn-analyze:disabled,
         .btn-analyze-multiple:disabled,
         .btn-analyze-pro:disabled,
-        .btn-save:disabled {
+        .btn-save:disabled,
+        button[aria-disabled="true"] {
+            opacity: 0.45;
+            cursor: not-allowed;
+            filter: grayscale(0.35);
+        }
+
+        .fonction-desactivee {
             opacity: 0.45;
             cursor: not-allowed;
         }
@@ -752,8 +759,10 @@
                 <button 
                     class="btn-analyze-pro" 
                     id="btn-trigger-concrete-ai" 
-                    title="Analyse concrète avec OpenAI Vision et sources de marché"
-                    onclick="triggerConcreteAIAnalysis()">
+                    title="Fonction désactivée."
+                    disabled
+                    aria-disabled="true"
+                    onclick="return false">
                     Vision + Marché
                 </button>
 
@@ -961,67 +970,18 @@
         }
 
         function getAuthHeaders(headers = {}) {
-            const token = getAuthToken();
-            const authHeaders = {
-                ...headers
-            };
-
-            if (token) {
-                authHeaders["Authorization"] = "Bearer " + token;
-            }
-
-            return authHeaders;
+            /* Authentification désactivée côté interface. */
+            return { ...headers };
         }
 
         function verifierAuthentificationAnalyse(afficherAlerte = true) {
-            const token = getAuthToken();
-
-            if (!token) {
-                if (afficherAlerte) {
-                    alert("Authentification requise. Connectez-vous d'abord depuis trading-home.html.");
-                }
-                window.location.href = "/";
-                return false;
-            }
-
+            /* Authentification désactivée : aucun renvoi vers la page d'accueil. */
             return true;
         }
 
         async function verifierSessionAnalyse() {
-            const token = getAuthToken();
-
-            if (!token) {
-                verifierAuthentificationAnalyse(true);
-                return false;
-            }
-
-            try {
-                const response = await fetch(getApiUrl("/api/auth/me"), {
-                    method: "GET",
-                    mode: "cors",
-                    credentials: "omit",
-                    cache: "no-store",
-                    headers: getAuthHeaders({
-                        "Accept": "application/json"
-                    })
-                });
-
-                const data = await readResponseAsJson(response);
-                return Boolean(data.ok);
-            } catch (erreur) {
-                console.warn("Session invalide ou expirée :", erreur);
-                localStorage.removeItem("expert_trading_auth_token");
-                localStorage.removeItem("expertTradingToken");
-                localStorage.removeItem("expertTradingJwt");
-                localStorage.removeItem("authToken");
-                sessionStorage.removeItem("expert_trading_auth_token");
-                sessionStorage.removeItem("expertTradingToken");
-                sessionStorage.removeItem("expertTradingJwt");
-                sessionStorage.removeItem("authToken");
-                alert("Session expirée ou invalide. Reconnectez-vous.");
-                window.location.href = "/";
-                return false;
-            }
+            /* Authentification désactivée : la galerie peut se charger directement. */
+            return true;
         }
 
         async function fetchJsonAvecSecours(route, options = {}) {
@@ -1272,6 +1232,13 @@
             buttons.forEach(button => {
                 if (button) button.disabled = isLoading;
             });
+
+            const boutonVisionMarche = document.getElementById('btn-trigger-concrete-ai');
+            if (boutonVisionMarche) {
+                boutonVisionMarche.disabled = true;
+                boutonVisionMarche.setAttribute('aria-disabled', 'true');
+                boutonVisionMarche.onclick = function() { return false; };
+            }
 
             spinner.innerText = message;
             spinner.style.display = isLoading ? "inline" : "none";
@@ -3603,7 +3570,20 @@ async function triggerAIAnalysis() {
             }
         }
 
-        window.onload = loadGallery;
+        function appliquerDesactivationFonctionsAnalyse() {
+            const boutonVisionMarche = document.getElementById('btn-trigger-concrete-ai');
+            if (boutonVisionMarche) {
+                boutonVisionMarche.disabled = true;
+                boutonVisionMarche.setAttribute('aria-disabled', 'true');
+                boutonVisionMarche.onclick = function() { return false; };
+                boutonVisionMarche.title = 'Fonction désactivée.';
+            }
+        }
+
+        window.onload = function() {
+            appliquerDesactivationFonctionsAnalyse();
+            loadGallery();
+        };
     </script>
 </body>
 </html>
