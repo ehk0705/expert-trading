@@ -1861,8 +1861,9 @@
                 hide_top_toolbar: false,
                 hide_side_toolbar: false,
                 save_image: false,
-                studies: obtenirEtudesTradingViewPourIndicateur(),
+                studies: obtenirEtudesTradingViewLimitees(),
                 studies_overrides: obtenirOverridesEtudesTradingView(),
+                disabled_features: obtenirFonctionnalitesDesactiveesTradingView(),
                 container_id: containerId
             });
 
@@ -3059,6 +3060,36 @@ function normaliserSymboleTradingViewWidget(symbole) {
             return correspondances[valeur] || [];
         }
 
+        function obtenirEtudesTradingViewLimitees(indicateur = obtenirIndicateurSelectionne()) {
+            /*
+                Correction TradingView :
+                Le widget public tv.js peut afficher le message :
+                "Le nombre maximum d'indicateurs sur le widget TradingView est de 2".
+                Pour éviter ce blocage, on n'injecte jamais plus d'une étude
+                par widget et on désactive la restauration automatique des anciens
+                indicateurs mémorisés par TradingView dans le navigateur.
+            */
+            const etudes = obtenirEtudesTradingViewPourIndicateur(indicateur);
+
+            if (!Array.isArray(etudes) || etudes.length === 0) {
+                return [];
+            }
+
+            return etudes.slice(0, 1);
+        }
+
+        function obtenirFonctionnalitesDesactiveesTradingView() {
+            /*
+                Empêche TradingView de restaurer d'anciens indicateurs depuis
+                le stockage local du navigateur. Cela évite d'accumuler Volume,
+                ADL, EMA, RSI, etc., et donc de déclencher la limite du widget.
+            */
+            return [
+                "use_localstorage_for_settings",
+                "save_chart_properties_to_local_storage"
+            ];
+        }
+
         function obtenirOverridesEtudesTradingView(indicateur = obtenirIndicateurSelectionne()) {
             /*
                 Les noms d'overrides peuvent varier selon TradingView.
@@ -3089,10 +3120,10 @@ function normaliserSymboleTradingViewWidget(symbole) {
         }
 
         function afficherEtatIndicateurTradingView(indicateur = obtenirIndicateurSelectionne()) {
-            const etudes = obtenirEtudesTradingViewPourIndicateur(indicateur);
+            const etudes = obtenirEtudesTradingViewLimitees(indicateur);
 
             if (etudes.length > 0) {
-                afficherStatus("Indicateur appliqué au graphique : " + indicateur);
+                afficherStatus("Indicateur appliqué au graphique : " + indicateur + " — limite widget respectée : 1 étude injectée.");
                 return;
             }
 
@@ -3137,8 +3168,9 @@ function normaliserSymboleTradingViewWidget(symbole) {
                 hide_top_toolbar: false,
                 hide_side_toolbar: false,
                 save_image: false,
-                studies: obtenirEtudesTradingViewPourIndicateur(),
+                studies: obtenirEtudesTradingViewLimitees(),
                 studies_overrides: obtenirOverridesEtudesTradingView(),
+                disabled_features: obtenirFonctionnalitesDesactiveesTradingView(),
                 container_id: "tradingview_chart"
             });
 
