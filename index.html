@@ -904,134 +904,6 @@
         }
 
 
-
-        /* ============================================================
-           Mode 6 graphiques
-           Ajout sans suppression : affiche 5m, 15m, 1h, 4h, 1J et 1S
-           pour le même actif sélectionné.
-        ============================================================ */
-        #six-chart-container {
-            display: none;
-            width: 100%;
-            height: 100%;
-            min-height: 900px;
-            grid-template-columns: repeat(3, minmax(280px, 1fr));
-            gap: 10px;
-            background: #ffffff;
-        }
-
-        body.mode-six-graphiques #tradingview_chart,
-        body.mode-six-graphiques #multi-chart-container {
-            display: none !important;
-        }
-
-        body.mode-six-graphiques #six-chart-container {
-            display: grid !important;
-        }
-
-        body.mode-six-graphiques #chart-container {
-            min-height: 980px;
-        }
-
-        body.graphique-plein-ecran.mode-six-graphiques #six-chart-container {
-            height: 100vh !important;
-            min-height: 100vh !important;
-            border-radius: 0 !important;
-            padding: 0 !important;
-        }
-
-        body.graphique-plein-ecran.mode-six-graphiques .multi-chart-box {
-            min-height: calc(50vh - 5px);
-            border-radius: 0;
-        }
-
-        body.graphique-plein-ecran.mode-six-graphiques .multi-chart-view {
-            min-height: calc(50vh - 38px);
-        }
-
-        @media (max-width: 1200px) {
-            #six-chart-container {
-                grid-template-columns: repeat(2, minmax(320px, 1fr));
-                min-height: 1240px;
-            }
-
-            body.mode-six-graphiques #chart-container {
-                min-height: 1280px;
-            }
-        }
-
-        @media (max-width: 900px) {
-            #six-chart-container {
-                grid-template-columns: 1fr;
-                min-height: 2520px;
-            }
-
-            body.mode-six-graphiques #chart-container {
-                min-height: 2540px;
-            }
-
-            body.graphique-plein-ecran.mode-six-graphiques #six-chart-container {
-                overflow-y: auto;
-            }
-
-            body.graphique-plein-ecran.mode-six-graphiques .multi-chart-box {
-                min-height: 420px;
-            }
-
-            body.graphique-plein-ecran.mode-six-graphiques .multi-chart-view {
-                min-height: 382px;
-            }
-        }
-
-        body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran):not(.capture-clean-mode) {
-            height: auto !important;
-            min-height: 100vh !important;
-            overflow-y: auto !important;
-            padding-bottom: 32px !important;
-        }
-
-        body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #chart-container {
-            height: auto !important;
-            min-height: 1320px !important;
-            overflow: visible !important;
-            padding-bottom: 24px !important;
-        }
-
-        body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #six-chart-container {
-            height: auto !important;
-            min-height: 1280px !important;
-            overflow: visible !important;
-        }
-
-        body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran) .multi-chart-box {
-            min-height: 420px !important;
-        }
-
-        body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran) .multi-chart-view {
-            min-height: 382px !important;
-        }
-
-        body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #result-panel {
-            position: static !important;
-            left: auto !important;
-            right: auto !important;
-            bottom: auto !important;
-            width: auto !important;
-            margin: 0 14px 24px 14px !important;
-            z-index: 10 !important;
-        }
-
-        @media (max-width: 900px) {
-            body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #chart-container {
-                min-height: 2620px !important;
-            }
-
-            body.mode-six-graphiques:not(.auth-locked):not(.graphique-plein-ecran) #six-chart-container {
-                min-height: 2580px !important;
-            }
-        }
-
-
         /* ============================================================
            Correction ascenseur navigateur en mode 4 graphiques
            Le fichier style.css peut bloquer la hauteur de la page.
@@ -1444,7 +1316,6 @@
             <button class="btn-tv" type="button" onclick="ouvrirTradingView()" title="Ouvrir le graphique de l’actif sélectionné dans TradingView, dans un nouvel onglet.">TradingView</button>
             <button class="btn-fullscreen-chart" id="btn-fullscreen-chart" type="button" onclick="basculerGraphiquePleinEcran()" title="Afficher ou quitter le graphique en plein écran. La touche Échap remet aussi le graphique à sa place.">Plein écran</button>
             <button class="btn-multichart" id="btn-multichart" type="button" onclick="basculerModeQuatreGraphiques()" title="Afficher ou masquer 4 graphiques pour le même actif : 15m, 1h, 4h et 1J.">4 graphiques</button>
-            <button class="btn-multichart" id="btn-sixchart" type="button" onclick="basculerModeSixGraphiques()" title="Afficher ou masquer 6 graphiques pour le même actif : 5m, 15m, 1h, 4h, 1J et 1S.">6 graphiques</button>
 
 
             <a href="analyse.html" target="_blank" rel="noopener noreferrer" title="Analyser la capture">
@@ -1564,32 +1435,6 @@
             <div class="multi-chart-box">
                 <div class="multi-chart-title">1 jour</div>
                 <div id="tradingview_chart_1d" class="multi-chart-view"></div>
-            </div>
-        </div>
-        <div id="six-chart-container" aria-label="Mode 6 graphiques TradingView">
-            <div class="multi-chart-box">
-                <div class="multi-chart-title">5 minutes</div>
-                <div id="tradingview_chart_6_5m" class="multi-chart-view"></div>
-            </div>
-            <div class="multi-chart-box">
-                <div class="multi-chart-title">15 minutes</div>
-                <div id="tradingview_chart_6_15m" class="multi-chart-view"></div>
-            </div>
-            <div class="multi-chart-box">
-                <div class="multi-chart-title">1 heure</div>
-                <div id="tradingview_chart_6_1h" class="multi-chart-view"></div>
-            </div>
-            <div class="multi-chart-box">
-                <div class="multi-chart-title">4 heures</div>
-                <div id="tradingview_chart_6_4h" class="multi-chart-view"></div>
-            </div>
-            <div class="multi-chart-box">
-                <div class="multi-chart-title">1 jour</div>
-                <div id="tradingview_chart_6_1d" class="multi-chart-view"></div>
-            </div>
-            <div class="multi-chart-box">
-                <div class="multi-chart-title">1 semaine</div>
-                <div id="tradingview_chart_6_1w" class="multi-chart-view"></div>
             </div>
         </div>
     </div>
@@ -2069,119 +1914,6 @@
                 quitterQuatreGraphiques();
             } else {
                 afficherQuatreGraphiques();
-            }
-        }
-
-
-        let modeSixGraphiquesActif = false;
-        let widgetsSixGraphiques = [];
-
-        function appliquerEtatBoutonSixGraphiques(actif) {
-            const bouton = document.getElementById("btn-sixchart");
-            if (!bouton) return;
-
-            bouton.textContent = actif ? "Graphique unique" : "6 graphiques";
-            bouton.title = actif
-                ? "Revenir au graphique unique."
-                : "Afficher 6 graphiques pour le même actif : 5m, 15m, 1h, 4h, 1J et 1S.";
-        }
-
-        function viderSixGraphiques() {
-            [
-                "tradingview_chart_6_5m",
-                "tradingview_chart_6_15m",
-                "tradingview_chart_6_1h",
-                "tradingview_chart_6_4h",
-                "tradingview_chart_6_1d",
-                "tradingview_chart_6_1w"
-            ].forEach(id => {
-                const zone = document.getElementById(id);
-                if (zone) zone.innerHTML = "";
-            });
-
-            widgetsSixGraphiques = [];
-        }
-
-        function creerWidgetSixGraphiques(containerId, intervalle, libelle) {
-            const actifBrut = document.getElementById("asset-selector").value || "BINANCE:BTCUSDT";
-            const actif = normaliserSymboleTradingViewWidget(actifBrut);
-            const style = convertirStylePourTradingView(obtenirTypeGraphiqueSelectionne() || "candles");
-
-            const zone = document.getElementById(containerId);
-            if (zone) zone.innerHTML = "";
-
-            const widget = new TradingView.widget({
-                autosize: true,
-                symbol: actif,
-                interval: intervalle,
-                timezone: "Etc/UTC",
-                theme: "light",
-                style: style,
-                locale: "fr",
-                enable_publishing: false,
-                allow_symbol_change: false,
-                hide_top_toolbar: false,
-                hide_side_toolbar: false,
-                save_image: false,
-                studies: obtenirEtudesTradingViewLimitees(),
-                studies_overrides: obtenirOverridesEtudesTradingView(),
-                disabled_features: obtenirFonctionnalitesDesactiveesTradingView(),
-                container_id: containerId
-            });
-
-            widgetsSixGraphiques.push(widget);
-            return widget;
-        }
-
-        function afficherSixGraphiques() {
-            if (typeof TradingView === "undefined" || typeof TradingView.widget !== "function") {
-                afficherMessageGraphique("TradingView tv.js n'est pas encore disponible.", "erreur");
-                afficherStatus("Erreur : TradingView tv.js non disponible pour le mode 6 graphiques.");
-                return;
-            }
-
-            if (modeQuatreGraphiquesActif || document.body.classList.contains("mode-quatre-graphiques")) {
-                quitterQuatreGraphiques();
-            }
-
-            modeSixGraphiquesActif = true;
-            document.body.classList.add("mode-six-graphiques");
-            appliquerEtatBoutonSixGraphiques(true);
-            viderSixGraphiques();
-
-            creerWidgetSixGraphiques("tradingview_chart_6_5m", "5", "5m");
-            creerWidgetSixGraphiques("tradingview_chart_6_15m", "15", "15m");
-            creerWidgetSixGraphiques("tradingview_chart_6_1h", "60", "1h");
-            creerWidgetSixGraphiques("tradingview_chart_6_4h", "240", "4h");
-            creerWidgetSixGraphiques("tradingview_chart_6_1d", "D", "1J");
-            creerWidgetSixGraphiques("tradingview_chart_6_1w", "W", "1S");
-
-            setTimeout(() => {
-                window.dispatchEvent(new Event("resize"));
-            }, 150);
-
-            afficherMessageGraphique("", "ok");
-            afficherStatus("Mode 6 graphiques actif : 5m, 15m, 1h, 4h, 1J et 1S.");
-        }
-
-        function quitterSixGraphiques() {
-            modeSixGraphiquesActif = false;
-            document.body.classList.remove("mode-six-graphiques");
-            appliquerEtatBoutonSixGraphiques(false);
-            viderSixGraphiques();
-
-            setTimeout(() => {
-                window.dispatchEvent(new Event("resize"));
-            }, 150);
-
-            afficherStatus("Mode graphique unique actif.");
-        }
-
-        function basculerModeSixGraphiques() {
-            if (modeSixGraphiquesActif || document.body.classList.contains("mode-six-graphiques")) {
-                quitterSixGraphiques();
-            } else {
-                afficherSixGraphiques();
             }
         }
 
@@ -3543,10 +3275,6 @@ function normaliserSymboleTradingViewWidget(symbole) {
 
                 if (modeQuatreGraphiquesActif || document.body.classList.contains("mode-quatre-graphiques")) {
                     afficherQuatreGraphiques();
-                }
-
-                if (modeSixGraphiquesActif || document.body.classList.contains("mode-six-graphiques")) {
-                    afficherSixGraphiques();
                 }
 
                 afficherMessageGraphique("", "ok");
