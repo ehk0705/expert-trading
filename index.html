@@ -1734,6 +1734,12 @@
             afficherInfosGraphique();
             actualiserGraphique();
             chargerListeConfigurationsSauvegardees();
+
+            /*
+                Sécurité : au démarrage, le bouton CAPTURE est forcé actif.
+                Cela évite qu'un ancien état JavaScript laisse le bouton grisé.
+            */
+            setBoutonsActifs(true);
         }
 
         function afficherStatus(message) {
@@ -1934,10 +1940,22 @@
         }
 
         function setBoutonsActifs(actif) {
-            ["btn-capture", "btn-vision"].forEach(id => {
-                const bouton = document.getElementById(id);
-                if (bouton) bouton.disabled = !actif;
-            });
+            /*
+                Correction sans suppression :
+                le bouton CAPTURE doit rester utilisable.
+                Seul le bouton Vision + Marché est temporairement désactivé
+                pendant l'analyse IA afin d'éviter les doubles appels serveur.
+            */
+            const boutonCapture = document.getElementById("btn-capture");
+            if (boutonCapture) {
+                boutonCapture.disabled = false;
+                boutonCapture.removeAttribute("disabled");
+            }
+
+            const boutonVision = document.getElementById("btn-vision");
+            if (boutonVision) {
+                boutonVision.disabled = !actif;
+            }
         }
 
         async function lireReponseJson(response) {
