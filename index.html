@@ -987,6 +987,147 @@
             border: 0 !important;
             overflow: hidden !important;
         }
+
+        /* ============================================================
+           Module paiement symboles / indicateurs
+           Le navigateur ne traite jamais les cartes ni les comptes bancaires.
+           Il prépare une demande et laisse le serveur créer une session de paiement.
+        ============================================================ */
+        .btn-payment {
+            background: #b45309;
+            color: #ffffff;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .btn-payment:hover {
+            background: #d97706;
+        }
+
+        .payment-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483645;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(2, 6, 23, 0.78);
+            box-sizing: border-box;
+        }
+
+        .payment-box {
+            width: min(560px, 100%);
+            background: #0f172a;
+            color: #e5e7eb;
+            border: 1px solid #475569;
+            border-radius: 16px;
+            box-shadow: 0 22px 70px rgba(0, 0, 0, 0.55);
+            padding: 18px;
+            box-sizing: border-box;
+        }
+
+        .payment-box h2 {
+            margin: 0 0 8px 0;
+            color: #facc15;
+            font-size: 18px;
+        }
+
+        .payment-box p {
+            margin: 0 0 12px 0;
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .payment-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(160px, 1fr));
+            gap: 10px;
+            margin: 12px 0;
+        }
+
+        .payment-field label {
+            display: block;
+            margin-bottom: 5px;
+            color: #facc15;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .payment-field input,
+        .payment-field select {
+            width: 100%;
+            min-height: 34px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #020617;
+            color: #ffffff;
+            padding: 7px 9px;
+            box-sizing: border-box;
+        }
+
+        .payment-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .payment-actions button {
+            border-radius: 8px;
+            padding: 9px 13px;
+            cursor: pointer;
+            font-weight: 800;
+        }
+
+        .btn-payment-cancel {
+            background: #1e293b;
+            color: #e5e7eb;
+            border: 1px solid #475569;
+        }
+
+        .btn-payment-confirm {
+            background: #16a34a;
+            color: #ffffff;
+            border: 1px solid #22c55e;
+        }
+
+        .payment-warning {
+            margin-top: 12px;
+            padding: 10px;
+            border: 1px solid #92400e;
+            border-radius: 10px;
+            background: #451a03;
+            color: #fed7aa;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        #payment-status {
+            min-height: 18px;
+            margin-top: 10px;
+            color: #bfdbfe;
+            font-size: 12px;
+            white-space: pre-line;
+        }
+
+        @media (max-width: 640px) {
+            .payment-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .payment-actions button {
+                width: 100%;
+            }
+        }
+
 </style>
 </head>
 
@@ -1343,6 +1484,9 @@
            <button class="btn-effacer" type="button" onclick="viderCaptures()" title="Supprimer toutes les captures sauvegardées dans PostgreSQL après confirmation et mot de passe administrateur.">
 				Vider les captures
 		   </button>
+           <button class="btn-payment" id="btn-payment-access" type="button" onclick="ouvrirPaiementAcces()" title="Acheter un accès au symbole ou à l’indicateur sélectionné via une session de paiement sécurisée côté serveur.">
+                Acheter accès
+           </button>
 		   <button class="btn-help" type="button" onclick="ouvrirAide()">Aide</button>
         </div>
         </section>
@@ -1477,6 +1621,54 @@
         <pre id="resultat-analyse">Aucune analyse lancée.</pre>
     </div>
 -->
+
+    <div id="payment-overlay" class="payment-overlay" aria-hidden="true">
+        <div class="payment-box" role="dialog" aria-modal="true" aria-labelledby="payment-title">
+            <h2 id="payment-title">Paiement d’accès</h2>
+            <p>Ce module prépare une demande de paiement pour débloquer l’accès à un symbole, à un indicateur ou à un forfait. Les données bancaires ne doivent jamais être saisies dans cette page.</p>
+
+            <div class="payment-grid">
+                <div class="payment-field">
+                    <label for="payment-product-type">Produit</label>
+                    <select id="payment-product-type" onchange="actualiserResumePaiement()">
+                        <option value="symbole">Symbole sélectionné</option>
+                        <option value="indicateur">Indicateur sélectionné</option>
+                        <option value="pack_symbole_indicateur" selected>Symbole + indicateur</option>
+                    </select>
+                </div>
+
+                <div class="payment-field">
+                    <label for="payment-method-type">Mode de paiement</label>
+                    <select id="payment-method-type" onchange="actualiserResumePaiement()">
+                        <option value="carte" selected>Carte de crédit</option>
+                        <option value="compte_bancaire">Compte bancaire</option>
+                    </select>
+                </div>
+
+                <div class="payment-field">
+                    <label for="payment-symbol-value">Symbole</label>
+                    <input id="payment-symbol-value" type="text" readonly>
+                </div>
+
+                <div class="payment-field">
+                    <label for="payment-indicator-value">Indicateur</label>
+                    <input id="payment-indicator-value" type="text" readonly>
+                </div>
+            </div>
+
+            <div class="payment-warning">
+                Sécurité : cette page ne traite aucun numéro de carte ni identifiant bancaire. Elle appelle seulement <strong>/api/paiement/checkout</strong>. Le serveur doit ensuite créer une session chez un processeur de paiement conforme.
+            </div>
+
+            <div id="payment-status"></div>
+
+            <div class="payment-actions">
+                <button type="button" class="btn-payment-cancel" onclick="fermerPaiementAcces()">Annuler</button>
+                <button type="button" class="btn-payment-confirm" id="btn-confirm-payment" onclick="creerSessionPaiementAcces()">Créer la session de paiement</button>
+            </div>
+        </div>
+    </div>
+
     <script>
 
         const AUTH_TOKEN_KEY = "expert_trading_auth_token";
@@ -3877,6 +4069,140 @@ function normaliserSymboleTradingViewWidget(symbole) {
         alert("Impossible de supprimer les captures.\n\nDétail : " + erreur.message);
     }
 }
+
+        function obtenirLibelleSelect(id) {
+            const select = document.getElementById(id);
+            if (!select) return "";
+            const option = select.options[select.selectedIndex];
+            return option ? option.textContent.trim() : (select.value || "");
+        }
+
+        function obtenirPayloadPaiementAcces() {
+            const typeProduit = document.getElementById("payment-product-type")?.value || "pack_symbole_indicateur";
+            const modePaiement = document.getElementById("payment-method-type")?.value || "carte";
+            const symbole = document.getElementById("asset-selector")?.value || "";
+            const indicateur = document.getElementById("indicator-selector")?.value || "";
+
+            return {
+                type_produit: typeProduit,
+                mode_paiement: modePaiement,
+                symbole: symbole,
+                symbole_libelle: obtenirLibelleSelect("asset-selector"),
+                indicateur: indicateur,
+                indicateur_libelle: obtenirLibelleSelect("indicator-selector"),
+                intervalle: obtenirIntervalleSelectionne(),
+                categorie_analyse: document.getElementById("categorie-analyse-btc")?.value || "technique",
+                devise: "CAD",
+                source: "index_html_paiement_acces",
+                retour_succes: window.location.origin + window.location.pathname + "?paiement=succes",
+                retour_annulation: window.location.origin + window.location.pathname + "?paiement=annule"
+            };
+        }
+
+        function actualiserResumePaiement() {
+            const payload = obtenirPayloadPaiementAcces();
+
+            const champSymbole = document.getElementById("payment-symbol-value");
+            const champIndicateur = document.getElementById("payment-indicator-value");
+            const statut = document.getElementById("payment-status");
+
+            if (champSymbole) champSymbole.value = payload.symbole_libelle || payload.symbole || "N/A";
+            if (champIndicateur) champIndicateur.value = payload.indicateur_libelle || payload.indicateur || "N/A";
+
+            if (statut) {
+                statut.textContent =
+                    "Demande préparée : " + payload.type_produit +
+                    "\nPaiement demandé : " + payload.mode_paiement +
+                    "\nLe prix définitif doit être calculé côté serveur, jamais dans le navigateur.";
+            }
+        }
+
+        function ouvrirPaiementAcces() {
+            const overlay = document.getElementById("payment-overlay");
+            if (!overlay) return;
+
+            actualiserResumePaiement();
+            overlay.style.display = "flex";
+            overlay.setAttribute("aria-hidden", "false");
+        }
+
+        function fermerPaiementAcces() {
+            const overlay = document.getElementById("payment-overlay");
+            if (!overlay) return;
+
+            overlay.style.display = "none";
+            overlay.setAttribute("aria-hidden", "true");
+        }
+
+        async function creerSessionPaiementAcces() {
+            const bouton = document.getElementById("btn-confirm-payment");
+            const statut = document.getElementById("payment-status");
+            const payload = obtenirPayloadPaiementAcces();
+
+            if (!payload.symbole && payload.type_produit !== "indicateur") {
+                if (statut) statut.textContent = "Symbole absent. Impossible de préparer le paiement.";
+                return;
+            }
+
+            if (!payload.indicateur && payload.type_produit !== "symbole") {
+                if (statut) statut.textContent = "Indicateur absent. Impossible de préparer le paiement.";
+                return;
+            }
+
+            try {
+                if (bouton) bouton.disabled = true;
+                if (statut) statut.textContent = "Création de la session de paiement...";
+
+                localStorage.setItem("expert_trading_paiement_demande", JSON.stringify({
+                    ...payload,
+                    date_creation_locale: new Date().toISOString()
+                }));
+
+                const response = await fetchAuth(getApiUrl("/api/paiement/checkout"), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await lireReponseJson(response);
+
+                localStorage.setItem("expert_trading_paiement_session", JSON.stringify({
+                    demande: payload,
+                    reponse: data,
+                    date_creation_locale: new Date().toISOString()
+                }));
+
+                const urlPaiement = data.checkout_url || data.url || data.payment_url || "";
+
+                if (urlPaiement) {
+                    if (statut) statut.textContent = "Session créée. Redirection vers le paiement sécurisé...";
+                    window.location.href = urlPaiement;
+                    return;
+                }
+
+                if (statut) {
+                    statut.textContent =
+                        "Session créée, mais aucune URL de paiement n'a été retournée.\n" +
+                        JSON.stringify(data, null, 2);
+                }
+
+            } catch (erreur) {
+                console.error("Erreur paiement accès :", erreur);
+
+                if (statut) {
+                    statut.textContent =
+                        "API paiement indisponible ou non configurée.\n" +
+                        "Route attendue : POST /api/paiement/checkout\n\n" +
+                        erreur.message;
+                }
+            } finally {
+                if (bouton) bouton.disabled = false;
+            }
+        }
+
     function ouvrirAide() {
         const overlay = document.getElementById("help-overlay");
         if (!overlay) return;
